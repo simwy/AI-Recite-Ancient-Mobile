@@ -1,0 +1,60 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "text_id", "text_title"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "text_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题"
+    },
+    "hint_count": {
+      "bsonType": "int",
+      "description": "提示次数",
+      "defaultValue": 0
+    },
+    "recognized_text": {
+      "bsonType": "string",
+      "description": "语音识别文字"
+    },
+    "diff_result": {
+      "bsonType": "array",
+      "description": "逐字对比结果",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "char": { "bsonType": "string" },
+          "status": { "bsonType": "string" }
+        }
+      }
+    },
+    "accuracy": {
+      "bsonType": "double",
+      "description": "正确率"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

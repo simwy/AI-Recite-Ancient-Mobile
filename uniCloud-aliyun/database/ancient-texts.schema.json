@@ -1,0 +1,41 @@
+{
+  "bsonType": "object",
+  "required": ["title", "content"],
+  "permission": {
+    "read": true,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "title": {
+      "bsonType": "string",
+      "description": "标题",
+      "trim": "both"
+    },
+    "author": {
+      "bsonType": "string",
+      "description": "作者",
+      "trim": "both"
+    },
+    "dynasty": {
+      "bsonType": "string",
+      "description": "朝代",
+      "trim": "both"
+    },
+    "content": {
+      "bsonType": "string",
+      "description": "全文内容"
+    },
+    "paragraphs": {
+      "bsonType": "array",
+      "description": "按句切分的数组",
+      "items": {
+        "bsonType": "string"
+      }
+    }
+  }
+}

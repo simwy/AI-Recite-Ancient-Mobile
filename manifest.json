@@ -40,7 +40,8 @@
             "sdkConfigs" : {
                 "push" : {
                     "unipush" : null
-                }
+                },
+                "speech" : {}
             }
         }
     },

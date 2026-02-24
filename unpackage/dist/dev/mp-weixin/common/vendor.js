@@ -7372,7 +7372,7 @@ function isConsoleWritable() {
 function initRuntimeSocketService() {
   const hosts = "127.0.0.1,192.168.1.90,172.29.0.1";
   const port = "8090";
-  const id = "mp-weixin_RZp68F";
+  const id = "mp-weixin_retdJ9";
   const lazy = typeof swan !== "undefined";
   let restoreError = lazy ? () => {
   } : initOnError();
@@ -8320,41 +8320,33 @@ const createSubpackageApp = initCreateSubpackageApp();
 }
 const pages = [
   {
-    path: "pages/list/list",
+    path: "pages/ancient/list",
     style: {
-      enablePullDownRefresh: true,
-      navigationStyle: "custom"
+      navigationBarTitleText: "古文背诵"
     }
   },
   {
-    path: "pages/grid/grid",
-    style: {}
-  },
-  {
-    path: "pages/list/search/search",
+    path: "pages/ancient/history",
     style: {
-      navigationBarTitleText: "搜索"
+      navigationBarTitleText: "背诵历史"
     }
   },
   {
-    path: "pages/list/detail",
+    path: "pages/ancient/detail",
     style: {
-      "app-plus": {
-        titleNView: {
-          buttons: [
-            {
-              type: "share"
-            }
-          ],
-          type: "transparent"
-        }
-      },
-      h5: {
-        titleNView: {
-          type: "transparent"
-        }
-      },
-      navigationBarTitleText: "文章详情"
+      navigationBarTitleText: "古文详情"
+    }
+  },
+  {
+    path: "pages/ancient/recite",
+    style: {
+      navigationBarTitleText: "背诵模式"
+    }
+  },
+  {
+    path: "pages/ancient/result",
+    style: {
+      navigationBarTitleText: "背诵结果"
     }
   },
   {
@@ -8517,16 +8509,16 @@ const tabBar = {
   backgroundColor: "#FFFFFF",
   list: [
     {
-      pagePath: "pages/list/list",
+      pagePath: "pages/ancient/list",
       iconPath: "static/tabbar/list.png",
       selectedIconPath: "static/tabbar/list_active.png",
-      text: "列表"
+      text: "古文"
     },
     {
-      pagePath: "pages/grid/grid",
+      pagePath: "pages/ancient/history",
       iconPath: "static/tabbar/grid.png",
       selectedIconPath: "static/tabbar/grid_active.png",
-      text: "宫格"
+      text: "历史"
     },
     {
       pagePath: "pages/ucenter/ucenter",
@@ -8876,7 +8868,7 @@ class S {
 function T(e2) {
   return e2 && "string" == typeof e2 ? JSON.parse(e2) : e2;
 }
-const b = true, E = "mp-weixin", A = T(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), P = E, C = T('{"address":["127.0.0.1","192.168.1.90","172.29.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"local","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), O = T('[{"provider":"aliyun","spaceName":"sytask2-dev","spaceId":"mp-179f1dc3-df7e-48e2-ae75-1e1856aa81ab"}]') || [];
+const b = true, E = "mp-weixin", A = T(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), P = E, C = T('{"address":["127.0.0.1","192.168.1.90","172.29.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"local","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), O = T('[{"provider":"aliyun","spaceName":"sytask2-dev","spaceId":"mp-179f1dc3-df7e-48e2-ae75-1e1856aa81ab","clientSecret":"TLUdNML3RGYuKMzGgRCuWA==","endpoint":"https://api.next.bspapp.com"}]') || [];
 let N = "";
 try {
   N = "__UNI__1397D60";

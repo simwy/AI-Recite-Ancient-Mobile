@@ -145,7 +145,7 @@ if (!Math) {
 }
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
-    a: common_assets._imports_0$3,
+    a: common_assets._imports_0$1,
     b: common_vendor.t($data.signInRes.days.length),
     c: common_vendor.t($data.signInRes.score),
     d: common_vendor.f($data.weekdays, (item, index, i0) => {

@@ -1,9 +1,10 @@
 {
   "pages": [
-    "pages/list/list",
-    "pages/grid/grid",
-    "pages/list/search/search",
-    "pages/list/detail",
+    "pages/ancient/list",
+    "pages/ancient/history",
+    "pages/ancient/detail",
+    "pages/ancient/recite",
+    "pages/ancient/result",
     "pages/ucenter/ucenter",
     "pages/uni-agree/uni-agree",
     "pages/ucenter/settings/settings",
@@ -52,16 +53,16 @@
     "backgroundColor": "#FFFFFF",
     "list": [
       {
-        "pagePath": "pages/list/list",
+        "pagePath": "pages/ancient/list",
         "iconPath": "static/tabbar/list.png",
         "selectedIconPath": "static/tabbar/list_active.png",
-        "text": "列表"
+        "text": "古文"
       },
       {
-        "pagePath": "pages/grid/grid",
+        "pagePath": "pages/ancient/history",
         "iconPath": "static/tabbar/grid.png",
         "selectedIconPath": "static/tabbar/grid_active.png",
-        "text": "宫格"
+        "text": "历史"
       },
       {
         "pagePath": "pages/ucenter/ucenter",

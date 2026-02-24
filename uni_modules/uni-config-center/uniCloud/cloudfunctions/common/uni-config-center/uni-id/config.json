@@ -26,18 +26,18 @@
     "oauth": {
       "weixin": {
         "appid": "",
-        "appsecret": ""
+        "appsecret": "appsecret"
       },
       "qq": {
         "appid": "",
-        "appsecret": ""
+        "appsecret": "appsecret"
       },
       "apple": {
         "bundleId": ""
       },
       "huawei": {
         "clientId": "",
-        "clientSecret": ""
+        "clientSecret": "clientSecret"
       }
     }
   },
@@ -90,7 +90,7 @@
       "oauth": {
         "huawei": {
           "clientId": "",
-          "clientSecret": ""
+          "clientSecret": "clientSecret"
         }
       }
   },

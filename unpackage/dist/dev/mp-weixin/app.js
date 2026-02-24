@@ -6,10 +6,11 @@ require("./common/openApp.js");
 const uni_modules_uniIdPages_init = require("./uni_modules/uni-id-pages/init.js");
 const lang_i18n = require("./lang/i18n.js");
 if (!Math) {
-  "./pages/list/list.js";
-  "./pages/grid/grid.js";
-  "./pages/list/search/search.js";
-  "./pages/list/detail.js";
+  "./pages/ancient/list.js";
+  "./pages/ancient/history.js";
+  "./pages/ancient/detail.js";
+  "./pages/ancient/recite.js";
+  "./pages/ancient/result.js";
   "./pages/ucenter/ucenter.js";
   "./pages/uni-agree/uni-agree.js";
   "./pages/ucenter/settings/settings.js";

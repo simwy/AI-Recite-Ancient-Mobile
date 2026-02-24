@@ -1,42 +1,32 @@
 {
 	"pages": [{
-			"path": "pages/list/list",
+			"path": "pages/ancient/list",
 			"style": {
-				// #ifndef APP
-				"enablePullDownRefresh": true,
-				// #endif
-				"navigationStyle": "custom"
+				"navigationBarTitleText": "古文背诵"
 			}
 		},
 		{
-			"path": "pages/grid/grid",
+			"path": "pages/ancient/history",
 			"style": {
-				//#ifndef MP
-				"navigationStyle": "custom"
-				//#endif
+				"navigationBarTitleText": "背诵历史"
 			}
-		}, {
-			"path": "pages/list/search/search",
+		},
+		{
+			"path": "pages/ancient/detail",
 			"style": {
-				"navigationBarTitleText": "搜索"
+				"navigationBarTitleText": "古文详情"
 			}
-		}, {
-			"path": "pages/list/detail",
+		},
+		{
+			"path": "pages/ancient/recite",
 			"style": {
-				"app-plus": {
-					"titleNView": {
-						"buttons": [{
-							"type": "share"
-						}],
-						"type": "transparent"
-					}
-				},
-				"h5": {
-					"titleNView": {
-						"type": "transparent"
-					}
-				},
-				"navigationBarTitleText": "文章详情"
+				"navigationBarTitleText": "背诵模式"
+			}
+		},
+		{
+			"path": "pages/ancient/result",
+			"style": {
+				"navigationBarTitleText": "背诵结果"
 			}
 		},
 		{
@@ -245,15 +235,15 @@
 		"borderStyle": "black",
 		"backgroundColor": "#FFFFFF",
 		"list": [{
-			"pagePath": "pages/list/list",
+			"pagePath": "pages/ancient/list",
 			"iconPath": "static/tabbar/list.png",
 			"selectedIconPath": "static/tabbar/list_active.png",
-			"text": "列表"
+			"text": "古文"
 		}, {
-			"pagePath": "pages/grid/grid",
+			"pagePath": "pages/ancient/history",
 			"iconPath": "static/tabbar/grid.png",
 			"selectedIconPath": "static/tabbar/grid_active.png",
-			"text": "宫格"
+			"text": "历史"
 		}, {
 			"pagePath": "pages/ucenter/ucenter",
 			"iconPath": "static/tabbar/me.png",
