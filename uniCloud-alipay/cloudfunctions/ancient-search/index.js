@@ -74,7 +74,7 @@ async function requestPoemsFromBailian(title, author) {
       },
       {
         role: 'user',
-        content: `请检索古诗文。标题=${title}，作者=${author}。\n要求：\n1) 只有标题与作者都完全一致时才返回 found=true。\n2) 若任一不一致，返回 found=false。\n3) 返回 JSON 格式：{"found":boolean,"items":[{"title":"","author":"","dynasty":"","content":""}]}。\n4) 若存在多个可信版本，可返回多条 items，最多 5 条。\n5) content 必须是可背诵的完整正文，保留常见标点。`
+        content: `请检索古诗文。标题=${title}，作者=${author}。\n要求：\n1) 返回 JSON 格式：{"found":boolean,"items":[{"title":"","author":"","dynasty":"","content":""}]}。\n2) 若你能确认“标题与作者都完全一致”，则 found=true。\n3) 即使 found=false，也请尽量返回你认为最接近的候选 items（最多 5 条），不要留空数组。\n4) content 必须是可背诵的完整正文，保留常见标点。`
       }
     ]
   }
@@ -119,7 +119,7 @@ async function requestPoemsFromBailian(title, author) {
     choices[0] && choices[0].message && choices[0].message.content
   ).trim()
   const parsed = safeJsonParse(rawContent)
-  if (!parsed || !parsed.found) {
+  if (!parsed) {
     return []
   }
 
