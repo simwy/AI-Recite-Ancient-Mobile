@@ -153,9 +153,20 @@ async function searchList(keyword, page, pageSize) {
   const skip = (safePage - 1) * safePageSize
 
   let where = {}
-  if (keyword) {
-    const reg = new RegExp(keyword, 'i')
-    where = db.command.or([{ title: reg }, { content: reg }])
+  const normalizedKeyword = normalizeText(keyword)
+  if (normalizedKeyword) {
+    const command = db.command
+    const terms = normalizedKeyword.split(/\s+/).filter(Boolean)
+    const buildTermOrCondition = (term) => {
+      const reg = new RegExp(term, 'i')
+      return command.or([{ title: reg }, { author: reg }, { content: reg }])
+    }
+
+    if (terms.length === 1) {
+      where = buildTermOrCondition(terms[0])
+    } else {
+      where = command.and(terms.map(term => buildTermOrCondition(term)))
+    }
   }
 
   const countRes = await collection.where(where).count()
