@@ -8,20 +8,20 @@ const _sfc_main = {
     return {
       gridList: [
         {
-          "text": this.$t("mine.showText"),
-          "icon": "chat"
+          "label": "背诵时间",
+          "value": "0秒"
         },
         {
-          "text": this.$t("mine.showText"),
-          "icon": "cloud-upload"
+          "label": "背诵文章数",
+          "value": "0"
         },
         {
-          "text": this.$t("mine.showText"),
-          "icon": "contact"
+          "label": "背诵次数",
+          "value": "0"
         },
         {
-          "text": this.$t("mine.showText"),
-          "icon": "download"
+          "label": "背诵准确率",
+          "value": "0%"
         }
       ],
       ucenterList: [
@@ -30,18 +30,18 @@ const _sfc_main = {
             "title": this.$t("mine.signIn"),
             "event": "signIn",
             "icon": "compose"
-          },
-          {
-            "title": this.$t("mine.readArticles"),
-            "to": "/pages/ucenter/read-news-log/read-news-log",
-            "icon": "flag"
-          },
-          {
-            "title": this.$t("mine.myScore"),
-            "to": "",
-            "event": "getScore",
-            "icon": "paperplane"
           }
+          // {
+          // 	"title":this.$t('mine.readArticles'),
+          // 	"to": '/pages/ucenter/read-news-log/read-news-log',
+          // 	"icon": "flag"
+          // },
+          // {
+          // 	"title": this.$t('mine.myScore'),
+          // 	"to": '',
+          // 	"event": 'getScore',
+          // 	"icon": "paperplane"
+          // }
         ],
         [{
           "title": this.$t("mine.feedback"),
@@ -75,6 +75,7 @@ const _sfc_main = {
   onLoad() {
   },
   onShow() {
+    this.loadReciteStats();
   },
   computed: {
     userInfo() {
@@ -109,7 +110,7 @@ const _sfc_main = {
     },
     async checkVersion() {
       let res = await uni_modules_uniUpgradeCenterApp_utils_callCheckVersion.callCheckVersion();
-      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:198", res);
+      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:200", res);
       if (res.result.code > 0)
         ;
       else {
@@ -125,11 +126,113 @@ const _sfc_main = {
       });
     },
     tapGrid(index) {
-      common_vendor.index.showToast({
-        // title: '你点击了，第' + (index + 1) + '个',
-        title: this.$t("mine.clicked") + " " + (index + 1),
-        icon: "none"
-      });
+    },
+    async loadReciteStats() {
+      if (!this.hasLogin) {
+        this.gridList = [
+          {
+            label: "总背诵时间",
+            value: "0秒"
+          },
+          {
+            label: "总背诵文章数",
+            value: "0"
+          },
+          {
+            label: "总背诵次数",
+            value: "0"
+          },
+          {
+            label: "总背诵准确率",
+            value: "0%"
+          }
+        ];
+        return;
+      }
+      try {
+        const pageSize = 100;
+        let page = 1;
+        let total = 0;
+        const records = [];
+        while (true) {
+          const res = await common_vendor.tr.callFunction({
+            name: "recite-record",
+            data: {
+              action: "list",
+              data: {
+                page,
+                pageSize
+              }
+            }
+          });
+          const result = res && res.result || {};
+          if (result.code !== 0 || !result.data) {
+            throw new Error(result.msg || "加载背诵统计失败");
+          }
+          const list = result.data.list || [];
+          total = result.data.total || 0;
+          records.push(...list);
+          if (records.length >= total || list.length === 0)
+            break;
+          page++;
+        }
+        const textSet = /* @__PURE__ */ new Set();
+        let totalDurationSeconds = 0;
+        let totalAccuracy = 0;
+        let accuracyCount = 0;
+        records.forEach((item) => {
+          if (item && item.text_id) {
+            textSet.add(item.text_id);
+          }
+          const duration = Number(
+            item.duration_seconds || item.duration || item.recite_duration || item.reciteDuration || 0
+          );
+          if (Number.isFinite(duration) && duration > 0) {
+            totalDurationSeconds += Math.floor(duration);
+          }
+          const accuracy = Number(item.accuracy);
+          if (Number.isFinite(accuracy)) {
+            totalAccuracy += accuracy;
+            accuracyCount++;
+          }
+        });
+        const avgAccuracy = accuracyCount > 0 ? (totalAccuracy / accuracyCount).toFixed(1) : "0";
+        this.gridList = [
+          {
+            label: "背诵时间",
+            value: this.formatDuration(totalDurationSeconds)
+          },
+          {
+            label: "背诵文章数",
+            value: String(textSet.size)
+          },
+          {
+            label: "背诵次数",
+            value: String(records.length)
+          },
+          {
+            label: "背诵准确率",
+            value: `${avgAccuracy}%`
+          }
+        ];
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/ucenter/ucenter.vue:306", "加载背诵统计失败", e);
+      }
+    },
+    formatDuration(totalSeconds) {
+      const seconds = Number(totalSeconds) || 0;
+      if (seconds <= 0)
+        return "0秒";
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor(seconds % 3600 / 60);
+      const s = seconds % 60;
+      if (h > 0) {
+        return `${h}小时${m}分`;
+      }
+      if (m > 0) {
+        return `${m}分${s}秒`;
+      }
+      return `${s}秒`;
     },
     /**
      * 去应用市场评分
@@ -149,7 +252,7 @@ const _sfc_main = {
         mask: true
       });
       db.collection("uni-id-scores").where('"user_id" == $env.uid').field("score,balance").orderBy("create_date", "desc").limit(1).get().then((res) => {
-        common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:261", res);
+        common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:364", res);
         const data = res.result.data[0];
         let msg = "";
         msg = data ? this.$t("mine.currentScore") + data.balance : this.$t("mine.noScore");
@@ -170,7 +273,7 @@ const _sfc_main = {
           icon: "none"
         });
       }
-      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:282", { myInviteCode });
+      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:385", { myInviteCode });
       this.appConfig.about;
     }
   }
@@ -221,16 +324,11 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     h: common_vendor.o((...args) => $options.toUserInfo && $options.toUserInfo(...args)),
     i: common_vendor.f($data.gridList, (item, index, i0) => {
       return {
-        a: "b6546e32-5-" + i0 + "," + ("b6546e32-4-" + i0),
-        b: common_vendor.p({
-          color: "#007AFF",
-          type: item.icon,
-          size: "26"
-        }),
-        c: common_vendor.t(item.text),
-        d: common_vendor.o(($event) => $options.tapGrid(index), index),
-        e: index,
-        f: "b6546e32-4-" + i0 + ",b6546e32-3"
+        a: common_vendor.t(item.value),
+        b: common_vendor.t(item.label),
+        c: common_vendor.o(($event) => $options.tapGrid(index), index),
+        d: index,
+        e: "b6546e32-4-" + i0 + ",b6546e32-3"
       };
     }),
     j: common_vendor.p({
@@ -248,7 +346,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
           } : {}, {
             c: i,
             d: common_vendor.o(($event) => $options.ucenterListClick(item), i),
-            e: "b6546e32-7-" + i0 + "-" + i1 + "," + ("b6546e32-6-" + i0),
+            e: "b6546e32-6-" + i0 + "-" + i1 + "," + ("b6546e32-5-" + i0),
             f: common_vendor.p({
               title: item.title,
               link: true,
@@ -264,7 +362,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
           });
         }),
         b: index,
-        c: "b6546e32-6-" + i0
+        c: "b6546e32-5-" + i0
       };
     })
   });

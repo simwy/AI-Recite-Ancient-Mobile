@@ -100,7 +100,7 @@
       "codeExpiresIn": 180, 
       "scene": {
         "bind-mobile-by-sms": {
-          "templateId": "", 
+          "templateId": "SMS_227254773", 
           "codeExpiresIn": 240 
         }
       }

@@ -9,7 +9,10 @@
       >
         <view class="item-header">
           <text class="item-title">{{ item.text_title }}</text>
-          <text class="item-accuracy">{{ item.accuracy || 0 }}%</text>
+          <view class="item-right">
+            <text class="item-accuracy">{{ item.accuracy || 0 }}%</text>
+            <text class="item-delete" @click.stop="confirmDelete(item)">删除</text>
+          </view>
         </view>
         <view class="item-meta">
           <text>提示 {{ item.hint_count }} 次</text>
@@ -51,7 +54,8 @@ export default {
       loading: false,
       page: 1,
       total: 0,
-      expandedId: ''
+      expandedId: '',
+      deletingId: ''
     }
   },
   onShow() {
@@ -79,17 +83,71 @@ export default {
             data: { page: this.page, pageSize: 20 }
           }
         })
-        const { list, total } = res.result.data
+        const result = (res && res.result) || {}
+        if (result.code !== 0 || !result.data) {
+          throw new Error(result.msg || '加载失败')
+        }
+        const { list, total } = result.data
         this.list = append ? [...this.list, ...list] : list
         this.total = total
       } catch (e) {
-        uni.showToast({ title: '加载失败', icon: 'none' })
+        uni.showToast({
+          title: (e && e.message) || '加载失败',
+          icon: 'none'
+        })
       } finally {
         this.loading = false
       }
     },
     toggleDetail(id) {
       this.expandedId = this.expandedId === id ? '' : id
+    },
+    async confirmDelete(item) {
+      if (!item || !item._id || this.deletingId) return
+      const modalRes = await new Promise(resolve => {
+        uni.showModal({
+          title: '删除记录',
+          content: '确定删除这条背诵记录吗？删除后不可恢复。',
+          confirmText: '删除',
+          confirmColor: '#f5222d',
+          success: resolve,
+          fail: () => resolve({ confirm: false })
+        })
+      })
+      if (!modalRes.confirm) return
+      this.deleteRecord(item._id)
+    },
+    async deleteRecord(id) {
+      this.deletingId = id
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'recite-record',
+          data: {
+            action: 'delete',
+            data: { id }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0) {
+          throw new Error(result.msg || '删除失败')
+        }
+        this.list = this.list.filter(item => item._id !== id)
+        this.total = Math.max(0, this.total - 1)
+        if (this.expandedId === id) {
+          this.expandedId = ''
+        }
+        uni.showToast({
+          title: '删除成功',
+          icon: 'success'
+        })
+      } catch (e) {
+        uni.showToast({
+          title: (e && e.message) || '删除失败',
+          icon: 'none'
+        })
+      } finally {
+        this.deletingId = ''
+      }
     },
     formatTime(ts) {
       if (!ts) return ''
@@ -120,6 +178,10 @@ export default {
   align-items: center;
   margin-bottom: 12rpx;
 }
+.item-right {
+  display: flex;
+  align-items: center;
+}
 .item-title {
   font-size: 32rpx;
   font-weight: bold;
@@ -129,6 +191,11 @@ export default {
   font-size: 32rpx;
   font-weight: bold;
   color: #1890ff;
+}
+.item-delete {
+  margin-left: 20rpx;
+  font-size: 24rpx;
+  color: #f5222d;
 }
 .item-meta {
   display: flex;

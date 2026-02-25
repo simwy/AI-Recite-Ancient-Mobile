@@ -1,12 +1,23 @@
 'use strict';
 const db = uniCloud.database()
 const collection = db.collection('recite-records')
+const uniID = require('uni-id-common')
 
 exports.main = async (event, context) => {
   const { action, data = {} } = event
+  const uniIdCommon = uniID.createInstance({ context })
 
-  // 从 token 获取 user_id
-  const { uid } = context.auth || {}
+  // 兼容两种鉴权来源：
+  // 1) 平台自动注入 context.auth.uid
+  // 2) 客户端自动携带的 event.uniIdToken（普通云函数场景）
+  let uid = (context.auth && context.auth.uid) || ''
+  if (!uid && event.uniIdToken) {
+    const tokenRes = await uniIdCommon.checkToken(event.uniIdToken)
+    if (tokenRes && tokenRes.code === 0 && tokenRes.uid) {
+      uid = tokenRes.uid
+    }
+  }
+
   if (!uid) {
     return { code: -1, msg: '请先登录' }
   }
@@ -57,6 +68,19 @@ exports.main = async (event, context) => {
         return { code: -1, msg: '记录不存在' }
       }
       return { code: 0, data: record }
+    }
+
+    case 'delete': {
+      if (!data.id) {
+        return { code: -1, msg: '缺少记录ID' }
+      }
+      const res = await collection.doc(data.id).get()
+      const record = res.data && res.data[0]
+      if (!record || record.user_id !== uid) {
+        return { code: -1, msg: '记录不存在' }
+      }
+      await collection.doc(data.id).remove()
+      return { code: 0 }
     }
 
     default:

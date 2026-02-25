@@ -7,7 +7,8 @@ const _sfc_main = {
       loading: false,
       page: 1,
       total: 0,
-      expandedId: ""
+      expandedId: "",
+      deletingId: ""
     };
   },
   onShow() {
@@ -35,17 +36,73 @@ const _sfc_main = {
             data: { page: this.page, pageSize: 20 }
           }
         });
-        const { list, total } = res.result.data;
+        const result = res && res.result || {};
+        if (result.code !== 0 || !result.data) {
+          throw new Error(result.msg || "加载失败");
+        }
+        const { list, total } = result.data;
         this.list = append ? [...this.list, ...list] : list;
         this.total = total;
       } catch (e) {
-        common_vendor.index.showToast({ title: "加载失败", icon: "none" });
+        common_vendor.index.showToast({
+          title: e && e.message || "加载失败",
+          icon: "none"
+        });
       } finally {
         this.loading = false;
       }
     },
     toggleDetail(id) {
       this.expandedId = this.expandedId === id ? "" : id;
+    },
+    async confirmDelete(item) {
+      if (!item || !item._id || this.deletingId)
+        return;
+      const modalRes = await new Promise((resolve) => {
+        common_vendor.index.showModal({
+          title: "删除记录",
+          content: "确定删除这条背诵记录吗？删除后不可恢复。",
+          confirmText: "删除",
+          confirmColor: "#f5222d",
+          success: resolve,
+          fail: () => resolve({ confirm: false })
+        });
+      });
+      if (!modalRes.confirm)
+        return;
+      this.deleteRecord(item._id);
+    },
+    async deleteRecord(id) {
+      this.deletingId = id;
+      try {
+        const res = await common_vendor.tr.callFunction({
+          name: "recite-record",
+          data: {
+            action: "delete",
+            data: { id }
+          }
+        });
+        const result = res && res.result || {};
+        if (result.code !== 0) {
+          throw new Error(result.msg || "删除失败");
+        }
+        this.list = this.list.filter((item) => item._id !== id);
+        this.total = Math.max(0, this.total - 1);
+        if (this.expandedId === id) {
+          this.expandedId = "";
+        }
+        common_vendor.index.showToast({
+          title: "删除成功",
+          icon: "success"
+        });
+      } catch (e) {
+        common_vendor.index.showToast({
+          title: e && e.message || "删除失败",
+          icon: "none"
+        });
+      } finally {
+        this.deletingId = "";
+      }
     },
     formatTime(ts) {
       if (!ts)
@@ -64,23 +121,24 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       return common_vendor.e({
         a: common_vendor.t(item.text_title),
         b: common_vendor.t(item.accuracy || 0),
-        c: common_vendor.t(item.hint_count),
-        d: common_vendor.t($options.formatTime(item.created_at)),
-        e: $data.expandedId === item._id
+        c: common_vendor.o(($event) => $options.confirmDelete(item), item._id),
+        d: common_vendor.t(item.hint_count),
+        e: common_vendor.t($options.formatTime(item.created_at)),
+        f: $data.expandedId === item._id
       }, $data.expandedId === item._id ? common_vendor.e({
-        f: common_vendor.f(item.diff_result || [], (d, idx, i1) => {
+        g: common_vendor.f(item.diff_result || [], (d, idx, i1) => {
           return {
             a: common_vendor.t(d.char),
             b: idx,
             c: common_vendor.n("diff-" + d.status)
           };
         }),
-        g: item.recognized_text
+        h: item.recognized_text
       }, item.recognized_text ? {
-        h: common_vendor.t(item.recognized_text)
+        i: common_vendor.t(item.recognized_text)
       } : {}) : {}, {
-        i: item._id,
-        j: common_vendor.o(($event) => $options.toggleDetail(item._id), item._id)
+        j: item._id,
+        k: common_vendor.o(($event) => $options.toggleDetail(item._id), item._id)
       });
     })
   } : !$data.loading ? {} : {}, {

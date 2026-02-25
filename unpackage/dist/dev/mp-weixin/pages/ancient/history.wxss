@@ -17,6 +17,10 @@
   align-items: center;
   margin-bottom: 12rpx;
 }
+.item-right.data-v-d063c3ac {
+  display: flex;
+  align-items: center;
+}
 .item-title.data-v-d063c3ac {
   font-size: 32rpx;
   font-weight: bold;
@@ -26,6 +30,11 @@
   font-size: 32rpx;
   font-weight: bold;
   color: #1890ff;
+}
+.item-delete.data-v-d063c3ac {
+  margin-left: 20rpx;
+  font-size: 24rpx;
+  color: #f5222d;
 }
 .item-meta.data-v-d063c3ac {
   display: flex;

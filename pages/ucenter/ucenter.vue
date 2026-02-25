@@ -15,8 +15,8 @@
 		</view>
 		<uni-grid class="grid" :column="4" :showBorder="false" :square="true">
 			<uni-grid-item class="item" v-for="(item,index) in gridList" @click.native="tapGrid(index)" :key="index">
-				<uni-icons class="icon" color="#007AFF" :type="item.icon" size="26"></uni-icons>
-				<text class="text">{{item.text}}</text>
+				<text class="stat-value">{{item.value}}</text>
+				<text class="stat-label">{{item.label}}</text>
 			</uni-grid-item>
 		</uni-grid>
 		<uni-list class="center-list" v-for="(sublist , index) in ucenterList" :key="index">
@@ -60,20 +60,20 @@
 		data() {
 			return {
 				gridList: [{
-						"text": this.$t('mine.showText'),
-						"icon": "chat"
+						"label": "背诵时间",
+						"value": "0秒"
 					},
 					{
-						"text": this.$t('mine.showText'),
-						"icon": "cloud-upload"
+						"label": "背诵文章数",
+						"value": "0"
 					},
 					{
-						"text": this.$t('mine.showText'),
-						"icon": "contact"
+						"label": "背诵次数",
+						"value": "0"
 					},
 					{
-						"text": this.$t('mine.showText'),
-						"icon": "download"
+						"label": "背诵准确率",
+						"value": "0%"
 					}
 				],
 				ucenterList: [
@@ -97,17 +97,17 @@
 							"icon": "star"
 						},
 						//#endif
-						{
-							"title":this.$t('mine.readArticles'),
-							"to": '/pages/ucenter/read-news-log/read-news-log',
-							"icon": "flag"
-						},
-						{
-							"title": this.$t('mine.myScore'),
-							"to": '',
-							"event": 'getScore',
-							"icon": "paperplane"
-						}
+						// {
+						// 	"title":this.$t('mine.readArticles'),
+						// 	"to": '/pages/ucenter/read-news-log/read-news-log',
+						// 	"icon": "flag"
+						// },
+						// {
+						// 	"title": this.$t('mine.myScore'),
+						// 	"to": '',
+						// 	"event": 'getScore',
+						// 	"icon": "paperplane"
+						// }
 						// #ifdef APP
 						, {
 							"title": this.$t('mine.invite'),
@@ -156,7 +156,9 @@
 			})
 			//#endif
 		},
-		onShow() {},
+		onShow() {
+			this.loadReciteStats()
+		},
 		computed: {
 			userInfo() {
 				return store.userInfo
@@ -211,11 +213,112 @@
 				})
 			},
 			tapGrid(index) {
-				uni.showToast({
-					// title: '你点击了，第' + (index + 1) + '个',
-					title: this.$t('mine.clicked') + " " + (index + 1) ,
-					icon: 'none'
-				});
+				// 统计卡片仅作展示，不响应点击
+			},
+			async loadReciteStats() {
+				if (!this.hasLogin) {
+					this.gridList = [{
+							label: '总背诵时间',
+							value: '0秒'
+						},
+						{
+							label: '总背诵文章数',
+							value: '0'
+						},
+						{
+							label: '总背诵次数',
+							value: '0'
+						},
+						{
+							label: '总背诵准确率',
+							value: '0%'
+						}
+					]
+					return
+				}
+				try {
+					const pageSize = 100
+					let page = 1
+					let total = 0
+					const records = []
+					while (true) {
+						const res = await uniCloud.callFunction({
+							name: 'recite-record',
+							data: {
+								action: 'list',
+								data: {
+									page,
+									pageSize
+								}
+							}
+						})
+						const result = (res && res.result) || {}
+						if (result.code !== 0 || !result.data) {
+							throw new Error(result.msg || '加载背诵统计失败')
+						}
+						const list = result.data.list || []
+						total = result.data.total || 0
+						records.push(...list)
+						if (records.length >= total || list.length === 0) break
+						page++
+					}
+
+					const textSet = new Set()
+					let totalDurationSeconds = 0
+					let totalAccuracy = 0
+					let accuracyCount = 0
+					records.forEach(item => {
+						if (item && item.text_id) {
+							textSet.add(item.text_id)
+						}
+						const duration = Number(
+							item.duration_seconds || item.duration || item.recite_duration || item.reciteDuration || 0
+						)
+						if (Number.isFinite(duration) && duration > 0) {
+							totalDurationSeconds += Math.floor(duration)
+						}
+						const accuracy = Number(item.accuracy)
+						if (Number.isFinite(accuracy)) {
+							totalAccuracy += accuracy
+							accuracyCount++
+						}
+					})
+
+					const avgAccuracy = accuracyCount > 0 ? (totalAccuracy / accuracyCount).toFixed(1) : '0'
+					this.gridList = [{
+							label: '背诵时间',
+							value: this.formatDuration(totalDurationSeconds)
+						},
+						{
+							label: '背诵文章数',
+							value: String(textSet.size)
+						},
+						{
+							label: '背诵次数',
+							value: String(records.length)
+						},
+						{
+							label: '背诵准确率',
+							value: `${avgAccuracy}%`
+						}
+					]
+				} catch (e) {
+					console.error('加载背诵统计失败', e)
+				}
+			},
+			formatDuration(totalSeconds) {
+				const seconds = Number(totalSeconds) || 0
+				if (seconds <= 0) return '0秒'
+				const h = Math.floor(seconds / 3600)
+				const m = Math.floor((seconds % 3600) / 60)
+				const s = seconds % 60
+				if (h > 0) {
+					return `${h}小时${m}分`
+				}
+				if (m > 0) {
+					return `${m}分${s}秒`
+				}
+				return `${s}秒`
 			},
 			/**
 			 * 去应用市场评分
@@ -412,11 +515,18 @@
 		margin-bottom: 6px;
 	}
 
-	.uni-grid .text {
-		font-size: 16px;
-		height: 25px;
-		line-height: 25px;
+	.uni-grid .stat-value {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #007AFF;
+		line-height: 1.4;
+	}
+
+	.uni-grid .stat-label {
+		font-size: 22rpx;
+		margin-top: 10rpx;
 		color: #817f82;
+		text-align: center;
 	}
 
 	.uni-grid .item ::v-deep .uni-grid-item__box {

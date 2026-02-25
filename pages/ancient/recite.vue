@@ -29,6 +29,11 @@
       </view>
     </view>
 
+    <view class="recognized-area" v-if="started">
+      <view class="recognized-label">实时识别：</view>
+      <text class="recognized-text">{{ realtimeText || '等待识别结果...' }}</text>
+    </view>
+
     <!-- 操作按钮 -->
     <view class="action-area">
       <button
@@ -39,9 +44,9 @@
       >开始背诵</button>
 
       <template v-if="recording">
-        <button class="btn btn-hint" @click="showHint">
+        <!-- <button class="btn btn-hint" @click="showHint">
           提醒我（已用 {{ hintCount }} 次）
-        </button>
+        </button> -->
         <button type="warn" class="btn" @click="stopRecite">
           背诵结束
         </button>
@@ -64,7 +69,25 @@ export default {
       hintIndex: 0,
       hintCharCount: 0,
       hints: [],
-      recorderManager: null
+      recorderManager: null,
+      socketTask: null,
+      asrConfig: null,
+      taskId: '',
+      taskStarted: false,
+      taskFinished: false,
+      frameQueue: [],
+      finalSentences: [],
+      partialSentence: '',
+      realtimeText: '',
+      stopping: false,
+      waitTaskFinishedResolver: null,
+      useWebRecorder: false,
+      webAudioContext: null,
+      webMediaStream: null,
+      webScriptProcessor: null,
+      h5MediaRecorder: null,
+      h5AudioChunks: [],
+      h5StopPromiseResolver: null
     }
   },
   onLoad(options) {
@@ -77,37 +100,102 @@ export default {
   },
   onUnload() {
     clearInterval(this.durationTimer)
-    if (this.recording && this.recorderManager) {
-      this.recorderManager.stop()
+    // #ifdef H5
+    this.cleanupH5PcmRecorder()
+    // #endif
+
+    if (this.recording) {
+      if (this.useWebRecorder) {
+        this.stopWebRecorder()
+      } else if (this.recorderManager) {
+        this.recorderManager.stop()
+      }
     }
+    this.closeSocket()
+    this.destroyWebRecorder()
   },
   methods: {
     initRecorder() {
-      this.recorderManager = uni.getRecorderManager()
+      // #ifdef H5
+      this.useWebRecorder = true
+      return
+      // #endif
+
+      if (typeof uni.getRecorderManager !== 'function') {
+        this.useWebRecorder = true
+        return
+      }
+
+      try {
+        this.recorderManager = uni.getRecorderManager()
+      } catch (e) {
+        this.useWebRecorder = true
+        return
+      }
+
+      if (!this.recorderManager) {
+        this.useWebRecorder = true
+        return
+      }
+
+      this.recorderManager.onFrameRecorded((res) => {
+        this.sendAudioFrame(res.frameBuffer)
+      })
       this.recorderManager.onStop((res) => {
         this.recording = false
         clearInterval(this.durationTimer)
-        this.processRecording(res.tempFilePath)
+        this.handleRecorderStop()
       })
       this.recorderManager.onError((err) => {
         this.recording = false
         clearInterval(this.durationTimer)
+        this.closeSocket()
         uni.showToast({ title: '录音失败', icon: 'none' })
         console.error('录音错误:', err)
       })
     },
-    startRecite() {
-      this.started = true
-      this.recording = true
-      this.duration = 0
-      this.durationTimer = setInterval(() => {
-        this.duration++
-      }, 1000)
-      this.recorderManager.start({
-        format: 'mp3',
-        sampleRate: 16000,
-        numberOfChannels: 1
-      })
+    async startRecite() {
+      if (this.recording) return
+      try {
+        this.resetRealtimeState()
+        // #ifdef H5
+        this.started = true
+        this.recording = true
+        this.stopping = false
+        this.duration = 0
+        this.durationTimer = setInterval(() => {
+          this.duration++
+        }, 1000)
+        await this.startH5PcmRecorder()
+        return
+        // #endif
+
+        await this.loadAsrConfig()
+        await this.openSocket()
+
+        this.started = true
+        this.recording = true
+        this.stopping = false
+        this.duration = 0
+        this.durationTimer = setInterval(() => {
+          this.duration++
+        }, 1000)
+
+        if (this.useWebRecorder) {
+          await this.startWebRecorder()
+        } else {
+          this.recorderManager.start({
+            format: this.asrConfig.format || 'pcm',
+            sampleRate: this.asrConfig.sampleRate || 16000,
+            numberOfChannels: 1,
+            frameSize: 5
+          })
+        }
+      } catch (err) {
+        this.closeSocket()
+        uni.showToast({ title: err.message || '启动识别失败', icon: 'none', duration: 3000 })
+        console.error('启动实时识别失败:', err)
+      }
     },
     showHint() {
       const paragraphs = this.textData.paragraphs || []
@@ -146,52 +234,421 @@ export default {
       this.hintCount++
     },
     stopRecite() {
-      this.recorderManager.stop()
-    },
-    processRecording(filePath) {
-      uni.showLoading({ title: '语音识别中...' })
-      // #ifdef APP-PLUS
-      this.appSpeechRecognize(filePath)
+      this.stopping = true
+      // #ifdef H5
+      this.recording = false
+      clearInterval(this.durationTimer)
+      this.stopH5PcmRecorder()
+      return
       // #endif
-      // #ifdef MP-WEIXIN
-      this.wxSpeechRecognize(filePath)
-      // #endif
-    },
-    appSpeechRecognize(filePath) {
-      if (plus.speech) {
-        plus.speech.startRecognize({
-          engine: 'iFly',
-          lang: 'zh-cn',
-          'userInterface': false,
-          nbest: 1
-        }, (text) => {
-          uni.hideLoading()
-          this.goResult(text)
-        }, (err) => {
-          uni.hideLoading()
-          uni.showToast({ title: '识别失败', icon: 'none' })
-          console.error('语音识别错误:', err)
-        })
+
+      if (this.useWebRecorder) {
+        this.recording = false
+        clearInterval(this.durationTimer)
+        this.handleRecorderStop()
+        this.stopWebRecorder()
+      } else if (this.recorderManager) {
+        this.recorderManager.stop()
       }
     },
-    wxSpeechRecognize(filePath) {
-      const plugin = requirePlugin('WechatSI')
-      plugin.manager = plugin.getRecordRecognitionManager()
-      // 微信同声传译：直接用文件识别
-      uni.uploadFile({
-        url: '', // 需配置实际地址或使用插件
-        filePath,
-        name: 'file',
-        success: () => {
-          uni.hideLoading()
-          // fallback: 暂用空文本
-          this.goResult('')
+    async handleRecorderStop() {
+      if (!this.stopping) return
+      uni.showLoading({ title: '正在结束识别...' })
+      await this.finishTask()
+      uni.hideLoading()
+      this.goResult(this.realtimeText)
+    },
+    async loadAsrConfig() {
+      const res = await uniCloud.callFunction({
+        name: 'asr-config'
+      })
+      const result = res.result || {}
+      if (result.code !== 0 || !result.data) {
+        throw new Error(result.msg || '获取语音配置失败')
+      }
+      this.asrConfig = result.data
+    },
+    openSocket() {
+      return new Promise((resolve, reject) => {
+        let socketUrl = this.asrConfig.wsUrl
+        let socketHeader = {
+          Authorization: `${this.asrConfig.tokenType || 'bearer'} ${this.asrConfig.temporaryToken}`
+        }
+
+        // #ifdef H5
+        if (!window.isSecureContext) {
+          reject(new Error('H5 录音需要 HTTPS 或 localhost 安全上下文'))
+          return
+        }
+
+        const fallbackRelayWsUrl = this.buildDefaultRelayWsUrl()
+        const relayWsUrl = this.asrConfig.relayWsUrl || fallbackRelayWsUrl
+        if (!relayWsUrl) {
+          reject(new Error('H5 需要配置 relayWsUrl，或确保当前站点可用 /asr-relay'))
+          return
+        }
+        socketUrl = relayWsUrl
+        socketHeader = {}
+        // #endif
+
+        this.taskId = this.createTaskId()
+        this.socketTask = uni.connectSocket({
+          url: socketUrl,
+          header: socketHeader,
+          complete: () => {}
+        })
+
+        this.socketTask.onOpen(() => {
+          this.sendRunTask()
+          resolve()
+        })
+
+        this.socketTask.onMessage(({ data }) => {
+          this.handleSocketMessage(data)
+        })
+
+        this.socketTask.onError((err) => {
+          // #ifdef H5
+          reject(new Error('H5 WebSocket 连接失败，请检查临时Token是否有效，以及当前浏览器是否允许在握手中携带鉴权头'))
+          // #endif
+          // #ifndef H5
+          reject(err)
+          // #endif
+        })
+
+        this.socketTask.onClose(() => {
+          this.socketTask = null
+        })
+      })
+    },
+    sendRunTask() {
+      if (!this.socketTask) return
+      const payload = {
+        header: {
+          action: 'run-task',
+          task_id: this.taskId,
+          streaming: 'duplex'
         },
-        fail: () => {
-          uni.hideLoading()
-          this.goResult('')
+        payload: {
+          task_group: 'audio',
+          task: 'asr',
+          function: 'recognition',
+          model: this.asrConfig.model || 'paraformer-realtime-v2',
+          parameters: {
+            format: this.asrConfig.format || 'pcm',
+            sample_rate: this.asrConfig.sampleRate || 16000,
+            language_hints: this.asrConfig.languageHints || ['zh'],
+            punctuation_prediction_enabled: this.asrConfig.punctuationPredictionEnabled !== false,
+            inverse_text_normalization_enabled: this.asrConfig.inverseTextNormalizationEnabled !== false
+          },
+          input: {}
+        }
+      }
+      this.socketTask.send({
+        data: JSON.stringify(payload)
+      })
+    },
+    sendAudioFrame(frameBuffer) {
+      if (!frameBuffer || !this.socketTask) return
+      if (!this.taskStarted) {
+        this.frameQueue.push(frameBuffer)
+        return
+      }
+      this.socketTask.send({
+        data: frameBuffer
+      })
+    },
+    flushFrameQueue() {
+      if (!this.socketTask || !this.taskStarted || this.frameQueue.length === 0) return
+      while (this.frameQueue.length > 0) {
+        const frame = this.frameQueue.shift()
+        this.socketTask.send({ data: frame })
+      }
+    },
+    handleSocketMessage(rawData) {
+      const decoded = this.decodeSocketData(rawData)
+      if (!decoded) return
+      let message = decoded
+      try {
+        message = JSON.parse(decoded)
+      } catch (e) {
+        return
+      }
+      const header = message.header || {}
+      const event = header.event
+
+      if (event === 'task-started') {
+        this.taskStarted = true
+        this.flushFrameQueue()
+        return
+      }
+
+      if (event === 'result-generated') {
+        this.handleRecognizedSentence(message.payload && message.payload.output && message.payload.output.sentence)
+        return
+      }
+
+      if (event === 'task-finished') {
+        this.taskFinished = true
+        if (this.waitTaskFinishedResolver) {
+          this.waitTaskFinishedResolver()
+          this.waitTaskFinishedResolver = null
+        }
+        this.closeSocket()
+        return
+      }
+
+      if (event === 'task-failed') {
+        console.error('任务失败:', header.error_message || '未知错误')
+        if (this.waitTaskFinishedResolver) {
+          this.waitTaskFinishedResolver()
+          this.waitTaskFinishedResolver = null
+        }
+        this.closeSocket()
+      }
+    },
+    decodeSocketData(rawData) {
+      if (typeof rawData === 'string') return rawData
+      if (!(rawData instanceof ArrayBuffer)) return ''
+
+      if (typeof TextDecoder !== 'undefined') {
+        return new TextDecoder('utf-8').decode(rawData)
+      }
+
+      const bytes = new Uint8Array(rawData)
+      let result = ''
+      for (let i = 0; i < bytes.length; i++) {
+        result += String.fromCharCode(bytes[i])
+      }
+      return decodeURIComponent(escape(result))
+    },
+    handleRecognizedSentence(sentence) {
+      if (!sentence || sentence.heartbeat) return
+      const text = sentence.text || ''
+      if (!text) return
+
+      if (sentence.sentence_end) {
+        this.finalSentences.push(text)
+        this.partialSentence = ''
+      } else {
+        this.partialSentence = text
+      }
+
+      this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
+    },
+    finishTask() {
+      return new Promise((resolve) => {
+        if (!this.socketTask) {
+          resolve()
+          return
+        }
+
+        if (this.taskStarted && !this.taskFinished) {
+          this.socketTask.send({
+            data: JSON.stringify({
+              header: {
+                action: 'finish-task',
+                task_id: this.taskId,
+                streaming: 'duplex'
+              },
+              payload: {
+                input: {}
+              }
+            })
+          })
+        }
+
+        const timer = setTimeout(() => {
+          this.closeSocket()
+          resolve()
+        }, 5000)
+
+        this.waitTaskFinishedResolver = () => {
+          clearTimeout(timer)
+          resolve()
         }
       })
+    },
+    closeSocket() {
+      if (!this.socketTask) return
+      try {
+        this.socketTask.close({})
+      } catch (e) {
+        console.error('关闭 socket 失败:', e)
+      }
+      this.socketTask = null
+    },
+    resetRealtimeState() {
+      this.taskId = ''
+      this.taskStarted = false
+      this.taskFinished = false
+      this.frameQueue = []
+      this.finalSentences = []
+      this.partialSentence = ''
+      this.realtimeText = ''
+      this.waitTaskFinishedResolver = null
+    },
+    createTaskId() {
+      return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+    },
+    buildDefaultRelayWsUrl() {
+      // #ifdef H5
+      if (!window.location || !window.location.host) return ''
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${wsProtocol}//${window.location.host}/asr-relay`
+      // #endif
+      // #ifndef H5
+      return ''
+      // #endif
+    },
+    async startWebRecorder() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('当前浏览器不支持录音')
+      }
+
+      const targetSampleRate = this.asrConfig.sampleRate || 16000
+      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.webAudioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const source = this.webAudioContext.createMediaStreamSource(this.webMediaStream)
+      this.webScriptProcessor = this.webAudioContext.createScriptProcessor(4096, 1, 1)
+
+      this.webScriptProcessor.onaudioprocess = (event) => {
+        if (!this.recording || !this.socketTask) return
+        const inputData = event.inputBuffer.getChannelData(0)
+        const pcmBuffer = this.convertFloat32To16kPcm(inputData, this.webAudioContext.sampleRate, targetSampleRate)
+        if (pcmBuffer && pcmBuffer.byteLength > 0) {
+          this.sendAudioFrame(pcmBuffer)
+        }
+      }
+
+      source.connect(this.webScriptProcessor)
+      this.webScriptProcessor.connect(this.webAudioContext.destination)
+    },
+    async startH5PcmRecorder() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('当前浏览器不支持录音')
+      }
+      if (typeof MediaRecorder === 'undefined') {
+        throw new Error('当前浏览器不支持 MediaRecorder')
+      }
+
+      this.h5AudioChunks = []
+      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      this.h5MediaRecorder = new MediaRecorder(this.webMediaStream, {
+        mimeType: 'audio/webm'
+      })
+      this.h5MediaRecorder.ondataavailable = (evt) => {
+        if (evt.data && evt.data.size > 0) {
+          this.h5AudioChunks.push(evt.data)
+        }
+      }
+      this.h5MediaRecorder.onstop = async () => {
+        if (!this.stopping) return
+        try {
+          uni.showLoading({ title: '语音识别中...' })
+          const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
+          const audioBase64 = await this.blobToBase64(audioBlob)
+          const callRes = await uniCloud.callFunction({
+            name: 'asr-file-recognize',
+            data: {
+              audioBase64,
+              format: 'webm'
+            }
+          })
+          const result = callRes.result || {}
+          if (result.code !== 0) {
+            throw new Error(result.msg || '识别失败')
+          }
+          this.realtimeText = (result.data && result.data.text) || ''
+          this.goResult(this.realtimeText)
+        } catch (error) {
+          uni.showToast({ title: error.message || '识别失败', icon: 'none' })
+          console.error('H5 文件识别失败:', error)
+        } finally {
+          uni.hideLoading()
+          this.cleanupH5PcmRecorder()
+          if (this.h5StopPromiseResolver) {
+            this.h5StopPromiseResolver()
+            this.h5StopPromiseResolver = null
+          }
+        }
+      }
+      this.h5MediaRecorder.start()
+    },
+    async stopH5PcmRecorder() {
+      if (!this.h5MediaRecorder || this.h5MediaRecorder.state === 'inactive') {
+        this.cleanupH5PcmRecorder()
+        return
+      }
+      await new Promise((resolve) => {
+        this.h5StopPromiseResolver = resolve
+        this.h5MediaRecorder.stop()
+      })
+    },
+    cleanupH5PcmRecorder() {
+      if (this.webMediaStream) {
+        this.webMediaStream.getTracks().forEach(track => track.stop())
+      }
+      this.webMediaStream = null
+      this.h5MediaRecorder = null
+      this.h5AudioChunks = []
+      this.h5StopPromiseResolver = null
+    },
+    blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = reader.result || ''
+          const base64 = String(result).split(',')[1] || ''
+          resolve(base64)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    },
+    stopWebRecorder() {
+      if (this.webScriptProcessor) {
+        this.webScriptProcessor.disconnect()
+        this.webScriptProcessor.onaudioprocess = null
+      }
+      if (this.webMediaStream) {
+        this.webMediaStream.getTracks().forEach(track => track.stop())
+      }
+      if (this.webAudioContext) {
+        this.webAudioContext.close()
+      }
+      this.webScriptProcessor = null
+      this.webMediaStream = null
+      this.webAudioContext = null
+    },
+    destroyWebRecorder() {
+      this.stopWebRecorder()
+    },
+    convertFloat32To16kPcm(float32Array, inputSampleRate, outputSampleRate) {
+      if (!float32Array || float32Array.length === 0) return null
+      const ratio = inputSampleRate / outputSampleRate
+      const outputLength = Math.max(1, Math.floor(float32Array.length / ratio))
+      const result = new Int16Array(outputLength)
+      let offsetResult = 0
+      let offsetBuffer = 0
+
+      while (offsetResult < outputLength) {
+        const nextOffsetBuffer = Math.floor((offsetResult + 1) * ratio)
+        let accum = 0
+        let count = 0
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i++) {
+          accum += float32Array[i]
+          count++
+        }
+        const sample = count > 0 ? accum / count : 0
+        const clamped = Math.max(-1, Math.min(1, sample))
+        result[offsetResult] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
+        offsetResult++
+        offsetBuffer = nextOffsetBuffer
+      }
+
+      return result.buffer
     },
     goResult(recognizedText) {
       getApp().globalData = getApp().globalData || {}
@@ -279,6 +736,24 @@ export default {
 .status-text {
   font-size: 30rpx;
   color: #999;
+}
+.recognized-area {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 30rpx;
+}
+.recognized-label {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 12rpx;
+}
+.recognized-text {
+  display: block;
+  font-size: 30rpx;
+  color: #333;
+  line-height: 1.8;
+  min-height: 80rpx;
 }
 .action-area {
   padding: 0 20rpx;
