@@ -21,7 +21,8 @@
 			"path": "pages/ancient/recite",
 			"style": {
 				"navigationBarTitleText": "背诵模式"
-			}
+			},
+			"needLogin": true
 		},
 		{
 			"path": "pages/ancient/result",

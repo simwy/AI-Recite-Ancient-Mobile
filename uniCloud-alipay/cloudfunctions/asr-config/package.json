@@ -1,0 +1,6 @@
+{
+  "name": "asr-config",
+  "dependencies": {
+    "config": "file:../common/config"
+  }
+}

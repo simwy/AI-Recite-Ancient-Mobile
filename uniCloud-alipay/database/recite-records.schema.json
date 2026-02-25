@@ -30,6 +30,11 @@
       "description": "提示次数",
       "defaultValue": 0
     },
+    "duration_seconds": {
+      "bsonType": "int",
+      "description": "背诵时长（秒）",
+      "defaultValue": 0
+    },
     "recognized_text": {
       "bsonType": "string",
       "description": "语音识别文字"

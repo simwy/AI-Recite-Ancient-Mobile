@@ -655,7 +655,8 @@ export default {
       getApp().globalData.reciteResult = {
         textData: this.textData,
         recognizedText,
-        hintCount: this.hintCount
+        hintCount: this.hintCount,
+        duration: Number(this.duration) || 0
       }
       uni.redirectTo({
         url: `/pages/ancient/result?id=${this.id}`

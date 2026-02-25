@@ -1,0 +1,6 @@
+{
+  "name": "asr-file-recognize",
+  "dependencies": {
+    "config": "file:../common/config"
+  }
+}

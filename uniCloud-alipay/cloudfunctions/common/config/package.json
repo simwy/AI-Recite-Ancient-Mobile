@@ -1,0 +1,6 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "description": "Shared ASR config for cloud functions",
+  "main": "index.js"
+}

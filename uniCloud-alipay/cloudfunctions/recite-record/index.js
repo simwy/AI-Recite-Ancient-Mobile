@@ -29,6 +29,7 @@ exports.main = async (event, context) => {
         text_id: data.text_id,
         text_title: data.text_title,
         hint_count: data.hint_count || 0,
+        duration_seconds: Number(data.duration_seconds) || 0,
         recognized_text: data.recognized_text || '',
         diff_result: data.diff_result || [],
         accuracy: data.accuracy || 0,

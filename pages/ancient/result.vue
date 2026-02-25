@@ -56,6 +56,7 @@ export default {
       textData: {},
       recognizedText: '',
       hintCount: 0,
+      duration: 0,
       diffResult: [],
       accuracy: 0,
       saved: false
@@ -69,6 +70,7 @@ export default {
       this.textData = result.textData
       this.recognizedText = result.recognizedText
       this.hintCount = result.hintCount
+      this.duration = Number(result.duration) || 0
     }
     this.doDiff()
     this.saveRecord()
@@ -93,6 +95,7 @@ export default {
               text_id: this.id,
               text_title: this.textData.title,
               hint_count: this.hintCount,
+              duration_seconds: this.duration,
               recognized_text: this.recognizedText,
               diff_result: this.diffResult,
               accuracy: this.accuracy

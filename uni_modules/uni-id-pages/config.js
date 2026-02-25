@@ -7,6 +7,7 @@ export default {
 	*/
   isAdmin: false, // 区分管理端与用户端
   loginTypes: [
+    'smsCode',
     // "qq",
     // "xiaomi",
     // "sinaweibo",
@@ -20,13 +21,13 @@ export default {
     'univerify',
     // #endif
     // #ifndef MP-HARMONY
-    'weixin',
+    // 'weixin',
     // #endif
-    'username',
+    //'username',
     // #ifdef APP
     'apple',
     // #endif
-    'smsCode',
+    
     // #ifdef APP-HARMONY || MP-HARMONY
     'huawei',
     'huaweiMobile'

@@ -1,6 +1,6 @@
 'use strict'
 
-const { aliyunParaformer } = require('../../common/config')
+const { aliyunParaformer } = require('config')
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -80,7 +80,7 @@ function uploadBufferFile(base64Audio, format = 'pcm') {
 exports.main = async (event) => {
   try {
     if (!aliyunParaformer || !aliyunParaformer.apiKey || aliyunParaformer.apiKey === 'YOUR_DASHSCOPE_API_KEY') {
-      return { code: -1, msg: '请先在 uniCloud-aliyun/common/config.js 中配置阿里云 API Key' }
+      return { code: -1, msg: '请先在 uniCloud-aliyun/cloudfunctions/common/config/index.js 中配置阿里云 API Key' }
     }
 
     const { fileID, audioBase64, format } = event || {}

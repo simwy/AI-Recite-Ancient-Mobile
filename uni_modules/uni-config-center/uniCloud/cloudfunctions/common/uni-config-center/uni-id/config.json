@@ -96,13 +96,17 @@
   },
   "service": {
     "sms": {
-      "name": "",
+      "name": "注册登录验证码",
       "codeExpiresIn": 180, 
       "scene": {
         "bind-mobile-by-sms": {
-          "templateId": "SMS_227254773", 
+          "templateId": "37855", 
           "codeExpiresIn": 240 
-        }
+        },
+		"login-by-sms": {
+		  "templateId": "37855", 
+		  "codeExpiresIn": 240 
+		}
       }
     },
     "univerify": {

@@ -1,13 +1,13 @@
 'use strict'
 
-const { aliyunParaformer } = require('../../common/config')
+const { aliyunParaformer } = require('config')
 
 let cachedTemporaryToken = ''
 let cachedTokenExpiresAt = 0
 
 async function getTemporaryToken() {
   if (!aliyunParaformer || !aliyunParaformer.apiKey || aliyunParaformer.apiKey === 'YOUR_DASHSCOPE_API_KEY') {
-    throw new Error('请先在 uniCloud-aliyun/common/config.js 中配置阿里云 API Key')
+    throw new Error('请先在 uniCloud-aliyun/cloudfunctions/common/config/index.js 中配置阿里云 API Key')
   }
 
   const now = Math.floor(Date.now() / 1000)
