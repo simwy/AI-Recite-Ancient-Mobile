@@ -5,6 +5,10 @@
       <text class="meta">{{ textData.dynasty }} · {{ textData.author }}</text>
     </view>
 
+    <view class="content-box" v-if="showArticleContent && textData.content">
+      <text class="content">{{ textData.content }}</text>
+    </view>
+
     <!-- 提示区域 -->
     <view class="hint-area" v-if="hints.length > 0">
       <view class="hint-label">提示内容：</view>
@@ -56,11 +60,14 @@
 </template>
 
 <script>
+const db = uniCloud.database()
+
 export default {
   data() {
     return {
       id: '',
       textData: {},
+      showArticleContent: true,
       started: false,
       recording: false,
       duration: 0,
@@ -90,11 +97,13 @@ export default {
     }
   },
   onLoad(options) {
-    this.id = options.id
+    this.id = options.id || ''
     const app = getApp()
-    if (app.globalData && app.globalData.currentText) {
-      this.textData = app.globalData.currentText
+    const currentText = app.globalData && app.globalData.currentText
+    if (currentText && currentText._id === this.id) {
+      this.textData = currentText
     }
+    this.loadTextData()
     this.initRecorder()
   },
   onUnload() {
@@ -114,6 +123,21 @@ export default {
     this.destroyWebRecorder()
   },
   methods: {
+    async loadTextData() {
+      if (this.textData && this.textData.content) return
+      if (!this.id) return
+      try {
+        const res = await db.collection('ancient-texts').doc(this.id).get()
+        const list = (res.result && res.result.data) || []
+        if (list.length > 0) {
+          this.textData = list[0]
+          getApp().globalData = getApp().globalData || {}
+          getApp().globalData.currentText = this.textData
+        }
+      } catch (e) {
+        uni.showToast({ title: '文章加载失败', icon: 'none' })
+      }
+    },
     initRecorder() {
       // #ifdef H5
       this.useWebRecorder = true
@@ -155,6 +179,7 @@ export default {
     },
     async startRecite() {
       if (this.recording) return
+      this.showArticleContent = false
       try {
         this.resetRealtimeState()
         // #ifdef H5
@@ -671,6 +696,19 @@ export default {
 .meta {
   font-size: 28rpx;
   color: #888;
+}
+.content-box {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 36rpx 30rpx;
+  margin-bottom: 36rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+.content {
+  font-size: 34rpx;
+  color: #333;
+  line-height: 2;
+  letter-spacing: 1rpx;
 }
 .hint-area {
   background: #fffbe6;
