@@ -1,10 +1,48 @@
 /**
  * 古文逐字对比工具（基于 LCS 最长公共子序列）
  */
+import { pinyin } from 'pinyin-pro'
 
-// 过滤标点符号，只保留文字
-function filterPunctuation(text) {
-  return text.replace(/[，。、；：？！""''（）《》\s\n\r,.;:?!'"()\[\]{}]/g, '')
+const PUNCTUATION_REG = /[，。、；：？！“”‘’（）《》〈〉【】「」『』〔〕…—\s\n\r,.;:?!'"()\[\]{}]/
+const pinyinCache = new Map()
+
+function isPunctuation(char) {
+  return PUNCTUATION_REG.test(char)
+}
+
+// 过滤标点并保留原始索引，便于最终还原完整显示内容
+function normalizeForDiff(text) {
+  const chars = String(text || '').split('')
+  const filtered = []
+
+  chars.forEach((char, index) => {
+    if (!isPunctuation(char)) {
+      filtered.push({ char, index })
+    }
+  })
+
+  return { chars, filtered }
+}
+
+function getCharPinyin(char) {
+  if (!char) return ''
+  if (pinyinCache.has(char)) return pinyinCache.get(char)
+
+  const value = pinyin(char, {
+    toneType: 'none',
+    type: 'array'
+  })
+  const first = Array.isArray(value) && value.length ? value[0] : ''
+  pinyinCache.set(char, first)
+  return first
+}
+
+function isHomophone(a, b) {
+  if (!a || !b) return false
+  if (a === b) return true
+  const aPy = getCharPinyin(a)
+  const bPy = getCharPinyin(b)
+  return Boolean(aPy && bPy && aPy === bPy)
 }
 
 /**
@@ -17,7 +55,7 @@ function buildLCSTable(a, b) {
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (a[i - 1] === b[j - 1]) {
+      if (isHomophone(a[i - 1].char, b[j - 1].char)) {
         dp[i][j] = dp[i - 1][j - 1] + 1
       } else {
         dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
@@ -34,19 +72,24 @@ function buildLCSTable(a, b) {
  * @returns {Array<{char: string, status: 'correct'|'wrong'|'missing'}>}
  */
 export function diffChars(original, recognized) {
-  const a = filterPunctuation(original)
-  const b = filterPunctuation(recognized)
+  const source = normalizeForDiff(original)
+  const target = normalizeForDiff(recognized)
+  const a = source.filtered
+  const b = target.filtered
   const dp = buildLCSTable(a, b)
 
-  const result = []
+  const result = source.chars.map(char => ({
+    char,
+    status: isPunctuation(char) ? 'punctuation' : 'missing'
+  }))
   let i = a.length
   let j = b.length
 
   // 回溯 LCS
-  const marks = []
+  const matchedOriginalIndexes = new Set()
   while (i > 0 && j > 0) {
-    if (a[i - 1] === b[j - 1]) {
-      marks.unshift({ i: i - 1, j: j - 1, match: true })
+    if (isHomophone(a[i - 1].char, b[j - 1].char)) {
+      matchedOriginalIndexes.add(a[i - 1].index)
       i--
       j--
     } else if (dp[i - 1][j] >= dp[i][j - 1]) {
@@ -56,16 +99,11 @@ export function diffChars(original, recognized) {
     }
   }
 
-  // 根据匹配结果生成 diff
-  let mi = 0
-  for (let idx = 0; idx < a.length; idx++) {
-    if (mi < marks.length && marks[mi].i === idx) {
-      result.push({ char: a[idx], status: 'correct' })
-      mi++
-    } else {
-      result.push({ char: a[idx], status: 'missing' })
+  source.chars.forEach((char, index) => {
+    if (!isPunctuation(char) && matchedOriginalIndexes.has(index)) {
+      result[index] = { char, status: 'correct' }
     }
-  }
+  })
 
   return result
 }
@@ -77,6 +115,8 @@ export function diffChars(original, recognized) {
  */
 export function calcAccuracy(diffResult) {
   if (!diffResult || diffResult.length === 0) return 0
-  const correct = diffResult.filter(d => d.status === 'correct').length
-  return Math.round((correct / diffResult.length) * 100)
+  const compareChars = diffResult.filter(d => d.status !== 'punctuation')
+  if (compareChars.length === 0) return 0
+  const correct = compareChars.filter(d => d.status === 'correct').length
+  return Math.round((correct / compareChars.length) * 100)
 }

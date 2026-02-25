@@ -9,7 +9,7 @@
     "搜索",
     "uni-id实例",
     "留言板"
-],
+  ],
   "repository": "https://gitcode.net/dcloud/uni-starter",
   "engines": {
     "HBuilderX": "^3.2.6",
@@ -40,7 +40,9 @@
     "widescreen": "x"
   },
   "uni_modules": {
-    "dependencies": ["uni-id-pages"],
+    "dependencies": [
+      "uni-id-pages"
+    ],
     "encrypt": [],
     "platforms": {
       "cloud": {
@@ -64,8 +66,8 @@
             "android": "√",
             "ios": "√",
             "harmony": {
-                "extVersion": "2.2.1",
-                "minVersion": ""
+              "extVersion": "2.2.1",
+              "minVersion": ""
             }
           },
           "mp": {
@@ -102,6 +104,7 @@
     }
   },
   "dependencies": {
+    "pinyin-pro": "^3.28.0",
     "qrcodejs2": "^0.0.2"
   }
 }

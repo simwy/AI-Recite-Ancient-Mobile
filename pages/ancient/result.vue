@@ -177,6 +177,9 @@ export default {
 .diff-correct {
   color: #52c41a;
 }
+.diff-punctuation {
+  color: #666;
+}
 .diff-missing, .diff-wrong {
   color: #f5222d;
   text-decoration: underline;
