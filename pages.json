@@ -2,7 +2,7 @@
 	"pages": [{
 			"path": "pages/ancient/list",
 			"style": {
-				"navigationBarTitleText": "文言文背诵 AI小助手"
+				"navigationBarTitleText": "古诗词背诵 AI小助手"
 			}
 		},
 		{
@@ -209,7 +209,7 @@
 		},
 		// #endif
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-starter",
+		"navigationBarTitleText": "古诗词背诵 AI小助手",
 		"navigationBarBackgroundColor": "#FFFFFF",
 		"backgroundColor": "#F8F8F8",
 		"enablePullDownRefresh": false,
