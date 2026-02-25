@@ -66,7 +66,6 @@ export default {
       duration: 0,
       durationTimer: null,
       hintCount: 0,
-      hintIndex: 0,
       hintCharCount: 0,
       hints: [],
       recorderManager: null,
@@ -198,40 +197,21 @@ export default {
       }
     },
     showHint() {
-      const paragraphs = this.textData.paragraphs || []
-      if (paragraphs.length === 0) return
-
-      if (this.hintIndex >= paragraphs.length) {
+      const hintChars = this.getHintChars()
+      if (hintChars.length === 0) return
+      if (this.hintCharCount >= hintChars.length) {
         uni.showToast({ title: '已无更多提示', icon: 'none' })
         return
       }
 
-      const currentSentence = paragraphs[this.hintIndex]
       this.hintCharCount++
-
-      if (this.hintCharCount > currentSentence.length) {
-        this.hintIndex++
-        this.hintCharCount = 1
-        if (this.hintIndex >= paragraphs.length) {
-          this.hintCount++
-          return
-        }
-        const nextSentence = paragraphs[this.hintIndex]
-        this.hints.push(nextSentence.slice(0, 1) + '...')
-      } else {
-        const hintText = currentSentence.slice(0, this.hintCharCount) + '...'
-        if (this.hints.length > 0 && this.hintIndex === this.hints.length - 1 + (this.hintCharCount > 1 ? 0 : 1)) {
-          // 更新当前句的提示
-          const lastIdx = this.hints.length - 1
-          if (lastIdx >= 0) {
-            this.hints[lastIdx] = hintText
-            this.hints = [...this.hints]
-          }
-        } else {
-          this.hints.push(hintText)
-        }
-      }
+      const hintText = hintChars.slice(0, this.hintCharCount).join('') + '...'
+      this.hints = [hintText]
       this.hintCount++
+    },
+    getHintChars() {
+      const content = this.textData.content || ''
+      return [...content].filter(char => /[\u4e00-\u9fff]/.test(char))
     },
     stopRecite() {
       this.stopping = true

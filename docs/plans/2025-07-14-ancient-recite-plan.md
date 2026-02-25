@@ -9,8 +9,7 @@
 **文件**：`uniCloud-aliyun/database/`
 
 1. 新建 `ancient-texts.schema.json`
-   - 字段：`_id`, `title`, `author`, `dynasty`, `content`, `paragraphs`
-   - `paragraphs` 类型为 array of string
+   - 字段：`_id`, `title`, `author`, `dynasty`, `content`
 
 2. 新建 `recite-records.schema.json`
    - 字段：`_id`, `user_id`, `text_id`, `text_title`, `hint_count`, `recognized_text`, `diff_result`, `created_at`
@@ -86,8 +85,8 @@
   - App 端格式：`mp3`，采样率 16000
   - 微信端格式：`mp3`，采样率 16000
 - 【提醒我】按钮：
-  - 维护 `hintIndex`（当前提示到第几句）和 `hintCharCount`（当前句显示几个字）
-  - 每次点击：`hintCharCount++`，若超出当前句长度则 `hintIndex++, hintCharCount = 1`
+  - 维护 `hintCharCount`（当前提示到第几个汉字）
+  - 每次点击：`hintCharCount++`，按 `content` 逐字扩展提示
   - 显示提示文字，`hint_count++`
 - 【背诵结束】按钮：
   - 停止录音 `recorderManager.stop()`

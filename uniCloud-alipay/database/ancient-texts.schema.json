@@ -29,13 +29,6 @@
     "content": {
       "bsonType": "string",
       "description": "全文内容"
-    },
-    "paragraphs": {
-      "bsonType": "array",
-      "description": "按句切分的数组",
-      "items": {
-        "bsonType": "string"
-      }
     }
   }
 }
