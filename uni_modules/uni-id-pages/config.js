@@ -23,7 +23,7 @@ export default {
     // #ifndef MP-HARMONY
     // 'weixin',
     // #endif
-    //'username',
+    'username',
     // #ifdef APP
     'apple',
     // #endif

@@ -10,5 +10,11 @@ module.exports = {
     languageHints: ['zh'],
     punctuationPredictionEnabled: true,
     inverseTextNormalizationEnabled: true
+  },
+  bailianPoemSearch: {
+    apiKey: 'sk-2a5626f893bf4455825b04cee41a879d',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    model: 'qwen-plus',
+    timeout: 20000
   }
 }

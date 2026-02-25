@@ -2,7 +2,7 @@
 	"pages": [{
 			"path": "pages/ancient/list",
 			"style": {
-				"navigationBarTitleText": "古文背诵"
+				"navigationBarTitleText": "文言文背诵 AI小助手"
 			}
 		},
 		{

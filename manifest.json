@@ -1,7 +1,7 @@
 {
     "name" : "AI-Recite-Ancient-Mobile",
     "appid" : "__UNI__1397D60",
-    "description" : "云端一体应用快速开发基本项目模版",
+    "description" : "AI古文背诵小助手",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
@@ -43,6 +43,9 @@
                 },
                 "speech" : {}
             }
+        },
+        "uniStatistics" : {
+            "enable" : true
         }
     },
     "quickapp" : {},
@@ -54,19 +57,86 @@
         "usingComponents" : true,
         "optimization" : {
             "subPackages" : true
+        },
+        "uniStatistics" : {
+            "enable" : true
         }
     },
     "mp-alipay" : {
-        "usingComponents" : true
+        "usingComponents" : true,
+        "uniStatistics" : {
+            "enable" : true
+        }
     },
     "mp-baidu" : {
-        "usingComponents" : true
+        "usingComponents" : true,
+        "uniStatistics" : {
+            "enable" : true
+        }
     },
     "mp-toutiao" : {
-        "usingComponents" : true
+        "usingComponents" : true,
+        "uniStatistics" : {
+            "enable" : true
+        }
     },
     "uniStatistics" : {
-        "enable" : false
+        "enable" : true,
+        "version" : "2"
     },
-    "vueVersion" : "3"
+    "vueVersion" : "3",
+    "h5" : {
+        "title" : "文言文背诵 AI小助手",
+        "devServer" : {
+            "https" : true
+        },
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "app-harmony" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-harmony" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-jd" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-kuaishou" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-lark" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-qq" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "mp-xhs" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "quickapp-webview-huawei" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    },
+    "quickapp-webview-union" : {
+        "uniStatistics" : {
+            "enable" : true
+        }
+    }
 }

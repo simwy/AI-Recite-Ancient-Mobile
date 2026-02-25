@@ -1,0 +1,702 @@
+{
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/\u0000plugin-vue:export-helper": [
+    "https://gw.shiyuankeji.cn/assets/_plugin-vue_export-helper.BCo6x5W8.js"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/\u0000vite/modulepreload-polyfill.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/\u0000vite/preload-helper.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-app/dist/uni-app.es.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-app.es.daAcTQsk.js",
+    "https://gw.shiyuankeji.cn/assets/uni-app-OROddXNZ.css",
+    "https://gw.shiyuankeji.cn/assets/uniicons-DN59BOw4.ttf"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-cloud/dist/uni-cloud.es.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/uni-match-media/uni-match-media.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-match-media.C3pHy_Gg.js",
+    "https://gw.shiyuankeji.cn/assets/uni-match-media-DhASu9gk.css"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/uni-match-media/uni-match-media.vue?vue&type=style&index=0&scoped=057672fd&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni-match-media.C3pHy_Gg.js",
+    "https://gw.shiyuankeji.cn/assets/uni-match-media-DhASu9gk.css"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/en.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/es.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/fr.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/index.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/zh-Hans.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/i18n/zh-Hant.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-components/lib/unicloud-db/unicloud-db.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist/vue.runtime.esm.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist/uni-h5.es.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/async.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/base.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/nvue.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/pageRefresh.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/shadow.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/style/framework/tabBar.css": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-i18n/dist/uni-i18n.es.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-shared/dist/uni-shared.es.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-stat/dist/uni-cloud-stat.es.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@intlify/core-base/dist/core-base.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@intlify/message-compiler/dist/message-compiler.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@intlify/message-resolver/dist/message-resolver.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@intlify/runtime/dist/runtime.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@intlify/shared/dist/shared.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vue-i18n/dist/vue-i18n.esm-bundler.js": [],
+  "../../../../../../../Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vue-router/dist/vue-router.mjs": [],
+  "App.vue": [],
+  "App.vue?vue&type=style&index=0&lang.css": [],
+  "common/appInit.js": [],
+  "common/diff.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-result.63-2I52n.js",
+    "https://gw.shiyuankeji.cn/assets/result-Be4BdFfD.css"
+  ],
+  "common/openApp.js": [],
+  "components/uni-load-state/i18n/en.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "components/uni-load-state/i18n/index.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "components/uni-load-state/i18n/zh-Hans.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "components/uni-load-state/uni-load-state.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "components/uni-load-state/uni-load-state.vue?vue&type=style&index=0&scoped=7798ec84&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "index.html": [],
+  "lang/en.js": [],
+  "lang/i18n.js": [],
+  "lang/zh-Hans.js": [],
+  "main.js": [],
+  "manifest-json-js": [],
+  "pages-json-js": [],
+  "pages.json": [],
+  "pages/ancient/detail.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-detail.BWWy2_Hd.js",
+    "https://gw.shiyuankeji.cn/assets/detail-D6uxxzMS.css"
+  ],
+  "pages/ancient/detail.vue?vue&type=style&index=0&scoped=32fec88e&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-detail.BWWy2_Hd.js",
+    "https://gw.shiyuankeji.cn/assets/detail-D6uxxzMS.css"
+  ],
+  "pages/ancient/history.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-history.20H6X77j.js",
+    "https://gw.shiyuankeji.cn/assets/history-BiBjEpXG.css"
+  ],
+  "pages/ancient/history.vue?vue&type=style&index=0&scoped=dee1b6ae&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-history.20H6X77j.js",
+    "https://gw.shiyuankeji.cn/assets/history-BiBjEpXG.css"
+  ],
+  "pages/ancient/list.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "pages/ancient/list.vue?vue&type=style&index=0&scoped=d8623b33&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "pages/ancient/recite.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-recite.BvxC1MmI.js",
+    "https://gw.shiyuankeji.cn/assets/recite-ZU8JQhvi.css"
+  ],
+  "pages/ancient/recite.vue?vue&type=style&index=0&scoped=26102e5c&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-recite.BvxC1MmI.js",
+    "https://gw.shiyuankeji.cn/assets/recite-ZU8JQhvi.css"
+  ],
+  "pages/ancient/result.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-result.63-2I52n.js",
+    "https://gw.shiyuankeji.cn/assets/result-Be4BdFfD.css"
+  ],
+  "pages/ancient/result.vue?vue&type=style&index=0&scoped=3a9db650&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-result.63-2I52n.js",
+    "https://gw.shiyuankeji.cn/assets/result-Be4BdFfD.css"
+  ],
+  "pages/ucenter/read-news-log/read-news-log.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "pages/ucenter/read-news-log/read-news-log.vue?vue&type=style&index=0&scoped=6e4786f2&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "pages/ucenter/settings/dc-push/push.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-settings-settings.DY4HM8Dh.js",
+    "https://gw.shiyuankeji.cn/assets/settings-D1xg68gc.css"
+  ],
+  "pages/ucenter/settings/settings.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-settings-settings.DY4HM8Dh.js",
+    "https://gw.shiyuankeji.cn/assets/settings-D1xg68gc.css"
+  ],
+  "pages/ucenter/settings/settings.vue?vue&type=style&index=0&scoped=80c43692&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-settings-settings.DY4HM8Dh.js",
+    "https://gw.shiyuankeji.cn/assets/settings-D1xg68gc.css"
+  ],
+  "pages/ucenter/ucenter.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "pages/ucenter/ucenter.vue?vue&type=style&index=0&scoped=81cf6d26&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "pages/uni-agree/uni-agree.nvue": [
+    "https://gw.shiyuankeji.cn/assets/pages-uni-agree-uni-agree.DGvA5y0h.js",
+    "https://gw.shiyuankeji.cn/assets/uni-agree-CLpLaYGd.css"
+  ],
+  "pages/uni-agree/uni-agree.nvue?vue&type=style&index=0&scoped=618144e1&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/pages-uni-agree-uni-agree.DGvA5y0h.js",
+    "https://gw.shiyuankeji.cn/assets/uni-agree-CLpLaYGd.css"
+  ],
+  "static/uni-load-state/disconnection.png": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni-starter.config.js": [],
+  "uni_modules/uni-badge/components/uni-badge/uni-badge.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-badge/components/uni-badge/uni-badge.vue?vue&type=style&index=0&scoped=871ec77f&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-captcha/components/uni-captcha/uni-captcha.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-captcha.BjeCL66V.js",
+    "https://gw.shiyuankeji.cn/assets/uni-captcha-DVnyKXyQ.css"
+  ],
+  "uni_modules/uni-captcha/components/uni-captcha/uni-captcha.vue?vue&type=style&index=0&scoped=a9469c9e&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-captcha.BjeCL66V.js",
+    "https://gw.shiyuankeji.cn/assets/uni-captcha-DVnyKXyQ.css"
+  ],
+  "uni_modules/uni-captcha/components/uni-popup-captcha/uni-popup-captcha.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-captcha.BdvtTFus.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-captcha-Bp6YeZ-v.css"
+  ],
+  "uni_modules/uni-captcha/components/uni-popup-captcha/uni-popup-captcha.vue?vue&type=style&index=0&scoped=2b0dab17&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-captcha.BdvtTFus.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-captcha-Bp6YeZ-v.css"
+  ],
+  "uni_modules/uni-dateformat/components/uni-dateformat/date-format.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-dateformat/components/uni-dateformat/uni-dateformat.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-easyinput/components/uni-easyinput/uni-easyinput.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-easyinput.UdrczKFV.js",
+    "https://gw.shiyuankeji.cn/assets/uni-easyinput-CUHRXAYf.css"
+  ],
+  "uni_modules/uni-easyinput/components/uni-easyinput/uni-easyinput.vue?vue&type=style&index=0&scoped=03c103b7&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-easyinput.UdrczKFV.js",
+    "https://gw.shiyuankeji.cn/assets/uni-easyinput-CUHRXAYf.css"
+  ],
+  "uni_modules/uni-feedback/js_sdk/validator/opendb-feedback.js": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback.vue?vue&type=style&index=0&scoped=f6aed613&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/choose-and-upload-file.js": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/uni-file-picker.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/uni-file-picker.vue?vue&type=style&index=0&scoped=5e9fcb2e&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/upload-file.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/upload-file.vue?vue&type=style&index=0&scoped=5d376bd5&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/upload-image.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/upload-image.vue?vue&type=style&index=0&scoped=86b162f5&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-file-picker/components/uni-file-picker/utils.js": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-feedback-pages-opendb-feedback-opendb-feedback.CWi2u8_o.js",
+    "https://gw.shiyuankeji.cn/assets/opendb-feedback-BSP6SpX6.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms-item/uni-forms-item.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms-item.Bq7jUoPo.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-item-DXaP9beL.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms-item/uni-forms-item.vue?vue&type=style&index=0&scoped=41a2b37f&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms-item.Bq7jUoPo.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-item-DXaP9beL.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms/uni-forms.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms.DVRI5uH-.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-B_SY1GJM.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms/uni-forms.vue?vue&type=style&index=0&scoped=46a11704&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms.DVRI5uH-.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-B_SY1GJM.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms/utils.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms.DVRI5uH-.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-B_SY1GJM.css"
+  ],
+  "uni_modules/uni-forms/components/uni-forms/validate.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-forms.DVRI5uH-.js",
+    "https://gw.shiyuankeji.cn/assets/uni-forms-B_SY1GJM.css"
+  ],
+  "uni_modules/uni-grid/components/uni-grid-item/uni-grid-item.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-grid/components/uni-grid-item/uni-grid-item.vue?vue&type=style&index=0&scoped=1f1eb9ce&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-grid/components/uni-grid/uni-grid.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-grid/components/uni-grid/uni-grid.vue?vue&type=style&index=0&scoped=551d9659&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-icons/components/uni-icons/uni-icons.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-app.es.daAcTQsk.js",
+    "https://gw.shiyuankeji.cn/assets/uni-app-OROddXNZ.css",
+    "https://gw.shiyuankeji.cn/assets/uniicons-DN59BOw4.ttf"
+  ],
+  "uni_modules/uni-icons/components/uni-icons/uni-icons.vue?vue&type=style&index=0&scoped=b25a9929&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-app.es.daAcTQsk.js",
+    "https://gw.shiyuankeji.cn/assets/uni-app-OROddXNZ.css",
+    "https://gw.shiyuankeji.cn/assets/uniicons-DN59BOw4.ttf"
+  ],
+  "uni_modules/uni-icons/components/uni-icons/uniicons_file_vue.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-app.es.daAcTQsk.js",
+    "https://gw.shiyuankeji.cn/assets/uni-app-OROddXNZ.css",
+    "https://gw.shiyuankeji.cn/assets/uniicons-DN59BOw4.ttf"
+  ],
+  "uni_modules/uni-id-pages/common/login-page.mixin.js": [
+    "https://gw.shiyuankeji.cn/assets/login-page.mixin.DP2zowBC.js"
+  ],
+  "uni_modules/uni-id-pages/common/password.js": [
+    "https://gw.shiyuankeji.cn/assets/password.a5eHJbNM.js"
+  ],
+  "uni_modules/uni-id-pages/common/store.js": [
+    "https://gw.shiyuankeji.cn/assets/store.C2dUqeYv.js"
+  ],
+  "uni_modules/uni-id-pages/components/cloud-image/cloud-image.vue": [
+    "https://gw.shiyuankeji.cn/assets/cloud-image.3lkHkoP2.js"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-agreements/uni-id-pages-agreements.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-agreements.DGuBkIqc.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-agreements-B-ka_S-g.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-agreements/uni-id-pages-agreements.vue?vue&type=style&index=0&scoped=4773cb79&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-agreements.DGuBkIqc.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-agreements-B-ka_S-g.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar.vue?vue&type=style&index=0&scoped=6c473d63&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-bind-mobile/uni-id-pages-bind-mobile.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-bind-mobile/uni-id-pages-bind-mobile.vue?vue&type=style&index=0&scoped=1edc5089&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-email-form/uni-id-pages-email-form.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-email-form.s9TBt5au.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-email-form-6M28TVzF.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-email-form/uni-id-pages-email-form.vue?vue&type=style&index=0&scoped=55918d51&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-email-form.s9TBt5au.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-email-form-6M28TVzF.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-fab-login.DRORXZ7f.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-fab-login-Cw8OL3NE.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue?vue&type=style&index=0&scoped=5c14e513&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-fab-login.DRORXZ7f.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-fab-login-Cw8OL3NE.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-sms-form/uni-id-pages-sms-form.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-sms-form.7VMP6Z21.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-sms-form-BTShaRem.css"
+  ],
+  "uni_modules/uni-id-pages/components/uni-id-pages-sms-form/uni-id-pages-sms-form.vue?vue&type=style&index=0&scoped=f8f4b0e1&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-sms-form.7VMP6Z21.js",
+    "https://gw.shiyuankeji.cn/assets/uni-id-pages-sms-form-BTShaRem.css"
+  ],
+  "uni_modules/uni-id-pages/config.js": [],
+  "uni_modules/uni-id-pages/init.js": [],
+  "uni_modules/uni-id-pages/pages/common/webview/webview.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-common-webview-webview.BjLD3Ayk.js"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-smscode.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-smscode.DBFnIC_n.js",
+    "https://gw.shiyuankeji.cn/assets/login-smscode-Ce3CnVQ-.css"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-smscode.vue?vue&type=style&index=0&scoped=93225fe2&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-smscode.DBFnIC_n.js",
+    "https://gw.shiyuankeji.cn/assets/login-smscode-Ce3CnVQ-.css"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-withoutpwd.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-withoutpwd.2F754tpI.js",
+    "https://gw.shiyuankeji.cn/assets/login-withoutpwd-Cn6pIshO.css"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-withoutpwd.vue?vue&type=style&index=0&scoped=d9f6aceb&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-withoutpwd.2F754tpI.js",
+    "https://gw.shiyuankeji.cn/assets/login-withoutpwd-Cn6pIshO.css"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-withpwd.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-withpwd.Cx9KX_VW.js",
+    "https://gw.shiyuankeji.cn/assets/login-withpwd-gf4dbIrR.css"
+  ],
+  "uni_modules/uni-id-pages/pages/login/login-withpwd.vue?vue&type=style&index=0&scoped=37e1c4f9&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-login-login-withpwd.Cx9KX_VW.js",
+    "https://gw.shiyuankeji.cn/assets/login-withpwd-gf4dbIrR.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register-admin.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register-admin.qFuqzvfT.js",
+    "https://gw.shiyuankeji.cn/assets/register-admin-CQmBI_8M.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register-admin.vue?vue&type=style&index=0&scoped=aaf7d8b3&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register-admin.qFuqzvfT.js",
+    "https://gw.shiyuankeji.cn/assets/register-admin-CQmBI_8M.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register-by-email.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register-by-email.B3AVtBRd.js",
+    "https://gw.shiyuankeji.cn/assets/register-by-email-C8BnGktK.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register-by-email.vue?vue&type=style&index=0&scoped=6451329b&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register-by-email.B3AVtBRd.js",
+    "https://gw.shiyuankeji.cn/assets/register-by-email-C8BnGktK.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register.C6SwxN8Y.js",
+    "https://gw.shiyuankeji.cn/assets/register-BjHizyDt.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/register.vue?vue&type=style&index=0&scoped=6cd67c03&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-register-register.C6SwxN8Y.js",
+    "https://gw.shiyuankeji.cn/assets/register-BjHizyDt.css"
+  ],
+  "uni_modules/uni-id-pages/pages/register/validator.js": [
+    "https://gw.shiyuankeji.cn/assets/validator.DMfskjw8.js"
+  ],
+  "uni_modules/uni-id-pages/pages/retrieve/retrieve-by-email.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-retrieve-retrieve-by-email.Cst7lvkj.js",
+    "https://gw.shiyuankeji.cn/assets/retrieve-by-email-LPdR9PrB.css"
+  ],
+  "uni_modules/uni-id-pages/pages/retrieve/retrieve-by-email.vue?vue&type=style&index=0&scoped=63882b6c&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-retrieve-retrieve-by-email.Cst7lvkj.js",
+    "https://gw.shiyuankeji.cn/assets/retrieve-by-email-LPdR9PrB.css"
+  ],
+  "uni_modules/uni-id-pages/pages/retrieve/retrieve.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-retrieve-retrieve.C-ScnL2c.js",
+    "https://gw.shiyuankeji.cn/assets/retrieve-BggPayGm.css"
+  ],
+  "uni_modules/uni-id-pages/pages/retrieve/retrieve.vue?vue&type=style&index=0&scoped=abcd9a31&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-retrieve-retrieve.C-ScnL2c.js",
+    "https://gw.shiyuankeji.cn/assets/retrieve-BggPayGm.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-bind-mobile-bind-mobile.CvG3jI_e.js",
+    "https://gw.shiyuankeji.cn/assets/bind-mobile-Dr7D6HnO.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile.vue?vue&type=style&index=0&scoped=8ad2d767&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-bind-mobile-bind-mobile.CvG3jI_e.js",
+    "https://gw.shiyuankeji.cn/assets/bind-mobile-Dr7D6HnO.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-change_pwd-change_pwd.DcfHQeNF.js",
+    "https://gw.shiyuankeji.cn/assets/change_pwd-CpRFfYkX.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd.vue?vue&type=style&index=0&scoped=310f3ac4&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-change_pwd-change_pwd.DcfHQeNF.js",
+    "https://gw.shiyuankeji.cn/assets/change_pwd-CpRFfYkX.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/cropImage.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/cropImage.vue?vue&type=style&index=0&scoped=c2c356f4&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/limeClipper/images/photo.svg": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/limeClipper/images/rotate.svg": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/limeClipper/limeClipper.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/limeClipper/limeClipper.vue?vue&type=style&index=0&scoped=592a86cd&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/cropImage/limeClipper/utils.js": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-cropImage-cropImage.pvUwoneo.js",
+    "https://gw.shiyuankeji.cn/assets/cropImage-Dax52rau.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-deactivate-deactivate.CkcmYmEO.js",
+    "https://gw.shiyuankeji.cn/assets/deactivate-BODxpO7M.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate.vue?vue&type=style&index=0&scoped=eb0fe298&lang.css": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-deactivate-deactivate.CkcmYmEO.js",
+    "https://gw.shiyuankeji.cn/assets/deactivate-BODxpO7M.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/realname-verify/face-verify-icon.svg": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-realname-verify-realname-verify.B1oH6tbd.js",
+    "https://gw.shiyuankeji.cn/assets/realname-verify-Dj-tUTuW.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-realname-verify-realname-verify.B1oH6tbd.js",
+    "https://gw.shiyuankeji.cn/assets/realname-verify-Dj-tUTuW.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify.vue?vue&type=style&index=0&scoped=3c012959&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-realname-verify-realname-verify.B1oH6tbd.js",
+    "https://gw.shiyuankeji.cn/assets/realname-verify-Dj-tUTuW.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-set-pwd-set-pwd.CluLs4No.js",
+    "https://gw.shiyuankeji.cn/assets/set-pwd-B5lZS1VL.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd.vue?vue&type=style&index=0&scoped=f34b7681&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-set-pwd-set-pwd.CluLs4No.js",
+    "https://gw.shiyuankeji.cn/assets/set-pwd-B5lZS1VL.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/userinfo.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-id-pages/pages/userinfo/userinfo.vue?vue&type=style&index=0&scoped=a98497c8&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni_modules-uni-id-pages-pages-userinfo-userinfo.9jZQBxEl.js",
+    "https://gw.shiyuankeji.cn/assets/userinfo-CGrHDpPe.css"
+  ],
+  "uni_modules/uni-list/components/uni-list-item/uni-list-item.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-list/components/uni-list-item/uni-list-item.vue?vue&type=style&index=0&scoped=64145c08&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-list/components/uni-list/uni-list.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-list/components/uni-list/uni-list.vue?vue&type=style&index=0&scoped=1f7cd97b&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-list.1vFi4znL.js",
+    "https://gw.shiyuankeji.cn/assets/uni-list-BgUQJ9h0.css"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/i18n/en.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/i18n/index.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/i18n/zh-Hans.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/i18n/zh-Hant.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/uni-load-more.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-load-more/components/uni-load-more/uni-load-more.vue?vue&type=style&index=0&scoped=76b7ad7c&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-read-news-log-read-news-log.BQyq9s32.js",
+    "https://gw.shiyuankeji.cn/assets/read-news-log-CKlvFo9p.css",
+    "https://gw.shiyuankeji.cn/assets/disconnection-CxcuTO1c.png"
+  ],
+  "uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue?vue&type=style&index=0&scoped=48dd424a&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/i18n/en.json": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/i18n/index.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/i18n/zh-Hans.json": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/i18n/zh-Hant.json": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/keypress.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup.D4hVhlbT.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-BTOLO-vo.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/popup.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog.8tQ04fsN.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-dialog-CMBldQTj.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/uni-popup.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup.D4hVhlbT.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-BTOLO-vo.css"
+  ],
+  "uni_modules/uni-popup/components/uni-popup/uni-popup.vue?vue&type=style&index=0&scoped=fc99ec19&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup.D4hVhlbT.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-BTOLO-vo.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/i18n/en.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/i18n/index.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/i18n/zh-Hans.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/i18n/zh-Hant.json": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/uni-search-bar.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-search-bar/components/uni-search-bar/uni-search-bar.vue?vue&type=style&index=0&scoped=f744e7d2&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ancient-list.RPg7boHz.js",
+    "https://gw.shiyuankeji.cn/assets/list-Di13Htxi.css"
+  ],
+  "uni_modules/uni-sign-in/components/uni-sign-in/uni-sign-in.vue": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-sign-in/components/uni-sign-in/uni-sign-in.vue?vue&type=style&index=0&scoped=26f1750b&lang.scss": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-sign-in/static/background.png": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-sign-in/utils/ad.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ],
+  "uni_modules/uni-transition/components/uni-transition/createAnimation.js": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup.D4hVhlbT.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-BTOLO-vo.css"
+  ],
+  "uni_modules/uni-transition/components/uni-transition/uni-transition.vue": [
+    "https://gw.shiyuankeji.cn/assets/uni-popup.D4hVhlbT.js",
+    "https://gw.shiyuankeji.cn/assets/uni-popup-BTOLO-vo.css"
+  ],
+  "uni_modules/uni-upgrade-center-app/utils/call-check-version.js": [
+    "https://gw.shiyuankeji.cn/assets/pages-ucenter-ucenter.CsQsu7SE.js",
+    "https://gw.shiyuankeji.cn/assets/ucenter-DzLQEhD8.css",
+    "https://gw.shiyuankeji.cn/assets/background-Bu1oXiEy.png"
+  ]
+}

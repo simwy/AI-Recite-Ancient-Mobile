@@ -29,6 +29,23 @@
     "content": {
       "bsonType": "string",
       "description": "全文内容"
+    },
+    "created_by": {
+      "bsonType": "string",
+      "description": "添加用户ID",
+      "trim": "both"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "添加时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    },
+    "source": {
+      "bsonType": "string",
+      "description": "来源标记",
+      "trim": "both"
     }
   }
 }

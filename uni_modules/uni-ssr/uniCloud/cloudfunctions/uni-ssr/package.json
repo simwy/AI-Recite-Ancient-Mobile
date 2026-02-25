@@ -1,0 +1,26 @@
+{
+    "dependencies": {
+        "@dcloudio\/uni-app": "3.0.0-alpha-4010820240531001",
+        "@dcloudio\/uni-cloud": "3.0.0-alpha-4010820240531001",
+        "@dcloudio\/uni-h5": "3.0.0-alpha-4010820240531001",
+        "@dcloudio\/uni-h5-vue": "3.0.0-alpha-4010820240531001",
+        "@dcloudio\/uni-i18n": "2.0.2-4010420240430001",
+        "@dcloudio\/uni-shared": "3.0.0-alpha-4010820240531001",
+        "@vue\/server-renderer": "3.4.21",
+        "@vue\/shared": "3.4.21",
+        "module-alias": "^2.2.2",
+        "vue-router": "^4.0.8",
+        "vuex": "4.1.0"
+    },
+    "_moduleAliases": {
+        "vue": "node_modules\/@dcloudio\/uni-h5-vue",
+        "vue\/server-renderer": "node_modules\/@vue\/server-renderer"
+    },
+    "scripts": {
+        "postinstall": "node scripts\/clean.js"
+    },
+    "origin-plugin-dev-name": "uni-ssr",
+    "origin-plugin-version": "1.0.7",
+    "plugin-dev-name": "uni-ssr",
+    "plugin-version": "1.0.7"
+}
