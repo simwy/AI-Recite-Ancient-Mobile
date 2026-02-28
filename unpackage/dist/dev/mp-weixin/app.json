@@ -3,8 +3,12 @@
     "pages/ancient/list",
     "pages/ancient/history",
     "pages/ancient/detail",
+    "pages/ancient/dictation",
+    "pages/ancient/read",
     "pages/ancient/recite",
     "pages/ancient/result",
+    "pages/square/index",
+    "pages/square/list",
     "pages/ucenter/ucenter",
     "pages/uni-agree/uni-agree",
     "pages/ucenter/settings/settings",
@@ -39,7 +43,7 @@
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "uni-starter",
+    "navigationBarTitleText": "古诗词背诵 AI小助手",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#F8F8F8",
     "enablePullDownRefresh": false,
@@ -59,10 +63,10 @@
         "text": "古文"
       },
       {
-        "pagePath": "pages/ancient/history",
-        "iconPath": "static/tabbar/grid.png",
-        "selectedIconPath": "static/tabbar/grid_active.png",
-        "text": "历史"
+        "pagePath": "pages/square/index",
+        "iconPath": "static/tabbar/list.png",
+        "selectedIconPath": "static/tabbar/list_active.png",
+        "text": "广场"
       },
       {
         "pagePath": "pages/ucenter/ucenter",

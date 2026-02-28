@@ -30,6 +30,11 @@ const _sfc_main = {
             "title": this.$t("mine.signIn"),
             "event": "signIn",
             "icon": "compose"
+          },
+          {
+            "title": "背诵历史",
+            "to": "/pages/ancient/history",
+            "icon": "calendar"
           }
           // {
           // 	"title":this.$t('mine.readArticles'),
@@ -110,7 +115,7 @@ const _sfc_main = {
     },
     async checkVersion() {
       let res = await uni_modules_uniUpgradeCenterApp_utils_callCheckVersion.callCheckVersion();
-      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:200", res);
+      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:205", res);
       if (res.result.code > 0)
         ;
       else {
@@ -156,7 +161,7 @@ const _sfc_main = {
         const records = [];
         while (true) {
           const res = await common_vendor.tr.callFunction({
-            name: "recite-record",
+            name: "gw_recite-record",
             data: {
               action: "list",
               data: {
@@ -216,7 +221,7 @@ const _sfc_main = {
           }
         ];
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/ucenter/ucenter.vue:306", "加载背诵统计失败", e);
+        common_vendor.index.__f__("error", "at pages/ucenter/ucenter.vue:311", "加载背诵统计失败", e);
       }
     },
     formatDuration(totalSeconds) {
@@ -252,7 +257,7 @@ const _sfc_main = {
         mask: true
       });
       db.collection("uni-id-scores").where('"user_id" == $env.uid').field("score,balance").orderBy("create_date", "desc").limit(1).get().then((res) => {
-        common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:364", res);
+        common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:369", res);
         const data = res.result.data[0];
         let msg = "";
         msg = data ? this.$t("mine.currentScore") + data.balance : this.$t("mine.noScore");
@@ -273,7 +278,7 @@ const _sfc_main = {
           icon: "none"
         });
       }
-      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:385", { myInviteCode });
+      common_vendor.index.__f__("log", "at pages/ucenter/ucenter.vue:390", { myInviteCode });
       this.appConfig.about;
     }
   }

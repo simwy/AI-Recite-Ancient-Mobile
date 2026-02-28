@@ -9,6 +9,7 @@ const config = {
   isAdmin: false,
   // 区分管理端与用户端
   loginTypes: [
+    "smsCode",
     // "qq",
     // "xiaomi",
     // "sinaweibo",
@@ -17,9 +18,8 @@ const config = {
     // "google",
     // "alipay",
     // "douyin",
-    "weixin",
-    "username",
-    "smsCode"
+    // 'weixin',
+    "username"
   ],
   // 政策协议
   agreements: {

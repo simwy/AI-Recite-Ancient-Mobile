@@ -8,6 +8,7 @@ const _sfc_main = {
       textData: {},
       recognizedText: "",
       hintCount: 0,
+      duration: 0,
       diffResult: [],
       accuracy: 0,
       saved: false
@@ -21,6 +22,7 @@ const _sfc_main = {
       this.textData = result.textData;
       this.recognizedText = result.recognizedText;
       this.hintCount = result.hintCount;
+      this.duration = Number(result.duration) || 0;
     }
     this.doDiff();
     this.saveRecord();
@@ -40,13 +42,14 @@ const _sfc_main = {
         return;
       try {
         await common_vendor.tr.callFunction({
-          name: "recite-record",
+          name: "gw_recite-record",
           data: {
             action: "save",
             data: {
               text_id: this.id,
               text_title: this.textData.title,
               hint_count: this.hintCount,
+              duration_seconds: this.duration,
               recognized_text: this.recognizedText,
               diff_result: this.diffResult,
               accuracy: this.accuracy
@@ -55,7 +58,7 @@ const _sfc_main = {
         });
         this.saved = true;
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/ancient/result.vue:104", "保存记录失败:", e);
+        common_vendor.index.__f__("error", "at pages/ancient/result.vue:107", "保存记录失败:", e);
       }
     },
     goReciteAgain() {

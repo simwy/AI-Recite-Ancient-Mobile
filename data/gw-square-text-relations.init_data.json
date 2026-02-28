@@ -1,0 +1,114 @@
+[
+  {
+    "_id": "gw-str-001",
+    "text_id": "gw-at-001",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-002",
+    "text_id": "gw-at-002",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-003",
+    "text_id": "gw-at-003",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-004",
+    "text_id": "gw-at-004",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 4,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-005",
+    "text_id": "gw-at-005",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 5,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-006",
+    "text_id": "gw-at-006",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 6,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-007",
+    "text_id": "gw-at-007",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 7,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-008",
+    "text_id": "gw-at-008",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 8,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-009",
+    "text_id": "gw-at-009",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 9,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-010",
+    "text_id": "gw-at-010",
+    "category_id": "gw-sc-001",
+    "subcollection_id": "gw-ss-001",
+    "sort": 10,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-011",
+    "text_id": "gw-at-002",
+    "category_id": "gw-sc-002",
+    "subcollection_id": "gw-ss-002",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-012",
+    "text_id": "gw-at-003",
+    "category_id": "gw-sc-002",
+    "subcollection_id": "gw-ss-002",
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-013",
+    "text_id": "gw-at-004",
+    "category_id": "gw-sc-002",
+    "subcollection_id": "gw-ss-002",
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "_id": "gw-str-014",
+    "text_id": "gw-at-008",
+    "category_id": "gw-sc-002",
+    "subcollection_id": "gw-ss-002",
+    "sort": 4,
+    "enabled": true
+  }
+]

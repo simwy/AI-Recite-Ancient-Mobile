@@ -54,6 +54,9 @@
 .diff-correct.data-v-e8e2eee0 {
   color: #52c41a;
 }
+.diff-punctuation.data-v-e8e2eee0 {
+  color: #666;
+}
 .diff-missing.data-v-e8e2eee0, .diff-wrong.data-v-e8e2eee0 {
   color: #f5222d;
   text-decoration: underline;

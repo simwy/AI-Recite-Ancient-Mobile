@@ -1,16 +1,17 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
+const db = common_vendor.tr.database();
 const _sfc_main = {
   data() {
     return {
       id: "",
       textData: {},
+      showArticleContent: true,
       started: false,
       recording: false,
       duration: 0,
       durationTimer: null,
       hintCount: 0,
-      hintIndex: 0,
       hintCharCount: 0,
       hints: [],
       recorderManager: null,
@@ -35,11 +36,13 @@ const _sfc_main = {
     };
   },
   onLoad(options) {
-    this.id = options.id;
+    this.id = options.id || "";
     const app = getApp();
-    if (app.globalData && app.globalData.currentText) {
-      this.textData = app.globalData.currentText;
+    const currentText = app.globalData && app.globalData.currentText;
+    if (currentText && currentText._id === this.id) {
+      this.textData = currentText;
     }
+    this.loadTextData();
     this.initRecorder();
   },
   onUnload() {
@@ -55,6 +58,23 @@ const _sfc_main = {
     this.destroyWebRecorder();
   },
   methods: {
+    async loadTextData() {
+      if (this.textData && this.textData.content)
+        return;
+      if (!this.id)
+        return;
+      try {
+        const res = await db.collection("gw-ancient-texts").doc(this.id).get();
+        const list = res.result && res.result.data || [];
+        if (list.length > 0) {
+          this.textData = list[0];
+          getApp().globalData = getApp().globalData || {};
+          getApp().globalData.currentText = this.textData;
+        }
+      } catch (e) {
+        common_vendor.index.showToast({ title: "文章加载失败", icon: "none" });
+      }
+    },
     initRecorder() {
       if (typeof common_vendor.index.getRecorderManager !== "function") {
         this.useWebRecorder = true;
@@ -83,12 +103,13 @@ const _sfc_main = {
         clearInterval(this.durationTimer);
         this.closeSocket();
         common_vendor.index.showToast({ title: "录音失败", icon: "none" });
-        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:154", "录音错误:", err);
+        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:177", "录音错误:", err);
       });
     },
     async startRecite() {
       if (this.recording)
         return;
+      this.showArticleContent = false;
       try {
         this.resetRealtimeState();
         await this.loadAsrConfig();
@@ -113,41 +134,25 @@ const _sfc_main = {
       } catch (err) {
         this.closeSocket();
         common_vendor.index.showToast({ title: err.message || "启动识别失败", icon: "none", duration: 3e3 });
-        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:197", "启动实时识别失败:", err);
+        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:221", "启动实时识别失败:", err);
       }
     },
     showHint() {
-      const paragraphs = this.textData.paragraphs || [];
-      if (paragraphs.length === 0)
+      const hintChars = this.getHintChars();
+      if (hintChars.length === 0)
         return;
-      if (this.hintIndex >= paragraphs.length) {
+      if (this.hintCharCount >= hintChars.length) {
         common_vendor.index.showToast({ title: "已无更多提示", icon: "none" });
         return;
       }
-      const currentSentence = paragraphs[this.hintIndex];
       this.hintCharCount++;
-      if (this.hintCharCount > currentSentence.length) {
-        this.hintIndex++;
-        this.hintCharCount = 1;
-        if (this.hintIndex >= paragraphs.length) {
-          this.hintCount++;
-          return;
-        }
-        const nextSentence = paragraphs[this.hintIndex];
-        this.hints.push(nextSentence.slice(0, 1) + "...");
-      } else {
-        const hintText = currentSentence.slice(0, this.hintCharCount) + "...";
-        if (this.hints.length > 0 && this.hintIndex === this.hints.length - 1 + (this.hintCharCount > 1 ? 0 : 1)) {
-          const lastIdx = this.hints.length - 1;
-          if (lastIdx >= 0) {
-            this.hints[lastIdx] = hintText;
-            this.hints = [...this.hints];
-          }
-        } else {
-          this.hints.push(hintText);
-        }
-      }
+      const hintText = hintChars.slice(0, this.hintCharCount).join("") + "...";
+      this.hints = [hintText];
       this.hintCount++;
+    },
+    getHintChars() {
+      const content = this.textData.content || "";
+      return [...content].filter((char) => /[\u4e00-\u9fff]/.test(char));
     },
     stopRecite() {
       this.stopping = true;
@@ -170,7 +175,7 @@ const _sfc_main = {
     },
     async loadAsrConfig() {
       const res = await common_vendor.tr.callFunction({
-        name: "asr-config"
+        name: "gw_asr-config"
       });
       const result = res.result || {};
       if (result.code !== 0 || !result.data) {
@@ -284,7 +289,7 @@ const _sfc_main = {
         return;
       }
       if (event === "task-failed") {
-        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:402", "任务失败:", header.error_message || "未知错误");
+        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:407", "任务失败:", header.error_message || "未知错误");
         if (this.waitTaskFinishedResolver) {
           this.waitTaskFinishedResolver();
           this.waitTaskFinishedResolver = null;
@@ -357,7 +362,7 @@ const _sfc_main = {
       try {
         this.socketTask.close({});
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:477", "关闭 socket 失败:", e);
+        common_vendor.index.__f__("error", "at pages/ancient/recite.vue:482", "关闭 socket 失败:", e);
       }
       this.socketTask = null;
     },
@@ -423,7 +428,7 @@ const _sfc_main = {
           const audioBlob = new Blob(this.h5AudioChunks, { type: "audio/webm" });
           const audioBase64 = await this.blobToBase64(audioBlob);
           const callRes = await common_vendor.tr.callFunction({
-            name: "asr-file-recognize",
+            name: "gw_asr-file-recognize",
             data: {
               audioBase64,
               format: "webm"
@@ -437,7 +442,7 @@ const _sfc_main = {
           this.goResult(this.realtimeText);
         } catch (error) {
           common_vendor.index.showToast({ title: error.message || "识别失败", icon: "none" });
-          common_vendor.index.__f__("error", "at pages/ancient/recite.vue:567", "H5 文件识别失败:", error);
+          common_vendor.index.__f__("error", "at pages/ancient/recite.vue:572", "H5 文件识别失败:", error);
         } finally {
           common_vendor.index.hideLoading();
           this.cleanupH5PcmRecorder();
@@ -527,7 +532,8 @@ const _sfc_main = {
       getApp().globalData.reciteResult = {
         textData: this.textData,
         recognizedText,
-        hintCount: this.hintCount
+        hintCount: this.hintCount,
+        duration: Number(this.duration) || 0
       };
       common_vendor.index.redirectTo({
         url: `/pages/ancient/result?id=${this.id}`
@@ -545,31 +551,35 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     a: common_vendor.t($data.textData.title),
     b: common_vendor.t($data.textData.dynasty),
     c: common_vendor.t($data.textData.author),
-    d: $data.hints.length > 0
+    d: $data.showArticleContent && $data.textData.content
+  }, $data.showArticleContent && $data.textData.content ? {
+    e: common_vendor.t($data.textData.content)
+  } : {}, {
+    f: $data.hints.length > 0
   }, $data.hints.length > 0 ? {
-    e: common_vendor.f($data.hints, (h, idx, i0) => {
+    g: common_vendor.f($data.hints, (h, idx, i0) => {
       return {
         a: common_vendor.t(h),
         b: idx
       };
     })
   } : {}, {
-    f: $data.recording
+    h: $data.recording
   }, $data.recording ? {
-    g: common_vendor.t($options.formatTime($data.duration))
+    i: common_vendor.t($options.formatTime($data.duration))
   } : !$data.started ? {} : {}, {
-    h: !$data.started,
-    i: $data.started
+    j: !$data.started,
+    k: $data.started
   }, $data.started ? {
-    j: common_vendor.t($data.realtimeText || "等待识别结果...")
+    l: common_vendor.t($data.realtimeText || "等待识别结果...")
   } : {}, {
-    k: !$data.started
+    m: !$data.started
   }, !$data.started ? {
-    l: common_vendor.o((...args) => $options.startRecite && $options.startRecite(...args))
+    n: common_vendor.o((...args) => $options.startRecite && $options.startRecite(...args))
   } : {}, {
-    m: $data.recording
+    o: $data.recording
   }, $data.recording ? {
-    n: common_vendor.o((...args) => $options.stopRecite && $options.stopRecite(...args))
+    p: common_vendor.o((...args) => $options.stopRecite && $options.stopRecite(...args))
   } : {});
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-8a14f31b"]]);

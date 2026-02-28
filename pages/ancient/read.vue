@@ -28,6 +28,7 @@
           :class="{
             active: currentUnitIndex === index,
             loading: loadingUnitIndex === index,
+            liveMatching: speechActive && speechLiveMatchedIndex === index,
             matched: lastMatchedIndex === index
           }"
           @tap="onTapSentence(index)"
@@ -49,6 +50,9 @@
       </scroll-view>
     </view>
 
+    <view v-if="speechCurrentSentenceText" class="speech-floating-row">
+      <text class="speech-current-text">{{ speechCurrentSentenceText }}</text>
+    </view>
     <view class="bottom-bar">
       <view class="speech-btn-row">
         <view
@@ -115,6 +119,9 @@ export default {
       speechSocketTask: null,
       speechSocketReady: false,
       speechTaskFinished: false,
+      speechUiUpdateTimer: null,
+      speechPendingMergedText: '',
+      speechPendingChunkText: '',
       speechSessionId: '',
       speechFrameQueue: [],
       speechFrameFlushTimer: null,
@@ -126,9 +133,17 @@ export default {
       speechWebAudioContext: null,
       speechWebMediaStream: null,
       speechWebScriptProcessor: null,
+      speechLiveDiffMap: {},
       speechSentenceResultMap: {},
       speechSentenceAttemptMap: {},
-      lastMatchedIndex: -1
+      lastMatchedIndex: -1,
+      speechLiveMatchedIndex: -1,
+      speechLiveMatchedAccuracy: 0,
+      speechLiveCandidateIndex: -1,
+      speechLiveCandidateHits: 0,
+      speechLastSwitchAt: 0,
+      speechFlowCursorIndex: 0,
+      speechLatestChunkText: ''
     }
   },
   computed: {
@@ -149,6 +164,18 @@ export default {
         return `实时识别：${this.speechRealtimeText}`
       }
       return '长按下方按钮开始朗读，松手后自动匹配句子并标注正误'
+    },
+    speechCurrentSentenceText() {
+      if (!this.speechActive && !this.speechStarting) return ''
+      const source = String(this.speechLatestChunkText || this.speechRealtimeText || '').trim()
+      if (!source) return ''
+      const current = this.extractCurrentSentenceText(source)
+      const noPunctuation = current
+        .replace(/[，。！？；：、,.!?;:'"“”‘’（）()《》〈〉【】\[\]—…\-\s]/g, '')
+        .trim()
+      if (!noPunctuation) return ''
+      if (noPunctuation.length <= 36) return noPunctuation
+      return `${noPunctuation.slice(0, 36)}...`
     }
   },
   onLoad(options) {
@@ -227,6 +254,7 @@ export default {
       this.queueNextIndex = 0
       this.pausedUnitIndex = -1
       this.lastFinishedUnitIndex = -1
+      this.speechLiveDiffMap = {}
       this.speechSentenceResultMap = {}
       this.speechSentenceAttemptMap = {}
       this.lastMatchedIndex = -1
@@ -441,6 +469,13 @@ export default {
     getSentenceDisplayChars(index) {
       const unit = this.playUnits[index]
       if (!unit) return []
+      const liveResult = this.speechLiveDiffMap[unit.unitId]
+      if ((this.speechActive || this.speechStarting) && Array.isArray(liveResult) && liveResult.length) {
+        return liveResult.map(item => ({
+          ...item,
+          status: this.toLiveStatus(item.status)
+        }))
+      }
       const result = this.speechSentenceResultMap[unit.unitId]
       if (result && Array.isArray(result.diffResult) && result.diffResult.length) {
         return result.diffResult
@@ -454,11 +489,19 @@ export default {
       if (!result) return ''
       return `第 ${result.attemptNo} 遍 · 准确率 ${result.accuracy}%`
     },
+    toLiveStatus(status) {
+      if (status === 'correct') return 'live-correct'
+      if (status === 'missing' || status === 'wrong') return 'live-wrong'
+      if (status === 'punctuation') return 'live-punctuation'
+      return 'normal'
+    },
     cleanupSpeechTimers() {
       clearInterval(this.speechDurationTimer)
       this.speechDurationTimer = null
       clearInterval(this.speechFrameFlushTimer)
       this.speechFrameFlushTimer = null
+      clearTimeout(this.speechUiUpdateTimer)
+      this.speechUiUpdateTimer = null
     },
     async ensureSpeechAsrConfig() {
       const res = await uniCloud.callFunction({
@@ -480,6 +523,7 @@ export default {
         await this.ensureSpeechAsrConfig()
         this.resetSpeechRuntimeState()
         this.speechTargetIndex = -1
+        this.speechFlowCursorIndex = Math.max(0, this.lastMatchedIndex >= 0 ? this.lastMatchedIndex : 0)
         this.speechStopping = false
         this.speechDurationSeconds = 0
         clearInterval(this.speechDurationTimer)
@@ -504,10 +548,10 @@ export default {
       this.speechStopping = true
       clearInterval(this.speechDurationTimer)
       this.speechDurationTimer = null
-      uni.showLoading({ title: '正在识别...' })
       try {
         await this.stopSpeechRecorder()
         await this.finishSpeechTask()
+        this.flushSpeechUiUpdate()
         const recognizedText = this.speechRealtimeText
         if (!recognizedText) {
           uni.showToast({ title: '未识别到语音内容', icon: 'none' })
@@ -521,7 +565,6 @@ export default {
           duration: 2500
         })
       } finally {
-        uni.hideLoading()
         this.endSpeechSession()
       }
     },
@@ -544,20 +587,49 @@ export default {
       this.speechStopping = false
       this.speechSocketReady = false
       this.speechTaskFinished = false
+      this.speechPendingMergedText = ''
+      this.speechPendingChunkText = ''
       this.speechSessionId = ''
       this.speechFrameQueue = []
+      this.speechLiveDiffMap = {}
+      this.speechLiveMatchedIndex = -1
+      this.speechLiveMatchedAccuracy = 0
+      this.speechLiveCandidateIndex = -1
+      this.speechLiveCandidateHits = 0
+      this.speechLastSwitchAt = 0
+      this.speechFlowCursorIndex = 0
+      this.speechRealtimeText = ''
+      this.speechLatestChunkText = ''
     },
     resetSpeechRuntimeState() {
       this.speechSocketReady = false
       this.speechTaskFinished = false
+      this.speechPendingMergedText = ''
+      this.speechPendingChunkText = ''
       this.speechSessionId = ''
       this.speechFrameQueue = []
+      this.speechLiveDiffMap = {}
       this.speechSegmentMap = {}
       this.speechRealtimeText = ''
+      this.speechLiveMatchedIndex = -1
+      this.speechLiveMatchedAccuracy = 0
+      this.speechLiveCandidateIndex = -1
+      this.speechLiveCandidateHits = 0
+      this.speechLastSwitchAt = 0
+      this.speechFlowCursorIndex = 0
+      this.speechLatestChunkText = ''
       this.speechWaitFinishResolver = null
     },
     async applySpeechResult(recognizedText) {
-      const matched = this.findBestMatchedUnit(recognizedText, this.speechTargetIndex)
+      const currentChunk = String(this.speechLatestChunkText || '').trim()
+      const targetText = currentChunk || recognizedText
+      let matched = null
+      if (this.speechLiveMatchedIndex >= 0 && this.playUnits[this.speechLiveMatchedIndex]) {
+        matched = { index: this.speechLiveMatchedIndex, accuracy: this.speechLiveMatchedAccuracy }
+      } else {
+        const preferredIndex = this.speechTargetIndex >= 0 ? this.speechTargetIndex : this.speechFlowCursorIndex
+        matched = this.findBestMatchedUnit(targetText, preferredIndex)
+      }
       if (!matched || matched.index < 0) {
         uni.showToast({ title: '未匹配到对应句子', icon: 'none' })
         return
@@ -568,7 +640,7 @@ export default {
       this.lastMatchedIndex = matched.index
       this.scrollIntoViewId = `play-unit-${matched.index}`
 
-      const diffResult = diffChars(targetUnit.text, recognizedText)
+      const diffResult = diffChars(targetUnit.text, targetText)
       const accuracy = calcAccuracy(diffResult)
       const wrongChars = diffResult
         .filter(item => item.status === 'missing' || item.status === 'wrong')
@@ -582,14 +654,14 @@ export default {
           diffResult,
           accuracy,
           attemptNo,
-          recognizedText,
+          recognizedText: targetText,
           wrongChars
         }
       }
       await this.saveSpeechRecord({
         unit: targetUnit,
         sentenceIndex: matched.index,
-        recognizedText,
+        recognizedText: targetText,
         diffResult,
         accuracy,
         wrongChars,
@@ -600,7 +672,11 @@ export default {
       const target = String(recognizedText || '').trim()
       if (!target || !this.playUnits.length) return null
       let best = null
-      this.playUnits.forEach((unit, index) => {
+      const hasPreferred = Number.isInteger(preferredIndex) && preferredIndex >= 0
+      const start = hasPreferred ? Math.max(0, preferredIndex - 2) : 0
+      const end = hasPreferred ? Math.min(this.playUnits.length - 1, preferredIndex + 4) : this.playUnits.length - 1
+      for (let index = start; index <= end; index++) {
+        const unit = this.playUnits[index]
         const diffResult = diffChars(unit.text, target)
         const accuracy = calcAccuracy(diffResult)
         const distance = preferredIndex >= 0 ? Math.abs(index - preferredIndex) : 9999
@@ -608,7 +684,7 @@ export default {
         if (!best || score > best.score) {
           best = { index, score, accuracy }
         }
-      })
+      }
       if (!best) return null
       if (best.accuracy < 20 && preferredIndex >= 0 && this.playUnits[preferredIndex]) {
         return { index: preferredIndex, accuracy: best.accuracy }
@@ -726,7 +802,9 @@ export default {
         .sort((a, b) => a - b)
         .map(key => this.speechSegmentMap[key] || '')
         .join('')
-      this.speechRealtimeText = merged
+      this.speechPendingMergedText = merged
+      this.speechPendingChunkText = text
+      this.scheduleSpeechUiUpdate()
       if (data.ls === true) {
         this.speechTaskFinished = true
         if (typeof this.speechWaitFinishResolver === 'function') {
@@ -734,6 +812,93 @@ export default {
           this.speechWaitFinishResolver = null
         }
       }
+    },
+    scheduleSpeechUiUpdate() {
+      if (this.speechUiUpdateTimer) return
+      this.speechUiUpdateTimer = setTimeout(() => {
+        this.flushSpeechUiUpdate()
+      }, 120)
+    },
+    flushSpeechUiUpdate() {
+      if (this.speechUiUpdateTimer) {
+        clearTimeout(this.speechUiUpdateTimer)
+        this.speechUiUpdateTimer = null
+      }
+      const merged = String(this.speechPendingMergedText || '')
+      const chunk = String(this.speechPendingChunkText || '')
+      if (!merged && !chunk) return
+      this.speechRealtimeText = merged
+      this.speechLatestChunkText = chunk
+      this.updateSpeechLiveMatch(merged)
+    },
+    updateSpeechLiveMatch(recognizedChunk) {
+      const chunk = String(recognizedChunk || '').trim()
+      if (!chunk || !this.playUnits.length) return
+      const now = Date.now()
+      const cursor = Math.max(0, Math.min(this.speechFlowCursorIndex || 0, this.playUnits.length - 1))
+      let matched = this.findBestMatchedUnit(chunk, cursor)
+      if (!matched || matched.accuracy < 35) {
+        matched = this.findBestMatchedUnit(chunk, this.speechLiveMatchedIndex >= 0 ? this.speechLiveMatchedIndex : cursor)
+      }
+      if (!matched || matched.index < 0) return
+
+      let activeIndex = this.speechLiveMatchedIndex
+      let switched = false
+      const canInit = activeIndex < 0
+      if (canInit) {
+        activeIndex = matched.index
+        switched = true
+        this.speechLiveCandidateIndex = -1
+        this.speechLiveCandidateHits = 0
+      } else if (matched.index === activeIndex) {
+        this.speechLiveCandidateIndex = -1
+        this.speechLiveCandidateHits = 0
+      } else {
+        if (this.speechLiveCandidateIndex === matched.index) {
+          this.speechLiveCandidateHits += 1
+        } else {
+          this.speechLiveCandidateIndex = matched.index
+          this.speechLiveCandidateHits = 1
+        }
+        const meetsHitThreshold = this.speechLiveCandidateHits >= 2
+        const meetsAccuracy = Number(matched.accuracy || 0) >= 55
+        const meetsStayTime = now - Number(this.speechLastSwitchAt || 0) >= 650
+        if (meetsHitThreshold && meetsAccuracy && meetsStayTime) {
+          activeIndex = matched.index
+          switched = true
+          this.speechLiveCandidateIndex = -1
+          this.speechLiveCandidateHits = 0
+        }
+      }
+
+      if (switched || this.speechLiveMatchedIndex < 0) {
+        this.speechLiveMatchedIndex = activeIndex
+        this.currentUnitIndex = activeIndex
+        this.scrollIntoViewId = `play-unit-${activeIndex}`
+        this.speechLastSwitchAt = now
+      }
+      this.speechLiveMatchedAccuracy = Number(matched.accuracy || 0)
+
+      const targetUnit = this.playUnits[activeIndex]
+      if (targetUnit) {
+        const currentSentenceText = this.extractCurrentSentenceText(chunk)
+        const liveDiff = diffChars(targetUnit.text, currentSentenceText || chunk)
+        this.speechLiveDiffMap = {
+          [targetUnit.unitId]: liveDiff
+        }
+      }
+      // 当当前句命中较高时，游标前移，支持“按住读完整篇”连续匹配
+      if (matched.accuracy >= 88 && activeIndex >= cursor) {
+        this.speechFlowCursorIndex = Math.min(activeIndex + 1, this.playUnits.length - 1)
+      } else {
+        this.speechFlowCursorIndex = activeIndex
+      }
+    },
+    extractCurrentSentenceText(source) {
+      const text = String(source || '').trim()
+      if (!text) return ''
+      const parts = text.split(/[。！？!?；;\n]/).map(item => item.trim()).filter(Boolean)
+      return parts.length ? parts[parts.length - 1] : text
     },
     extractSpeechTextFromData(data) {
       const rt = (((data || {}).cn || {}).st || {}).rt
@@ -1207,7 +1372,7 @@ export default {
   min-height: 100vh;
   background: #f5f5f5;
   padding: 24rpx;
-  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(228rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 .top-tools {
@@ -1293,6 +1458,10 @@ export default {
 .sentence-item.loading {
   border-color: #f2c94c;
 }
+.sentence-item.liveMatching {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2rpx rgba(249, 115, 22, 0.14);
+}
 .sentence-item.matched {
   border-color: #22c55e;
 }
@@ -1309,6 +1478,15 @@ export default {
 .char-missing,
 .char-wrong {
   color: #dc2626;
+}
+.char-live-correct {
+  color: #4ade80;
+}
+.char-live-wrong {
+  color: #fb7185;
+}
+.char-live-punctuation {
+  color: #9ca3af;
 }
 .char-punctuation,
 .char-normal {
@@ -1360,6 +1538,23 @@ export default {
 }
 .speech-btn-row {
   margin-top: 0;
+}
+.speech-floating-row {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  z-index: 12;
+  pointer-events: none;
+}
+.speech-current-text {
+  display: block;
+  text-align: center;
+  font-size: 34rpx;
+  color: #f97316;
+  font-weight: 600;
+  line-height: 1.6;
+  text-shadow: 0 2rpx 8rpx rgba(255, 255, 255, 0.8);
 }
 .speech-btn {
   width: 100%;

@@ -42,7 +42,34 @@
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
-.btn-recite.data-v-6ec0574f {
-  width: 100%;
+.action-row.data-v-6ec0574f {
+  display: flex;
+  gap: 20rpx;
+}
+.action-btn.data-v-6ec0574f {
+  flex: 1;
   border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  padding: 0;
+  line-height: 1;
+  height: 84rpx;
+}
+.btn-read.data-v-6ec0574f {
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 2rpx solid #c7d2fe;
+}
+.btn-recite.data-v-6ec0574f {
+  color: #0b57d0;
+  background: #e8f1ff;
+  border: 2rpx solid #bdd5ff;
+}
+.btn-dictation.data-v-6ec0574f {
+  color: #2563eb;
+  background: #eef4ff;
+  border: 2rpx solid #c9dcff;
 }

@@ -9,8 +9,12 @@ if (!Math) {
   "./pages/ancient/list.js";
   "./pages/ancient/history.js";
   "./pages/ancient/detail.js";
+  "./pages/ancient/dictation.js";
+  "./pages/ancient/read.js";
   "./pages/ancient/recite.js";
   "./pages/ancient/result.js";
+  "./pages/square/index.js";
+  "./pages/square/list.js";
   "./pages/ucenter/ucenter.js";
   "./pages/uni-agree/uni-agree.js";
   "./pages/ucenter/settings/settings.js";

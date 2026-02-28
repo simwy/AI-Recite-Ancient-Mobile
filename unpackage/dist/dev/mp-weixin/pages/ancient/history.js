@@ -30,7 +30,7 @@ const _sfc_main = {
       this.loading = true;
       try {
         const res = await common_vendor.tr.callFunction({
-          name: "recite-record",
+          name: "gw_recite-record",
           data: {
             action: "list",
             data: { page: this.page, pageSize: 20 }
@@ -76,7 +76,7 @@ const _sfc_main = {
       this.deletingId = id;
       try {
         const res = await common_vendor.tr.callFunction({
-          name: "recite-record",
+          name: "gw_recite-record",
           data: {
             action: "delete",
             data: { id }
