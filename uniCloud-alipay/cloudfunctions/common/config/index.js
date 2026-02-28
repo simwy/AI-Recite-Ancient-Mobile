@@ -11,6 +11,20 @@ module.exports = {
     punctuationPredictionEnabled: true,
     inverseTextNormalizationEnabled: true
   },
+  iflytekAsr: {
+    endpoint: 'wss://office-api-ast-dx.iflyaisol.com/ast/communicate/v1',
+    appId: '43758daa',
+    apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',
+    apiSecret: 'ZjE4ZmJhOTFhYjhjYzE5NTk2NGViZjIy',
+    uuidPrefix: 'gw-read',
+    sampleRate: 16000,
+    audioEncode: 'pcm_s16le',
+    lang: 'autodialect',
+    frameBytes: 1280,
+    frameIntervalMs: 40,
+    timeout: 20000,
+    utcOffset: '+0800'
+  },
   iflytekTts: {
     appId: '43758daa',
     apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',

@@ -39,6 +39,11 @@
       "bsonType": "string",
       "description": "语音识别文字"
     },
+    "practice_mode": {
+      "bsonType": "string",
+      "description": "练习模式（recite/read）",
+      "defaultValue": "recite"
+    },
     "diff_result": {
       "bsonType": "array",
       "description": "逐字对比结果",
@@ -53,6 +58,29 @@
     "accuracy": {
       "bsonType": "double",
       "description": "正确率"
+    },
+    "sentence_index": {
+      "bsonType": "int",
+      "description": "匹配句索引，-1 表示整篇"
+    },
+    "sentence_text": {
+      "bsonType": "string",
+      "description": "匹配句内容"
+    },
+    "sentence_accuracy": {
+      "bsonType": "double",
+      "description": "句子级准确率"
+    },
+    "wrong_chars": {
+      "bsonType": "array",
+      "description": "读错的字",
+      "items": {
+        "bsonType": "string"
+      }
+    },
+    "attempt_no": {
+      "bsonType": "int",
+      "description": "第几遍"
     },
     "created_at": {
       "bsonType": "timestamp",

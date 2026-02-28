@@ -28,11 +28,17 @@ exports.main = async (event, context) => {
         user_id: uid,
         text_id: data.text_id,
         text_title: data.text_title,
+        practice_mode: data.practice_mode || 'recite',
         hint_count: data.hint_count || 0,
         duration_seconds: Number(data.duration_seconds) || 0,
         recognized_text: data.recognized_text || '',
         diff_result: data.diff_result || [],
         accuracy: data.accuracy || 0,
+        sentence_index: Number.isInteger(data.sentence_index) ? data.sentence_index : -1,
+        sentence_text: data.sentence_text || '',
+        sentence_accuracy: Number(data.sentence_accuracy) || 0,
+        wrong_chars: Array.isArray(data.wrong_chars) ? data.wrong_chars : [],
+        attempt_no: Number(data.attempt_no) || 0,
         created_at: Date.now()
       }
       const res = await collection.add(record)

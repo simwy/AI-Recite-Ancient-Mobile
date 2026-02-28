@@ -27,12 +27,20 @@
           class="sentence-item"
           :class="{
             active: currentUnitIndex === index,
-            loading: loadingUnitIndex === index
+            loading: loadingUnitIndex === index,
+            matched: lastMatchedIndex === index
           }"
           @tap="onTapSentence(index)"
         >
           <text v-if="unit.pinyinText" class="sentence-pinyin">{{ unit.pinyinText }}</text>
-          <text class="sentence-text">{{ unit.text }}</text>
+          <view class="sentence-text">
+            <text
+              v-for="(charItem, charIdx) in getSentenceDisplayChars(index)"
+              :key="`${unit.unitId}-${charIdx}`"
+              :class="['char-item', `char-${charItem.status}`]"
+            >{{ charItem.char }}</text>
+          </view>
+          <text v-if="getSentenceReadMeta(index)" class="sentence-read-meta">{{ getSentenceReadMeta(index) }}</text>
           <text v-if="loadingUnitIndex === index" class="sentence-tip">正在合成语音...</text>
         </view>
         <view v-if="playUnits.length === 0" class="empty-tip">
@@ -42,8 +50,16 @@
     </view>
 
     <view class="bottom-bar">
-      <view class="status-row">
-        <text class="status-text">{{ playStatusText }}</text>
+      <view class="speech-btn-row">
+        <view
+          class="speech-btn"
+          :class="{ active: speechActive || speechStarting }"
+          @longpress.stop.prevent="onPressStart"
+          @touchend.stop.prevent="onPressEnd"
+          @touchcancel.stop.prevent="onPressEnd"
+        >
+          <text>{{ speechActive || speechStarting ? '松开结束朗读' : '按住朗读' }}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -51,6 +67,7 @@
 
 <script>
 import { pinyin } from 'pinyin-pro'
+import { diffChars, calcAccuracy } from '@/common/diff.js'
 
 const db = uniCloud.database()
 const CACHE_INDEX_KEY = 'gw_tts_audio_cache_index_v1'
@@ -86,7 +103,32 @@ export default {
         volume: 50,
         format: 'mp3'
       },
-      snapshotSyncing: false
+      snapshotSyncing: false,
+      speechStarting: false,
+      speechActive: false,
+      speechPendingStop: false,
+      speechTargetIndex: -1,
+      speechDurationSeconds: 0,
+      speechDurationTimer: null,
+      speechRealtimeText: '',
+      speechAsrConfig: null,
+      speechSocketTask: null,
+      speechSocketReady: false,
+      speechTaskFinished: false,
+      speechSessionId: '',
+      speechFrameQueue: [],
+      speechFrameFlushTimer: null,
+      speechSegmentMap: {},
+      speechWaitFinishResolver: null,
+      speechStopping: false,
+      speechRecorderManager: null,
+      speechUseWebRecorder: false,
+      speechWebAudioContext: null,
+      speechWebMediaStream: null,
+      speechWebScriptProcessor: null,
+      speechSentenceResultMap: {},
+      speechSentenceAttemptMap: {},
+      lastMatchedIndex: -1
     }
   },
   computed: {
@@ -98,17 +140,30 @@ export default {
       if (this.loadingUnitIndex >= 0) return `第 ${this.loadingUnitIndex + 1} 句语音生成中...`
       if (this.currentUnitIndex >= 0) return `当前第 ${this.currentUnitIndex + 1} 句`
       return '可点按任一句单独朗读，或使用完整朗读'
+    },
+    speechStatusText() {
+      if (this.speechActive) {
+        return `长按朗读中（${this.formatSpeechDuration(this.speechDurationSeconds)}）松手自动识别`
+      }
+      if (this.speechRealtimeText) {
+        return `实时识别：${this.speechRealtimeText}`
+      }
+      return '长按下方按钮开始朗读，松手后自动匹配句子并标注正误'
     }
   },
   onLoad(options) {
     this.id = options.id || ''
     this.localCacheIndex = this.loadCacheIndex()
     this.initAudioContext()
+    this.initSpeechRecorder()
     this.loadDetail()
   },
   onUnload() {
     this.stopActiveAudio()
     this.audioPlayResolver = null
+    this.cleanupSpeechTimers()
+    this.stopSpeechWebRecorder()
+    this.closeSpeechSocket()
     if (this.audioContext) {
       this.audioContext.destroy()
       this.audioContext = null
@@ -172,6 +227,10 @@ export default {
       this.queueNextIndex = 0
       this.pausedUnitIndex = -1
       this.lastFinishedUnitIndex = -1
+      this.speechSentenceResultMap = {}
+      this.speechSentenceAttemptMap = {}
+      this.lastMatchedIndex = -1
+      this.speechRealtimeText = ''
       this.syncSentenceSnapshot(rawContent)
     },
     buildPlayUnits(content) {
@@ -364,6 +423,492 @@ export default {
         title: '打印功能即将上线',
         icon: 'none'
       })
+    },
+    onPressStart() {
+      if (!this.playUnits.length) return
+      if (this.speechActive || this.speechStarting) return
+      this.startSpeechRecognition()
+    },
+    onPressEnd() {
+      if (!this.speechActive) {
+        if (this.speechStarting) {
+          this.speechPendingStop = true
+        }
+        return
+      }
+      this.stopSpeechRecognition()
+    },
+    getSentenceDisplayChars(index) {
+      const unit = this.playUnits[index]
+      if (!unit) return []
+      const result = this.speechSentenceResultMap[unit.unitId]
+      if (result && Array.isArray(result.diffResult) && result.diffResult.length) {
+        return result.diffResult
+      }
+      return String(unit.text || '').split('').map(char => ({ char, status: 'normal' }))
+    },
+    getSentenceReadMeta(index) {
+      const unit = this.playUnits[index]
+      if (!unit) return ''
+      const result = this.speechSentenceResultMap[unit.unitId]
+      if (!result) return ''
+      return `第 ${result.attemptNo} 遍 · 准确率 ${result.accuracy}%`
+    },
+    cleanupSpeechTimers() {
+      clearInterval(this.speechDurationTimer)
+      this.speechDurationTimer = null
+      clearInterval(this.speechFrameFlushTimer)
+      this.speechFrameFlushTimer = null
+    },
+    async ensureSpeechAsrConfig() {
+      const res = await uniCloud.callFunction({
+        name: 'gw_asr-config',
+        data: { provider: 'iflytek-rtasr' }
+      })
+      const result = (res && res.result) || {}
+      if (result.code !== 0 || !result.data || !result.data.wsUrl) {
+        throw new Error(result.msg || '获取讯飞语音配置失败')
+      }
+      this.speechAsrConfig = result.data
+      return this.speechAsrConfig
+    },
+    async startSpeechRecognition() {
+      if (this.speechActive || this.speechStarting) return
+      this.speechStarting = true
+      this.speechPendingStop = false
+      try {
+        await this.ensureSpeechAsrConfig()
+        this.resetSpeechRuntimeState()
+        this.speechTargetIndex = -1
+        this.speechStopping = false
+        this.speechDurationSeconds = 0
+        clearInterval(this.speechDurationTimer)
+        this.speechDurationTimer = setInterval(() => {
+          this.speechDurationSeconds += 1
+        }, 1000)
+        await this.openSpeechSocket()
+        this.startSpeechFrameFlusher()
+        await this.startSpeechRecorder()
+        this.speechActive = true
+        this.speechStarting = false
+        if (this.speechPendingStop) {
+          this.stopSpeechRecognition()
+        }
+      } catch (error) {
+        this.speechStarting = false
+        this.failSpeechSession(error)
+      }
+    },
+    async stopSpeechRecognition() {
+      if (!this.speechActive || this.speechStopping) return
+      this.speechStopping = true
+      clearInterval(this.speechDurationTimer)
+      this.speechDurationTimer = null
+      uni.showLoading({ title: '正在识别...' })
+      try {
+        await this.stopSpeechRecorder()
+        await this.finishSpeechTask()
+        const recognizedText = this.speechRealtimeText
+        if (!recognizedText) {
+          uni.showToast({ title: '未识别到语音内容', icon: 'none' })
+          return
+        }
+        await this.applySpeechResult(recognizedText)
+      } catch (error) {
+        uni.showToast({
+          title: (error && error.message) || '识别失败',
+          icon: 'none',
+          duration: 2500
+        })
+      } finally {
+        uni.hideLoading()
+        this.endSpeechSession()
+      }
+    },
+    failSpeechSession(error) {
+      this.endSpeechSession()
+      uni.showToast({
+        title: (error && error.message) || '启动朗读识别失败',
+        icon: 'none',
+        duration: 2500
+      })
+      console.error('启动朗读识别失败:', error)
+    },
+    endSpeechSession() {
+      this.cleanupSpeechTimers()
+      this.stopSpeechWebRecorder()
+      this.closeSpeechSocket()
+      this.speechStarting = false
+      this.speechActive = false
+      this.speechPendingStop = false
+      this.speechStopping = false
+      this.speechSocketReady = false
+      this.speechTaskFinished = false
+      this.speechSessionId = ''
+      this.speechFrameQueue = []
+    },
+    resetSpeechRuntimeState() {
+      this.speechSocketReady = false
+      this.speechTaskFinished = false
+      this.speechSessionId = ''
+      this.speechFrameQueue = []
+      this.speechSegmentMap = {}
+      this.speechRealtimeText = ''
+      this.speechWaitFinishResolver = null
+    },
+    async applySpeechResult(recognizedText) {
+      const matched = this.findBestMatchedUnit(recognizedText, this.speechTargetIndex)
+      if (!matched || matched.index < 0) {
+        uni.showToast({ title: '未匹配到对应句子', icon: 'none' })
+        return
+      }
+      const targetUnit = this.playUnits[matched.index]
+      if (!targetUnit) return
+      this.currentUnitIndex = matched.index
+      this.lastMatchedIndex = matched.index
+      this.scrollIntoViewId = `play-unit-${matched.index}`
+
+      const diffResult = diffChars(targetUnit.text, recognizedText)
+      const accuracy = calcAccuracy(diffResult)
+      const wrongChars = diffResult
+        .filter(item => item.status === 'missing' || item.status === 'wrong')
+        .map(item => item.char)
+        .filter(char => /[\u4e00-\u9fff]/.test(char))
+      const attemptNo = (this.speechSentenceAttemptMap[targetUnit.unitId] || 0) + 1
+      this.speechSentenceAttemptMap[targetUnit.unitId] = attemptNo
+      this.speechSentenceResultMap = {
+        ...this.speechSentenceResultMap,
+        [targetUnit.unitId]: {
+          diffResult,
+          accuracy,
+          attemptNo,
+          recognizedText,
+          wrongChars
+        }
+      }
+      await this.saveSpeechRecord({
+        unit: targetUnit,
+        sentenceIndex: matched.index,
+        recognizedText,
+        diffResult,
+        accuracy,
+        wrongChars,
+        attemptNo
+      })
+    },
+    findBestMatchedUnit(recognizedText, preferredIndex) {
+      const target = String(recognizedText || '').trim()
+      if (!target || !this.playUnits.length) return null
+      let best = null
+      this.playUnits.forEach((unit, index) => {
+        const diffResult = diffChars(unit.text, target)
+        const accuracy = calcAccuracy(diffResult)
+        const distance = preferredIndex >= 0 ? Math.abs(index - preferredIndex) : 9999
+        const score = accuracy * 100 - distance
+        if (!best || score > best.score) {
+          best = { index, score, accuracy }
+        }
+      })
+      if (!best) return null
+      if (best.accuracy < 20 && preferredIndex >= 0 && this.playUnits[preferredIndex]) {
+        return { index: preferredIndex, accuracy: best.accuracy }
+      }
+      return best
+    },
+    async saveSpeechRecord(payload) {
+      const { unit, sentenceIndex, recognizedText, diffResult, accuracy, wrongChars, attemptNo } = payload
+      try {
+        await uniCloud.callFunction({
+          name: 'gw_recite-record',
+          data: {
+            action: 'save',
+            data: {
+              text_id: this.id,
+              text_title: this.detail.title || '',
+              practice_mode: 'read',
+              hint_count: 0,
+              duration_seconds: Number(this.speechDurationSeconds) || 0,
+              recognized_text: recognizedText,
+              diff_result: diffResult,
+              accuracy,
+              sentence_index: sentenceIndex,
+              sentence_text: unit.text || '',
+              sentence_accuracy: accuracy,
+              wrong_chars: wrongChars,
+              attempt_no: attemptNo
+            }
+          }
+        })
+      } catch (error) {
+        console.error('保存朗读记录失败:', error)
+      }
+    },
+    openSpeechSocket() {
+      return new Promise((resolve, reject) => {
+        const socketTimeout = Number(this.speechAsrConfig.timeout || 20000) || 20000
+        const timer = setTimeout(() => {
+          reject(new Error('语音服务连接超时'))
+        }, socketTimeout)
+        this.speechSocketTask = uni.connectSocket({
+          url: this.speechAsrConfig.wsUrl,
+          complete: () => {}
+        })
+        this.speechSocketTask.onOpen(() => {
+          clearTimeout(timer)
+          this.speechSocketReady = true
+          resolve()
+        })
+        this.speechSocketTask.onMessage(({ data }) => {
+          this.handleSpeechSocketMessage(data)
+        })
+        this.speechSocketTask.onError((err) => {
+          clearTimeout(timer)
+          reject(err)
+        })
+        this.speechSocketTask.onClose(() => {
+          this.speechSocketTask = null
+          this.speechSocketReady = false
+        })
+      })
+    },
+    closeSpeechSocket() {
+      if (!this.speechSocketTask) return
+      try {
+        this.speechSocketTask.close({})
+      } catch (error) {
+        console.error('关闭朗读 socket 失败:', error)
+      }
+      this.speechSocketTask = null
+      this.speechSocketReady = false
+    },
+    handleSpeechSocketMessage(rawData) {
+      const decoded = this.decodeSpeechSocketData(rawData)
+      if (!decoded) return
+      let message = decoded
+      try {
+        message = JSON.parse(decoded)
+      } catch (error) {
+        return
+      }
+      if (message.action === 'started') {
+        this.speechSessionId = message.sid || this.speechSessionId
+        return
+      }
+      if (message.action === 'error' || Number(message.code) > 0) {
+        const errorMessage = message.desc || '语音识别异常'
+        console.error('朗读识别异常:', errorMessage, message)
+      }
+      if (message.msg_type === 'result' && message.res_type === 'asr') {
+        this.consumeSpeechResult(message.data)
+      }
+    },
+    decodeSpeechSocketData(rawData) {
+      if (typeof rawData === 'string') return rawData
+      if (!(rawData instanceof ArrayBuffer)) return ''
+      if (typeof TextDecoder !== 'undefined') {
+        return new TextDecoder('utf-8').decode(rawData)
+      }
+      const bytes = new Uint8Array(rawData)
+      let result = ''
+      for (let i = 0; i < bytes.length; i++) {
+        result += String.fromCharCode(bytes[i])
+      }
+      return decodeURIComponent(escape(result))
+    },
+    consumeSpeechResult(data) {
+      if (!data || !data.cn || !data.cn.st) return
+      const segId = Number(data.seg_id || 0)
+      const text = this.extractSpeechTextFromData(data)
+      if (!text) return
+      this.speechSegmentMap[segId] = text
+      const merged = Object.keys(this.speechSegmentMap)
+        .map(key => Number(key))
+        .sort((a, b) => a - b)
+        .map(key => this.speechSegmentMap[key] || '')
+        .join('')
+      this.speechRealtimeText = merged
+      if (data.ls === true) {
+        this.speechTaskFinished = true
+        if (typeof this.speechWaitFinishResolver === 'function') {
+          this.speechWaitFinishResolver()
+          this.speechWaitFinishResolver = null
+        }
+      }
+    },
+    extractSpeechTextFromData(data) {
+      const rt = (((data || {}).cn || {}).st || {}).rt
+      if (!Array.isArray(rt)) return ''
+      const words = []
+      rt.forEach((part) => {
+        const wsList = (part && part.ws) || []
+        wsList.forEach((wsItem) => {
+          const cwList = (wsItem && wsItem.cw) || []
+          cwList.forEach((cw) => {
+            const token = (cw && cw.w) || ''
+            if (token) words.push(token)
+          })
+        })
+      })
+      return words.join('')
+    },
+    startSpeechFrameFlusher() {
+      clearInterval(this.speechFrameFlushTimer)
+      const intervalMs = Number(this.speechAsrConfig.frameIntervalMs || 40) || 40
+      this.speechFrameFlushTimer = setInterval(() => {
+        if (!this.speechSocketTask || !this.speechSocketReady) return
+        if (!this.speechFrameQueue.length) return
+        const frame = this.speechFrameQueue.shift()
+        this.speechSocketTask.send({ data: frame })
+      }, Math.max(20, intervalMs))
+    },
+    pushSpeechFrame(frameBuffer) {
+      if (!frameBuffer || !(frameBuffer instanceof ArrayBuffer)) return
+      const frameBytes = Number(this.speechAsrConfig.frameBytes || 1280) || 1280
+      const bytes = new Uint8Array(frameBuffer)
+      for (let offset = 0; offset < bytes.length; offset += frameBytes) {
+        const slice = bytes.slice(offset, Math.min(offset + frameBytes, bytes.length))
+        this.speechFrameQueue.push(slice.buffer)
+      }
+    },
+    initSpeechRecorder() {
+      // #ifdef H5
+      this.speechUseWebRecorder = true
+      return
+      // #endif
+      if (typeof uni.getRecorderManager !== 'function') {
+        this.speechUseWebRecorder = true
+        return
+      }
+      try {
+        this.speechRecorderManager = uni.getRecorderManager()
+      } catch (error) {
+        this.speechUseWebRecorder = true
+        return
+      }
+      if (!this.speechRecorderManager) {
+        this.speechUseWebRecorder = true
+        return
+      }
+      this.speechRecorderManager.onFrameRecorded((res) => {
+        this.pushSpeechFrame(res.frameBuffer)
+      })
+      this.speechRecorderManager.onError((error) => {
+        console.error('朗读录音失败:', error)
+      })
+    },
+    async startSpeechRecorder() {
+      if (!this.speechRecorderManager && !this.speechUseWebRecorder) {
+        this.initSpeechRecorder()
+      }
+      if (this.speechUseWebRecorder) {
+        await this.startSpeechWebRecorder()
+        return
+      }
+      this.speechRecorderManager.start({
+        format: 'PCM',
+        sampleRate: Number(this.speechAsrConfig.sampleRate || 16000) || 16000,
+        numberOfChannels: 1,
+        frameSize: 2
+      })
+    },
+    async stopSpeechRecorder() {
+      if (this.speechUseWebRecorder) {
+        this.stopSpeechWebRecorder()
+        return
+      }
+      if (!this.speechRecorderManager) return
+      try {
+        this.speechRecorderManager.stop()
+      } catch (error) {
+        console.error('停止朗读录音失败:', error)
+      }
+    },
+    async startSpeechWebRecorder() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('当前环境不支持录音')
+      }
+      const targetSampleRate = Number(this.speechAsrConfig.sampleRate || 16000) || 16000
+      this.speechWebMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.speechWebAudioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const source = this.speechWebAudioContext.createMediaStreamSource(this.speechWebMediaStream)
+      this.speechWebScriptProcessor = this.speechWebAudioContext.createScriptProcessor(4096, 1, 1)
+      this.speechWebScriptProcessor.onaudioprocess = (event) => {
+        if (!this.speechActive) return
+        const input = event.inputBuffer.getChannelData(0)
+        const pcm = this.convertSpeechFloat32ToPcm(input, this.speechWebAudioContext.sampleRate, targetSampleRate)
+        if (pcm && pcm.byteLength > 0) {
+          this.pushSpeechFrame(pcm)
+        }
+      }
+      source.connect(this.speechWebScriptProcessor)
+      this.speechWebScriptProcessor.connect(this.speechWebAudioContext.destination)
+    },
+    stopSpeechWebRecorder() {
+      if (this.speechWebScriptProcessor) {
+        this.speechWebScriptProcessor.disconnect()
+        this.speechWebScriptProcessor.onaudioprocess = null
+      }
+      if (this.speechWebMediaStream) {
+        this.speechWebMediaStream.getTracks().forEach(track => track.stop())
+      }
+      if (this.speechWebAudioContext) {
+        this.speechWebAudioContext.close()
+      }
+      this.speechWebScriptProcessor = null
+      this.speechWebMediaStream = null
+      this.speechWebAudioContext = null
+    },
+    convertSpeechFloat32ToPcm(float32Array, inputSampleRate, outputSampleRate) {
+      if (!float32Array || float32Array.length === 0) return null
+      const ratio = inputSampleRate / outputSampleRate
+      const outputLength = Math.max(1, Math.floor(float32Array.length / ratio))
+      const result = new Int16Array(outputLength)
+      let offsetResult = 0
+      let offsetBuffer = 0
+      while (offsetResult < outputLength) {
+        const nextOffsetBuffer = Math.floor((offsetResult + 1) * ratio)
+        let sum = 0
+        let count = 0
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i++) {
+          sum += float32Array[i]
+          count++
+        }
+        const sample = count > 0 ? sum / count : 0
+        const clamped = Math.max(-1, Math.min(1, sample))
+        result[offsetResult] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
+        offsetResult++
+        offsetBuffer = nextOffsetBuffer
+      }
+      return result.buffer
+    },
+    finishSpeechTask() {
+      return new Promise((resolve) => {
+        if (!this.speechSocketTask) {
+          resolve()
+          return
+        }
+        const endPayload = {
+          end: true
+        }
+        if (this.speechSessionId) {
+          endPayload.sessionId = this.speechSessionId
+        }
+        this.speechSocketTask.send({
+          data: JSON.stringify(endPayload)
+        })
+        const timer = setTimeout(() => {
+          resolve()
+        }, 5000)
+        this.speechWaitFinishResolver = () => {
+          clearTimeout(timer)
+          resolve()
+        }
+      })
+    },
+    formatSpeechDuration(seconds) {
+      const m = Math.floor((Number(seconds) || 0) / 60)
+      const s = (Number(seconds) || 0) % 60
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     },
     goRecite() {
       getApp().globalData = getApp().globalData || {}
@@ -732,7 +1277,7 @@ export default {
 .content-area {
   border-top: 1rpx solid #eef2f7;
   padding-top: 16rpx;
-  max-height: 68vh;
+  height: 68vh;
 }
 .sentence-item {
   margin-bottom: 12rpx;
@@ -748,9 +1293,26 @@ export default {
 .sentence-item.loading {
   border-color: #f2c94c;
 }
+.sentence-item.matched {
+  border-color: #22c55e;
+}
 .sentence-text {
   color: #111827;
   line-height: 1.8;
+}
+.char-item {
+  color: #111827;
+}
+.char-correct {
+  color: #16a34a;
+}
+.char-missing,
+.char-wrong {
+  color: #dc2626;
+}
+.char-punctuation,
+.char-normal {
+  color: #111827;
 }
 .sentence-pinyin {
   display: block;
@@ -764,6 +1326,12 @@ export default {
   margin-top: 8rpx;
   font-size: 22rpx;
   color: #b26a00;
+}
+.sentence-read-meta {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #4b5563;
 }
 .content-area.font-small .sentence-text {
   font-size: 30rpx;
@@ -790,11 +1358,22 @@ export default {
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
-.status-row {
-  margin-bottom: 12rpx;
+.speech-btn-row {
+  margin-top: 0;
 }
-.status-text {
-  font-size: 24rpx;
-  color: #667085;
+.speech-btn {
+  width: 100%;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx;
+  background: #f97316;
+  color: #fff;
+  font-size: 28rpx;
+  border: 0;
+}
+.speech-btn.active {
+  background: #dc2626;
 }
 </style>
