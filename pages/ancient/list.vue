@@ -15,7 +15,7 @@
         class="list-item"
         v-for="item in list"
         :key="item._id"
-        @click="goRecite(item)"
+        @click="goDetail(item)"
       >
         <view class="item-title">{{ item.title }}</view>
         <view class="item-meta">
@@ -174,7 +174,7 @@ export default {
       if (!content) return ''
       return content.length > len ? content.slice(0, len) + '...' : content
     },
-    goRecite(itemOrId) {
+    goDetail(itemOrId) {
       const isObjectParam = itemOrId && typeof itemOrId === 'object'
       const id = isObjectParam ? itemOrId._id : itemOrId
       if (!id) return
@@ -182,7 +182,8 @@ export default {
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.currentText = isObjectParam ? itemOrId : null
 
-      uni.navigateTo({ url: `/pages/ancient/recite?id=${id}` })
+      const title = isObjectParam ? (itemOrId.title || '') : ''
+      uni.navigateTo({ url: `/pages/ancient/detail?id=${id}&title=${encodeURIComponent(title)}` })
     },
     openAddPopup() {
       this.showAddPopup = true
@@ -225,7 +226,7 @@ export default {
             content: '该古文已在库中，是否前往查看？',
             success: (modalRes) => {
               if (modalRes.confirm) {
-                this.goRecite(data.text._id)
+                this.goDetail(data.text._id)
               }
             }
           })
@@ -283,7 +284,7 @@ export default {
         const info = result.data || {}
         if (info.existed && info.text) {
           uni.showToast({ title: '古文已存在', icon: 'none' })
-          this.goRecite(info.text._id)
+          this.goDetail(info.text._id)
           return
         }
 

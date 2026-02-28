@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <view class="list" v-if="list.length > 0">
-      <view class="list-item" v-for="item in list" :key="item._id" @click="goRecite(item)">
+      <view class="list-item" v-for="item in list" :key="item._id" @click="goDetail(item)">
         <view class="item-header">
           <view class="item-title">{{ item.title }}</view>
           <text class="item-status">{{ getReciteStatus(item) }}</text>
@@ -100,12 +100,12 @@ export default {
     getReciteStatus(item) {
       return item && item.recite_status ? item.recite_status : '未背诵'
     },
-    goRecite(item) {
+    goDetail(item) {
       if (!item || !item._id) return
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.currentText = item
       uni.navigateTo({
-        url: `/pages/ancient/recite?id=${item._id}`
+        url: `/pages/ancient/detail?id=${item._id}&title=${encodeURIComponent(item.title || '')}`
       })
     }
   }
