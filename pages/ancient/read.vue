@@ -1,12 +1,42 @@
 <template>
   <view class="container">
+    <view class="top-tools">
+      <view class="font-switch">
+        <text
+          class="font-item"
+          :class="{ active: fontSize === 'large' }"
+          @tap="setFontSize('large')"
+        >
+          大
+        </text>
+        <text
+          class="font-item"
+          :class="{ active: fontSize === 'medium' }"
+          @tap="setFontSize('medium')"
+        >
+          中
+        </text>
+        <text
+          class="font-item"
+          :class="{ active: fontSize === 'small' }"
+          @tap="setFontSize('small')"
+        >
+          小
+        </text>
+      </view>
+      <view class="right-tools">
+        <button class="tool-btn" size="mini" @tap="openPrintEntry">打印</button>
+        <button class="tool-btn" size="mini" @tap="goRecite">朗读</button>
+      </view>
+    </view>
+
     <view class="article-card">
       <view class="header">
         <text class="title">{{ detail.title || '未命名文章' }}</text>
         <text class="meta">{{ detail.dynasty || '' }}{{ detail.dynasty && detail.author ? ' · ' : '' }}{{ detail.author || '' }}</text>
       </view>
 
-      <view class="content-area">
+      <view class="content-area" :class="`font-${fontSize}`">
         <view v-for="(line, lineIndex) in parsedLines" :key="`line-${lineIndex}`" class="line">
           <view
             v-for="(item, charIndex) in line"
@@ -21,11 +51,8 @@
       </view>
     </view>
 
-    <view class="action-bar">
-      <view class="action-row">
-        <button class="btn-print" @tap="openPrintEntry">打印</button>
-        <button class="btn-recite" type="primary" @tap="goRecite">开始朗读</button>
-      </view>
+    <view class="bottom-bar">
+      <button class="btn-follow" type="primary" @tap="onFollowRead">我要朗读</button>
     </view>
   </view>
 </template>
@@ -41,7 +68,8 @@ export default {
   data() {
     return {
       id: '',
-      detail: {}
+      detail: {},
+      fontSize: 'medium'
     }
   },
   computed: {
@@ -89,6 +117,9 @@ export default {
         pinyinText
       }
     },
+    setFontSize(size) {
+      this.fontSize = size
+    },
     openPrintEntry() {
       uni.showToast({
         title: '打印功能即将上线',
@@ -101,6 +132,12 @@ export default {
       uni.navigateTo({
         url: `/pages/ancient/recite?id=${this.id}`
       })
+    },
+    onFollowRead() {
+      uni.showToast({
+        title: '我要朗读功能开发中',
+        icon: 'none'
+      })
     }
   }
 }
@@ -111,8 +148,14 @@ export default {
   min-height: 100vh;
   background: #f5f5f5;
   padding: 24rpx;
-  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+}
+.top-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
 }
 .article-card {
   background: #fff;
@@ -123,6 +166,42 @@ export default {
 .header {
   text-align: center;
   margin-bottom: 20rpx;
+}
+.right-tools {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.tool-btn {
+  height: 48rpx;
+  line-height: 48rpx;
+  font-size: 22rpx;
+  padding: 0 16rpx;
+  border-radius: 24rpx;
+  color: #2f6fff;
+  background: #eef4ff;
+  border: 1rpx solid #c9dcff;
+}
+.font-switch {
+  display: flex;
+  align-items: center;
+  padding: 0 8rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: #f5f7fa;
+}
+.font-item {
+  min-width: 36rpx;
+  text-align: center;
+  font-size: 22rpx;
+  line-height: 36rpx;
+  color: #667085;
+  border-radius: 18rpx;
+  padding: 0 8rpx;
+}
+.font-item.active {
+  background: #2f6fff;
+  color: #fff;
 }
 .title {
   display: block;
@@ -167,28 +246,35 @@ export default {
   line-height: 1.4;
   color: #111827;
 }
-.action-bar {
+.content-area.font-small .pinyin {
+  font-size: 16rpx;
+}
+.content-area.font-small .hanzi {
+  font-size: 30rpx;
+}
+.content-area.font-medium .pinyin {
+  font-size: 18rpx;
+}
+.content-area.font-medium .hanzi {
+  font-size: 34rpx;
+}
+.content-area.font-large .pinyin {
+  font-size: 22rpx;
+}
+.content-area.font-large .hanzi {
+  font-size: 40rpx;
+}
+.bottom-bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 18rpx 24rpx;
-  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 24rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
-.action-row {
-  display: flex;
-  gap: 16rpx;
-}
-.btn-print,
-.btn-recite {
-  flex: 1;
+.btn-follow {
   border-radius: 12rpx;
-}
-.btn-print {
-  background: #eef4ff;
-  color: #2f6fff;
-  border: 1rpx solid #c9dcff;
 }
 </style>
