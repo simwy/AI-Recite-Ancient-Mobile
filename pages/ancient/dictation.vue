@@ -1,7 +1,20 @@
 <template>
   <view class="container">
     <view class="section-top">
-      <view class="section-title">打印默写纸</view>
+      <view class="section-header">
+        <view class="section-title">打印默写纸</view>
+        <view class="font-tabs">
+          <view
+            v-for="item in fontSizeOptions"
+            :key="item.value"
+            class="font-tab"
+            :class="{ active: selectedFontSize === item.value }"
+            @tap="selectedFontSize = item.value"
+          >
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
       <view class="difficulty-tabs">
         <view
           v-for="item in difficultyOptions"
@@ -14,7 +27,7 @@
         </view>
       </view>
 
-      <view class="paper-card">
+      <view class="paper-card" :class="paperFontClass">
         <view class="paper-line">
           <text class="paper-label">标题：</text>
           <text class="paper-value">{{ detail.title || '（未命名）' }}</text>
@@ -48,10 +61,16 @@ export default {
       id: '',
       detail: {},
       selectedDifficulty: 'junior',
+      selectedFontSize: 'medium',
       difficultyOptions: [
         { label: '初级默写', value: 'junior' },
         { label: '中级默写', value: 'middle' },
         { label: '高级默写', value: 'advanced' }
+      ],
+      fontSizeOptions: [
+        { label: '大', value: 'large' },
+        { label: '中', value: 'medium' },
+        { label: '小', value: 'small' }
       ]
     }
   },
@@ -65,6 +84,9 @@ export default {
       const content = this.safeText(this.detail.content)
       if (!content) return this.buildUnderline(30)
       return this.maskContentByDifficulty(content, this.selectedDifficulty)
+    },
+    paperFontClass() {
+      return `paper-font-${this.selectedFontSize}`
     }
   },
   onLoad(options) {
@@ -91,7 +113,7 @@ export default {
     },
     openPrintEntry() {
       uni.showToast({
-        title: '打印功能即将上线',
+        title: `打印功能即将上线（${this.getFontSizeLabel()}）`,
         icon: 'none'
       })
     },
@@ -115,6 +137,10 @@ export default {
     },
     isSentenceDelimiter(char) {
       return /[。！？!?]/.test(char)
+    },
+    getFontSizeLabel() {
+      const target = this.fontSizeOptions.find((item) => item.value === this.selectedFontSize)
+      return target ? `${target.label}号字体` : '中号字体'
     },
     maskContentByDifficulty(content, difficulty) {
       let startChecker = () => false
@@ -172,11 +198,16 @@ export default {
   padding: 24rpx;
   box-sizing: border-box;
 }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
 .section-title {
   font-size: 30rpx;
   color: #222;
   font-weight: 600;
-  margin-bottom: 16rpx;
 }
 .difficulty-tabs {
   display: flex;
@@ -194,11 +225,47 @@ export default {
   background: #2f6fff;
   color: #fff;
 }
+.font-tabs {
+  display: flex;
+  gap: 12rpx;
+}
+.font-tab {
+  padding: 8rpx 16rpx;
+  font-size: 22rpx;
+  color: #667085;
+  background: #f5f7fb;
+  border-radius: 999rpx;
+}
+.font-tab.active {
+  color: #2f6fff;
+  background: #e7f0ff;
+}
 .paper-card {
   background: #fafbff;
   border: 1rpx dashed #d6def2;
   border-radius: 14rpx;
   padding: 20rpx;
+}
+.paper-font-large .paper-label {
+  font-size: 30rpx;
+}
+.paper-font-large .paper-value {
+  font-size: 32rpx;
+  line-height: 2;
+}
+.paper-font-medium .paper-label {
+  font-size: 26rpx;
+}
+.paper-font-medium .paper-value {
+  font-size: 28rpx;
+  line-height: 1.85;
+}
+.paper-font-small .paper-label {
+  font-size: 22rpx;
+}
+.paper-font-small .paper-value {
+  font-size: 24rpx;
+  line-height: 1.75;
 }
 .paper-line {
   margin-bottom: 12rpx;
@@ -207,13 +274,10 @@ export default {
   margin-top: 10rpx;
 }
 .paper-label {
-  font-size: 26rpx;
   color: #475467;
 }
 .paper-value {
-  font-size: 28rpx;
   color: #1f2937;
-  line-height: 1.85;
 }
 .author-placeholder {
   letter-spacing: 2rpx;
