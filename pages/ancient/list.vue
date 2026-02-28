@@ -153,7 +153,7 @@ export default {
       this.loading = true
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: {
             action: 'search',
             keyword: this.keyword,
@@ -207,7 +207,7 @@ export default {
       this.aiCandidates = []
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: {
             action: 'aiSearch',
             data: { title, author }
@@ -269,7 +269,7 @@ export default {
       uni.showLoading({ title: '提交中...' })
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: {
             action: 'confirmAdd',
             data: item

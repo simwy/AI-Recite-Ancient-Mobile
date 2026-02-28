@@ -56,7 +56,7 @@ export default {
       this.loadingCategories = true
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: { action: 'getSquareCategories' }
         })
         const result = (res && res.result) || {}
@@ -88,7 +88,7 @@ export default {
       this.loadingSubcollections = true
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: {
             action: 'getSubcollectionsByCategory',
             data: {

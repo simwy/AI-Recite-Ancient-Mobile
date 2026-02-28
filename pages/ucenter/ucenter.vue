@@ -248,7 +248,7 @@
 					const records = []
 					while (true) {
 						const res = await uniCloud.callFunction({
-							name: 'recite-record',
+							name: 'gw_recite-record',
 							data: {
 								action: 'list',
 								data: {

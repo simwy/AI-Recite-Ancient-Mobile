@@ -265,7 +265,7 @@ export default {
     },
     async loadAsrConfig() {
       const res = await uniCloud.callFunction({
-        name: 'asr-config'
+        name: 'gw_asr-config'
       })
       const result = res.result || {}
       if (result.code !== 0 || !result.data) {
@@ -555,7 +555,7 @@ export default {
           const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
           const audioBase64 = await this.blobToBase64(audioBlob)
           const callRes = await uniCloud.callFunction({
-            name: 'asr-file-recognize',
+            name: 'gw_asr-file-recognize',
             data: {
               audioBase64,
               format: 'webm'

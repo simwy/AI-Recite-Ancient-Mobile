@@ -1,5 +1,5 @@
 {
-  "name": "asr-file-recognize",
+  "name": "gw_asr-config",
   "dependencies": {
     "config": "file:../common/config"
   }

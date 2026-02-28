@@ -66,7 +66,7 @@ export default {
       this.loading = true
       try {
         const res = await uniCloud.callFunction({
-          name: 'ancient-search',
+          name: 'gw_ancient-search',
           data: {
             action: 'getTextsBySubcollection',
             data: {

@@ -88,7 +88,7 @@ export default {
       if (this.saved) return
       try {
         await uniCloud.callFunction({
-          name: 'recite-record',
+          name: 'gw_recite-record',
           data: {
             action: 'save',
             data: {
