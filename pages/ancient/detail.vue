@@ -10,9 +10,12 @@
     </view>
 
     <view class="action-bar">
-      <button type="primary" class="btn-recite" @click="goRecite">
-        开始背诵
-      </button>
+      <view class="action-row">
+        <button class="btn-dictation" @click="goDictation">默写文章</button>
+        <button type="primary" class="btn-recite" @click="goRecite">
+          开始背诵
+        </button>
+      </view>
     </view>
   </view>
 </template>
@@ -48,6 +51,13 @@ export default {
       getApp().globalData.currentText = this.detail
       uni.navigateTo({
         url: `/pages/ancient/recite?id=${this.id}`
+      })
+    },
+    goDictation() {
+      getApp().globalData = getApp().globalData || {}
+      getApp().globalData.currentText = this.detail
+      uni.navigateTo({
+        url: `/pages/ancient/dictation?id=${this.id}`
       })
     }
   }
@@ -98,8 +108,18 @@ export default {
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
+.action-row {
+  display: flex;
+  gap: 20rpx;
+}
+.btn-dictation,
 .btn-recite {
-  width: 100%;
+  flex: 1;
   border-radius: 12rpx;
+}
+.btn-dictation {
+  color: #2f6fff;
+  background: #eef4ff;
+  border: 2rpx solid #c9dcff;
 }
 </style>

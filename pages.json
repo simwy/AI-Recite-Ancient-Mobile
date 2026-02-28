@@ -18,11 +18,17 @@
 			}
 		},
 		{
+			"path": "pages/ancient/dictation",
+			"style": {
+				"navigationBarTitleText": "默写文章"
+			}
+		},
+		{
 			"path": "pages/ancient/recite",
 			"style": {
 				"navigationBarTitleText": "背诵模式"
 			},
-			"needLogin": true
+			"needLogin": false
 		},
 		{
 			"path": "pages/ancient/result",
