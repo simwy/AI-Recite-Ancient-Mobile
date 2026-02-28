@@ -41,6 +41,9 @@
               :class="['char-item', `char-${charItem.status}`]"
             >{{ charItem.char }}</text>
           </view>
+          <text v-if="getSentenceRecognizedText(index)" class="sentence-recognized-text">
+            实际朗读：{{ getSentenceRecognizedText(index) }}
+          </text>
           <text v-if="getSentenceReadMeta(index)" class="sentence-read-meta">{{ getSentenceReadMeta(index) }}</text>
           <text v-if="loadingUnitIndex === index" class="sentence-tip">正在合成语音...</text>
         </view>
@@ -494,6 +497,13 @@ export default {
       const result = this.speechSentenceResultMap[unit.unitId]
       if (!result) return ''
       return `第 ${result.attemptNo} 遍 · 准确率 ${result.accuracy}%`
+    },
+    getSentenceRecognizedText(index) {
+      const unit = this.playUnits[index]
+      if (!unit) return ''
+      const result = this.speechSentenceResultMap[unit.unitId]
+      if (!result || !result.recognizedText) return ''
+      return String(result.recognizedText).trim()
     },
     toLiveStatus(status) {
       if (status === 'correct') return 'live-correct'
@@ -1675,6 +1685,13 @@ export default {
   margin-top: 8rpx;
   font-size: 22rpx;
   color: #4b5563;
+}
+.sentence-recognized-text {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #374151;
 }
 .content-area.font-small .sentence-text {
   font-size: 30rpx;

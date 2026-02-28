@@ -2,15 +2,43 @@
   {
     "_id": "gw-ss-001",
     "category_id": "gw-sc-001",
-    "name": "八年级上册",
+    "name": "七年级上册",
     "sort": 1,
     "enabled": true
   },
   {
     "_id": "gw-ss-002",
     "category_id": "gw-sc-001",
-    "name": "八年级下册",
+    "name": "七年级下册",
     "sort": 2,
+    "enabled": true
+  },
+  {
+    "_id": "gw-ss-003",
+    "category_id": "gw-sc-001",
+    "name": "八年级上册",
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "_id": "gw-ss-004",
+    "category_id": "gw-sc-001",
+    "name": "八年级下册",
+    "sort": 4,
+    "enabled": true
+  },
+  {
+    "_id": "gw-ss-005",
+    "category_id": "gw-sc-001",
+    "name": "九年级上册",
+    "sort": 5,
+    "enabled": true
+  },
+  {
+    "_id": "gw-ss-006",
+    "category_id": "gw-sc-001",
+    "name": "九年级下册",
+    "sort": 6,
     "enabled": true
   }
 ]

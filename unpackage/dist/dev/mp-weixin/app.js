@@ -15,6 +15,7 @@ if (!Math) {
   "./pages/ancient/result.js";
   "./pages/square/index.js";
   "./pages/square/list.js";
+  "./pages/review/index.js";
   "./pages/ucenter/ucenter.js";
   "./pages/uni-agree/uni-agree.js";
   "./pages/ucenter/settings/settings.js";

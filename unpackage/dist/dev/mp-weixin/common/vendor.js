@@ -8375,6 +8375,12 @@ const pages = [
     }
   },
   {
+    path: "pages/review/index",
+    style: {
+      navigationBarTitleText: "复盘"
+    }
+  },
+  {
     path: "pages/ucenter/ucenter",
     style: {
       navigationStyle: "custom"
@@ -8544,6 +8550,12 @@ const tabBar = {
       iconPath: "static/tabbar/list.png",
       selectedIconPath: "static/tabbar/list_active.png",
       text: "广场"
+    },
+    {
+      pagePath: "pages/review/index",
+      iconPath: "static/tabbar/list.png",
+      selectedIconPath: "static/tabbar/list_active.png",
+      text: "复盘"
     },
     {
       pagePath: "pages/ucenter/ucenter",
@@ -14805,7 +14817,7 @@ function injectGlobalFields(app, composer) {
   setDevToolsHook(target.__INTLIFY_DEVTOOLS_GLOBAL_HOOK__);
 }
 var define_process_env_UNI_STATISTICS_CONFIG_default = { enable: true, version: "2" };
-var define_process_env_UNI_STAT_TITLE_JSON_default = { "pages/ancient/list": "古诗词背诵 AI小助手", "pages/ancient/history": "背诵历史", "pages/ancient/detail": "古文详情", "pages/ancient/dictation": "默写文章", "pages/ancient/read": "读文章", "pages/ancient/recite": "背诵模式", "pages/ancient/result": "背诵结果", "pages/square/index": "广场", "pages/square/list": "古文清单", "pages/ucenter/settings/settings": "设置", "pages/ucenter/read-news-log/read-news-log": "阅读记录", "uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback": "意见反馈", "uni_modules/uni-id-pages/pages/userinfo/userinfo": "个人资料", "uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify": "实名认证", "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate": "注销账号", "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile": "绑定手机号码", "uni_modules/uni-id-pages/pages/login/login-smscode": "手机验证码登录", "uni_modules/uni-id-pages/pages/register/register": "注册", "uni_modules/uni-id-pages/pages/retrieve/retrieve": "重置密码", "uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd": "修改密码", "uni_modules/uni-id-pages/pages/register/register-by-email": "邮箱验证码注册", "uni_modules/uni-id-pages/pages/retrieve/retrieve-by-email": "通过邮箱重置密码", "uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd": "设置密码" };
+var define_process_env_UNI_STAT_TITLE_JSON_default = { "pages/ancient/list": "古诗词背诵 AI小助手", "pages/ancient/history": "背诵历史", "pages/ancient/detail": "古文详情", "pages/ancient/dictation": "默写文章", "pages/ancient/read": "读文章", "pages/ancient/recite": "背诵模式", "pages/ancient/result": "背诵结果", "pages/square/index": "广场", "pages/square/list": "古文清单", "pages/review/index": "复盘", "pages/ucenter/settings/settings": "设置", "pages/ucenter/read-news-log/read-news-log": "阅读记录", "uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback": "意见反馈", "uni_modules/uni-id-pages/pages/userinfo/userinfo": "个人资料", "uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify": "实名认证", "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate": "注销账号", "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile": "绑定手机号码", "uni_modules/uni-id-pages/pages/login/login-smscode": "手机验证码登录", "uni_modules/uni-id-pages/pages/register/register": "注册", "uni_modules/uni-id-pages/pages/retrieve/retrieve": "重置密码", "uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd": "修改密码", "uni_modules/uni-id-pages/pages/register/register-by-email": "邮箱验证码注册", "uni_modules/uni-id-pages/pages/retrieve/retrieve-by-email": "通过邮箱重置密码", "uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd": "设置密码" };
 var define_process_env_UNI_STAT_UNI_CLOUD_default = {};
 const sys = index.getSystemInfoSync();
 const STAT_VERSION = "4.87";

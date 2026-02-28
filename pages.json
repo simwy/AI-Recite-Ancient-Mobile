@@ -55,6 +55,12 @@
 			}
 		},
 		{
+			"path": "pages/review/index",
+			"style": {
+				"navigationBarTitleText": "复盘"
+			}
+		},
+		{
 			"path": "pages/ucenter/ucenter",
 			"style": {
 				"navigationStyle": "custom"
@@ -269,6 +275,11 @@
 			"iconPath": "static/tabbar/list.png",
 			"selectedIconPath": "static/tabbar/list_active.png",
 			"text": "广场"
+		}, {
+			"pagePath": "pages/review/index",
+			"iconPath": "static/tabbar/list.png",
+			"selectedIconPath": "static/tabbar/list_active.png",
+			"text": "复盘"
 		}, {
 			"pagePath": "pages/ucenter/ucenter",
 			"iconPath": "static/tabbar/me.png",

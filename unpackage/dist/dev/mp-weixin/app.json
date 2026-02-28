@@ -9,6 +9,7 @@
     "pages/ancient/result",
     "pages/square/index",
     "pages/square/list",
+    "pages/review/index",
     "pages/ucenter/ucenter",
     "pages/uni-agree/uni-agree",
     "pages/ucenter/settings/settings",
@@ -67,6 +68,12 @@
         "iconPath": "static/tabbar/list.png",
         "selectedIconPath": "static/tabbar/list_active.png",
         "text": "广场"
+      },
+      {
+        "pagePath": "pages/review/index",
+        "iconPath": "static/tabbar/list.png",
+        "selectedIconPath": "static/tabbar/list_active.png",
+        "text": "复盘"
       },
       {
         "pagePath": "pages/ucenter/ucenter",
