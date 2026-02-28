@@ -8,7 +8,8 @@
       </view>
       <view class="right-tools">
         <button class="tool-btn" size="mini" @tap="openPrintEntry">打印</button>
-        <button class="tool-btn" size="mini" @tap="goRecite">背诵</button>
+        <button class="tool-btn" size="mini" @tap="onToggleFullRead">{{ fullReadButtonText }}</button>
+        <button class="tool-btn" size="mini" @tap="onResumeFromNext">继续朗读</button>
       </view>
     </view>
 
@@ -30,6 +31,7 @@
           }"
           @tap="onTapSentence(index)"
         >
+          <text v-if="unit.pinyinText" class="sentence-pinyin">{{ unit.pinyinText }}</text>
           <text class="sentence-text">{{ unit.text }}</text>
           <text v-if="loadingUnitIndex === index" class="sentence-tip">正在合成语音...</text>
         </view>
@@ -43,22 +45,13 @@
       <view class="status-row">
         <text class="status-text">{{ playStatusText }}</text>
       </view>
-      <view class="action-row">
-        <button class="btn btn-primary" @tap="onToggleFullRead">
-          {{ fullReadButtonText }}
-        </button>
-        <button class="btn btn-secondary" @tap="onResumeFromNext">
-          下一句
-        </button>
-        <button class="btn btn-stop" @tap="onStopPlay">
-          停止
-        </button>
-      </view>
     </view>
   </view>
 </template>
 
 <script>
+import { pinyin } from 'pinyin-pro'
+
 const db = uniCloud.database()
 const CACHE_INDEX_KEY = 'gw_tts_audio_cache_index_v1'
 const CACHE_AUDIO_PREFIX = 'gw_tts_audio_data_v1_'
@@ -83,6 +76,7 @@ export default {
       isPaused: false,
       queueNextIndex: 0,
       pausedUnitIndex: -1,
+      lastFinishedUnitIndex: -1,
       fullReadToken: 0,
       localCacheIndex: {},
       ttsOptions: {
@@ -145,6 +139,9 @@ export default {
       this.audioContext = uni.createInnerAudioContext()
       this.audioContext.autoplay = false
       this.audioContext.onEnded(() => {
+        if (this.currentUnitIndex >= 0) {
+          this.lastFinishedUnitIndex = this.currentUnitIndex
+        }
         this.resolveAudioPlay('ended')
         this.handleUnitFinished()
       })
@@ -162,6 +159,7 @@ export default {
       this.playUnits = units.map((item, index) => ({
         unitId: `${this.id || 'text'}-${index}-${this.createStableHash(item.text)}`,
         text: item.text,
+        pinyinText: this.buildUnitPinyin(item.text),
         mainIndex: item.mainIndex,
         subIndex: item.subIndex,
         hash: this.buildUnitHash(item.text)
@@ -173,6 +171,7 @@ export default {
       this.isPaused = false
       this.queueNextIndex = 0
       this.pausedUnitIndex = -1
+      this.lastFinishedUnitIndex = -1
       this.syncSentenceSnapshot(rawContent)
     },
     buildPlayUnits(content) {
@@ -187,8 +186,13 @@ export default {
         mainSentences.forEach((sentence) => {
           const adaptiveUnits = this.splitAdaptive(sentence)
           adaptiveUnits.forEach((subSentence, subIndex) => {
+            const normalized = String(subSentence || '').trim()
+            if (this.isSinglePunctuationUnit(normalized) && result.length > 0) {
+              result[result.length - 1].text += normalized
+              return
+            }
             result.push({
-              text: subSentence,
+              text: normalized,
               mainIndex,
               subIndex
             })
@@ -260,6 +264,10 @@ export default {
       const m = String(text || '').match(/[\u4e00-\u9fff]/g)
       return m ? m.length : 0
     },
+    isSinglePunctuationUnit(text) {
+      if (!text || text.length !== 1) return false
+      return /^[，。！？；：、,.!?;:'"“”‘’（）()《》〈〉【】\[\]—…]$/.test(text)
+    },
     createStableHash(text) {
       const source = String(text || '')
       let hash = 2166136261
@@ -268,6 +276,25 @@ export default {
         hash = Math.imul(hash, 16777619)
       }
       return (hash >>> 0).toString(16)
+    },
+    buildUnitPinyin(text) {
+      const chars = String(text || '').split('')
+      if (!chars.length) return ''
+      const tokens = chars.map((char) => {
+        if (/[\u4e00-\u9fff]/.test(char)) {
+          const py = pinyin(char, {
+            toneType: 'symbol',
+            type: 'array'
+          })
+          return Array.isArray(py) && py.length ? py[0] : char
+        }
+        return char
+      })
+      return tokens
+        .join(' ')
+        .replace(/\s+([，。！？；、,.!?;:])/g, '$1')
+        .replace(/\s+/g, ' ')
+        .trim()
     },
     createSha1Hash(text) {
       return this.createStableHash(String(text || ''))
@@ -372,12 +399,27 @@ export default {
       this.startFullRead(resumeFrom)
     },
     onResumeFromNext() {
-      if (!this.playUnits.length) return
-      if (!this.isPaused) {
-        uni.showToast({ title: '请先暂停，再使用下一句', icon: 'none' })
+      if (!this.playUnits.length) {
+        uni.showToast({ title: '暂无可朗读内容', icon: 'none' })
         return
       }
-      const start = Math.min(this.pausedUnitIndex + 1, this.playUnits.length - 1)
+      if (this.isFullReading && !this.isPaused) {
+        uni.showToast({ title: '正在完整朗读中', icon: 'none' })
+        return
+      }
+      let start = 0
+      if (this.isPaused && this.currentUnitIndex >= 0) {
+        // 暂停时当前句可能尚未播完，继续时从当前句恢复
+        start = this.currentUnitIndex
+      } else if (this.lastFinishedUnitIndex >= 0) {
+        start = this.lastFinishedUnitIndex + 1
+      } else if (this.currentUnitIndex >= 0) {
+        start = this.currentUnitIndex + 1
+      }
+      if (start >= this.playUnits.length) {
+        uni.showToast({ title: '已经朗读到最后一句', icon: 'none' })
+        return
+      }
       this.startFullRead(start)
     },
     onStopPlay() {
@@ -487,6 +529,7 @@ export default {
         throw new Error(result.msg || '语音合成失败')
       }
       if (result.data.audioUrl) {
+        this.saveCachedAudioUrl(unit.hash, result.data.audioUrl, result.data.format || this.ttsOptions.format || 'mp3')
         return result.data.audioUrl
       }
       if (!result.data.audioBase64) {
@@ -550,9 +593,12 @@ export default {
       uni.setStorageSync(CACHE_INDEX_KEY, this.localCacheIndex)
     },
     getCachedAudio(hash) {
+      const meta = this.localCacheIndex[hash]
+      if (meta && meta.url) {
+        return meta.url
+      }
       const base64 = uni.getStorageSync(`${CACHE_AUDIO_PREFIX}${hash}`)
       if (!base64 || typeof base64 !== 'string') return ''
-      const meta = this.localCacheIndex[hash]
       const format = (meta && meta.format) || this.ttsOptions.format || 'mp3'
       return this.buildDataUri(base64, format)
     },
@@ -577,6 +623,19 @@ export default {
       } catch (e) {
         console.error('写入本地语音缓存失败:', e)
       }
+    },
+    saveCachedAudioUrl(hash, url, format) {
+      if (!url) return
+      this.localCacheIndex[hash] = {
+        key: '',
+        url,
+        format,
+        size: String(url).length,
+        updatedAt: Date.now(),
+        lastAccessAt: Date.now()
+      }
+      this.trimCacheByLru()
+      this.persistCacheIndex()
     },
     trimCacheByLru() {
       const entries = Object.keys(this.localCacheIndex).map((hash) => ({
@@ -603,7 +662,7 @@ export default {
   min-height: 100vh;
   background: #f5f5f5;
   padding: 24rpx;
-  padding-bottom: calc(210rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 .top-tools {
@@ -693,6 +752,13 @@ export default {
   color: #111827;
   line-height: 1.8;
 }
+.sentence-pinyin {
+  display: block;
+  margin-bottom: 8rpx;
+  color: #6b7280;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
 .sentence-tip {
   display: block;
   margin-top: 8rpx;
@@ -730,29 +796,5 @@ export default {
 .status-text {
   font-size: 24rpx;
   color: #667085;
-}
-.action-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-.btn {
-  flex: 1;
-  border-radius: 12rpx;
-  font-size: 26rpx;
-}
-.btn-primary {
-  background: #2f6fff;
-  color: #fff;
-}
-.btn-secondary {
-  background: #eef4ff;
-  color: #2f6fff;
-  border: 1rpx solid #c9dcff;
-}
-.btn-stop {
-  background: #fff3f3;
-  color: #b42318;
-  border: 1rpx solid #f1b4b0;
 }
 </style>
