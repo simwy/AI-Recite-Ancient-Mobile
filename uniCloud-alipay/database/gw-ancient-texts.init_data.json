@@ -1,0 +1,79 @@
+[
+  {
+    "_id": "ancient_jingyesi",
+    "title": "静夜思",
+    "author": "李白",
+    "dynasty": "唐",
+    "content": "床前明月光，疑是地上霜。举头望明月，低头思故乡。",
+    "intro": "小学经典启蒙诗",
+    "grade": "一年级",
+    "semester": "上册",
+    "is_hot": true
+  },
+  {
+    "_id": "ancient_chunxiao",
+    "title": "春晓",
+    "author": "孟浩然",
+    "dynasty": "唐",
+    "content": "春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。",
+    "intro": "春日意境代表作",
+    "grade": "一年级",
+    "semester": "下册",
+    "is_hot": true
+  },
+  {
+    "_id": "ancient_dengguanquelou",
+    "title": "登鹳雀楼",
+    "author": "王之涣",
+    "dynasty": "唐",
+    "content": "白日依山尽，黄河入海流。欲穷千里目，更上一层楼。",
+    "intro": "励志名篇，立意高远",
+    "grade": "二年级",
+    "semester": "上册",
+    "is_hot": true
+  },
+  {
+    "_id": "ancient_minnong",
+    "title": "悯农",
+    "author": "李绅",
+    "dynasty": "唐",
+    "content": "锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。",
+    "intro": "劳动与珍惜粮食教育",
+    "grade": "二年级",
+    "semester": "下册",
+    "is_hot": false
+  },
+  {
+    "_id": "ancient_jiangxue",
+    "title": "江雪",
+    "author": "柳宗元",
+    "dynasty": "唐",
+    "content": "千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。",
+    "intro": "意境清寒，画面感强",
+    "grade": "七年级",
+    "semester": "上册",
+    "is_hot": true
+  },
+  {
+    "_id": "ancient_chusai",
+    "title": "出塞",
+    "author": "王昌龄",
+    "dynasty": "唐",
+    "content": "秦时明月汉时关，万里长征人未还。但使龙城飞将在，不教胡马度阴山。",
+    "intro": "边塞诗经典名篇",
+    "grade": "八年级",
+    "semester": "上册",
+    "is_hot": false
+  },
+  {
+    "_id": "ancient_loushiming",
+    "title": "陋室铭",
+    "author": "刘禹锡",
+    "dynasty": "唐",
+    "content": "山不在高，有仙则名。水不在深，有龙则灵。斯是陋室，惟吾德馨。苔痕上阶绿，草色入帘青。谈笑有鸿儒，往来无白丁。可以调素琴，阅金经。无丝竹之乱耳，无案牍之劳形。南阳诸葛庐，西蜀子云亭。孔子云：何陋之有？",
+    "intro": "托物言志代表作",
+    "grade": "高一",
+    "semester": "上册",
+    "is_hot": true
+  }
+]

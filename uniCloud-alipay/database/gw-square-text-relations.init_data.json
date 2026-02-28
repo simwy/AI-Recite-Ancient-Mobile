@@ -1,0 +1,86 @@
+[
+  {
+    "text_id": "ancient_jingyesi",
+    "category_id": "cat_primary",
+    "subcollection_id": "sub_primary_g1_s1",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_jingyesi",
+    "category_id": "cat_hot",
+    "subcollection_id": "sub_hot_poems",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_chunxiao",
+    "category_id": "cat_primary",
+    "subcollection_id": "sub_primary_g1_s2",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_chunxiao",
+    "category_id": "cat_hot",
+    "subcollection_id": "sub_hot_poems",
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_dengguanquelou",
+    "category_id": "cat_primary",
+    "subcollection_id": "sub_primary_g2_s1",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_dengguanquelou",
+    "category_id": "cat_junior",
+    "subcollection_id": "sub_junior_g7_s1",
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_minnong",
+    "category_id": "cat_primary",
+    "subcollection_id": "sub_primary_g2_s2",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_jiangxue",
+    "category_id": "cat_junior",
+    "subcollection_id": "sub_junior_g7_s1",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_jiangxue",
+    "category_id": "cat_hot",
+    "subcollection_id": "sub_hot_poems",
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_chusai",
+    "category_id": "cat_junior",
+    "subcollection_id": "sub_junior_g8_s1",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_loushiming",
+    "category_id": "cat_senior",
+    "subcollection_id": "sub_senior_g1_s1",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "text_id": "ancient_loushiming",
+    "category_id": "cat_hot",
+    "subcollection_id": "sub_hot_prose",
+    "sort": 1,
+    "enabled": true
+  }
+]

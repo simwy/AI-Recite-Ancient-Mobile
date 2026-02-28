@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "cat_primary",
+    "name": "小学",
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "_id": "cat_junior",
+    "name": "初中",
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "_id": "cat_senior",
+    "name": "高中",
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "_id": "cat_hot",
+    "name": "热门",
+    "sort": 4,
+    "enabled": true
+  }
+]

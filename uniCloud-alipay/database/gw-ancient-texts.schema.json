@@ -30,6 +30,16 @@
       "bsonType": "string",
       "description": "全文内容"
     },
+    "intro": {
+      "bsonType": "string",
+      "description": "简介",
+      "trim": "both"
+    },
+    "is_hot": {
+      "bsonType": "bool",
+      "description": "是否热门",
+      "defaultValue": false
+    },
     "created_by": {
       "bsonType": "string",
       "description": "添加用户ID",

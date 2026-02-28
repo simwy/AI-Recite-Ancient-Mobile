@@ -34,7 +34,7 @@ export default {
   methods: {
     async loadDetail() {
       try {
-        const res = await db.collection('ancient-texts').doc(this.id).get()
+        const res = await db.collection('gw-ancient-texts').doc(this.id).get()
         if (res.result.data && res.result.data.length > 0) {
           this.detail = res.result.data[0]
         }

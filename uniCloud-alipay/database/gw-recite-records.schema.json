@@ -19,7 +19,7 @@
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
-      "foreignKey": "ancient-texts._id"
+      "foreignKey": "gw-ancient-texts._id"
     },
     "text_title": {
       "bsonType": "string",

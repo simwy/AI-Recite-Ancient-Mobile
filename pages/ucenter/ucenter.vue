@@ -90,6 +90,11 @@
 							"event": 'signIn',
 							"icon": "compose"
 						},
+						{
+							"title": '背诵历史',
+							"to": '/pages/ancient/history',
+							"icon": "calendar"
+						},
 						// #ifdef APP-PLUS
 						{
 							"title": this.$t('mine.toEvaluate'),

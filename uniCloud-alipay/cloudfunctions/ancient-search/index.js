@@ -1,6 +1,9 @@
 'use strict';
 const db = uniCloud.database()
-const collection = db.collection('ancient-texts')
+const collection = db.collection('gw-ancient-texts')
+const categoryCollection = db.collection('gw-square-categories')
+const subcollectionCollection = db.collection('gw-square-subcollections')
+const relationCollection = db.collection('gw-square-text-relations')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -215,6 +218,142 @@ async function aiSearch(data) {
   }
 }
 
+async function getSquareCategories() {
+  const listRes = await categoryCollection.where({ enabled: true }).orderBy('sort', 'asc').get()
+  return {
+    code: 0,
+    data: {
+      list: listRes.data || []
+    }
+  }
+}
+
+async function getSubcollectionsByCategory(data = {}) {
+  const categoryId = normalizeText(data.categoryId || data.category_id)
+  if (!categoryId) {
+    return { code: -1, msg: '缺少分类ID' }
+  }
+  const listRes = await subcollectionCollection
+    .where({ category_id: categoryId, enabled: true })
+    .orderBy('sort', 'asc')
+    .get()
+  return {
+    code: 0,
+    data: {
+      list: listRes.data || []
+    }
+  }
+}
+
+async function getTextsBySubcollection(data = {}) {
+  const command = db.command
+  const categoryId = normalizeText(data.categoryId || data.category_id)
+  const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
+  const safePage = Number(data.page) > 0 ? Number(data.page) : 1
+  const safePageSize = Number(data.pageSize) > 0 ? Number(data.pageSize) : 20
+  const skip = (safePage - 1) * safePageSize
+
+  if (!categoryId || !subcollectionId) {
+    return { code: -1, msg: '缺少分类或子合集ID' }
+  }
+
+  const legacySubcollectionCode = subcollectionId.replace(/^sub_/, '')
+
+  let relationWhere = { enabled: true }
+  relationWhere.category_id = categoryId
+  relationWhere.subcollection_id = subcollectionId
+
+  let relationCountRes = await relationCollection.where(relationWhere).count()
+  let relationRes = { data: [] }
+  if (relationCountRes.total > 0) {
+    relationRes = await relationCollection
+      .where(relationWhere)
+      .orderBy('sort', 'asc')
+      .skip(skip)
+      .limit(safePageSize)
+      .get()
+  } else {
+    // 兼容历史关系数据（使用 code 字段而不是 id 字段）
+    const legacyRelationWhere = {
+      enabled: true,
+      subcollection_code: legacySubcollectionCode
+    }
+    relationCountRes = await relationCollection.where(legacyRelationWhere).count()
+    if (relationCountRes.total > 0) {
+      relationRes = await relationCollection
+        .where(legacyRelationWhere)
+        .orderBy('sort', 'asc')
+        .skip(skip)
+        .limit(safePageSize)
+        .get()
+    }
+  }
+
+  if (relationCountRes.total > 0) {
+    const relationList = relationRes.data || []
+    const textIds = [...new Set(relationList.map(item => item.text_id).filter(Boolean))]
+
+    if (textIds.length === 0) {
+      return {
+        code: 0,
+        data: {
+          list: [],
+          total: relationCountRes.total || 0,
+          page: safePage,
+          pageSize: safePageSize
+        }
+      }
+    }
+
+    const textRes = await collection.where({ _id: command.in(textIds) }).get()
+    const textMap = {}
+    ;(textRes.data || []).forEach(item => {
+      textMap[item._id] = item
+    })
+
+    const orderedList = textIds.map(id => textMap[id]).filter(Boolean)
+    if (orderedList.length > 0) {
+      return {
+        code: 0,
+        data: {
+          list: orderedList,
+          total: relationCountRes.total || 0,
+          page: safePage,
+          pageSize: safePageSize
+        }
+      }
+    }
+
+    // 兼容 text_id 与 gw-ancient-texts._id 不一致场景，回退到旧字段查询
+    const legacyTextCountRes = await collection.where({ subcollection_code: legacySubcollectionCode }).count()
+    const legacyTextRes = await collection
+      .where({ subcollection_code: legacySubcollectionCode })
+      .orderBy('title', 'asc')
+      .skip(skip)
+      .limit(safePageSize)
+      .get()
+    return {
+      code: 0,
+      data: {
+        list: legacyTextRes.data || [],
+        total: legacyTextCountRes.total || 0,
+        page: safePage,
+        pageSize: safePageSize
+      }
+    }
+  }
+
+  return {
+    code: 0,
+    data: {
+      list: [],
+      total: 0,
+      page: safePage,
+      pageSize: safePageSize
+    }
+  }
+}
+
 async function confirmAdd(event, data, context) {
   const uid = await getAuthUid(event, context)
   if (!uid) {
@@ -270,6 +409,12 @@ exports.main = async (event, context) => {
         return await searchList(keyword, page, pageSize)
       case 'aiSearch':
         return await aiSearch(data)
+      case 'getSquareCategories':
+        return await getSquareCategories()
+      case 'getSubcollectionsByCategory':
+        return await getSubcollectionsByCategory(data)
+      case 'getTextsBySubcollection':
+        return await getTextsBySubcollection(data)
       case 'confirmAdd':
         return await confirmAdd(event, data, context)
       default:

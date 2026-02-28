@@ -127,7 +127,7 @@ export default {
       if (this.textData && this.textData.content) return
       if (!this.id) return
       try {
-        const res = await db.collection('ancient-texts').doc(this.id).get()
+        const res = await db.collection('gw-ancient-texts').doc(this.id).get()
         const list = (res.result && res.result.data) || []
         if (list.length > 0) {
           this.textData = list[0]

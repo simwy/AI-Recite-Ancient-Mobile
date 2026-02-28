@@ -31,6 +31,18 @@
 			}
 		},
 		{
+			"path": "pages/square/index",
+			"style": {
+				"navigationBarTitleText": "广场"
+			}
+		},
+		{
+			"path": "pages/square/list",
+			"style": {
+				"navigationBarTitleText": "古文清单"
+			}
+		},
+		{
 			"path": "pages/ucenter/ucenter",
 			"style": {
 				"navigationStyle": "custom"
@@ -204,9 +216,9 @@
 	],
 	"globalStyle": {
 		// #ifdef H5
-		"h5": {
-			"titleNView": false
-		},
+		// "h5": {
+		// 	"titleNView": false
+		// },
 		// #endif
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "古诗词背诵 AI小助手",
@@ -241,10 +253,10 @@
 			"selectedIconPath": "static/tabbar/list_active.png",
 			"text": "古文"
 		}, {
-			"pagePath": "pages/ancient/history",
-			"iconPath": "static/tabbar/grid.png",
-			"selectedIconPath": "static/tabbar/grid_active.png",
-			"text": "历史"
+			"pagePath": "pages/square/index",
+			"iconPath": "static/tabbar/list.png",
+			"selectedIconPath": "static/tabbar/list_active.png",
+			"text": "广场"
 		}, {
 			"pagePath": "pages/ucenter/ucenter",
 			"iconPath": "static/tabbar/me.png",

@@ -1,0 +1,41 @@
+{
+  "bsonType": "object",
+  "permission": {
+    "read": true,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "category_id": {
+      "bsonType": "string",
+      "description": "分类ID",
+      "trim": "both"
+    },
+    "name": {
+      "bsonType": "string",
+      "description": "子合集名称",
+      "trim": "both"
+    },
+    "sort": {
+      "bsonType": "int",
+      "description": "排序",
+      "defaultValue": 0
+    },
+    "enabled": {
+      "bsonType": "bool",
+      "description": "是否启用",
+      "defaultValue": true
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 'use strict';
 const db = uniCloud.database()
-const collection = db.collection('recite-records')
+const collection = db.collection('gw-recite-records')
 const uniID = require('uni-id-common')
 
 exports.main = async (event, context) => {
