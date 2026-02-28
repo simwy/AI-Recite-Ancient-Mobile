@@ -1,0 +1,8 @@
+{
+  "name": "gw_tts-synthesize",
+  "version": "1.0.0",
+  "dependencies": {
+    "config": "file:../common/config",
+    "ws": "^8.18.3"
+  }
+}

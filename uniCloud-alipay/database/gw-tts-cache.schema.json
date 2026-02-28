@@ -1,0 +1,117 @@
+{
+  "bsonType": "object",
+  "required": ["sentence_hash", "text", "voice", "status"],
+  "permission": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "sentence_hash": {
+      "bsonType": "string",
+      "description": "句子与参数哈希",
+      "trim": "both"
+    },
+    "text": {
+      "bsonType": "string",
+      "description": "原始句子文本"
+    },
+    "voice": {
+      "bsonType": "string",
+      "description": "发音人",
+      "trim": "both"
+    },
+    "speed": {
+      "bsonType": "int",
+      "description": "语速",
+      "defaultValue": 50
+    },
+    "pitch": {
+      "bsonType": "int",
+      "description": "语调",
+      "defaultValue": 50
+    },
+    "volume": {
+      "bsonType": "int",
+      "description": "音量",
+      "defaultValue": 50
+    },
+    "encoding": {
+      "bsonType": "string",
+      "description": "编码格式（lame/raw等）",
+      "trim": "both"
+    },
+    "format": {
+      "bsonType": "string",
+      "description": "输出音频格式（mp3/pcm）",
+      "trim": "both"
+    },
+    "status": {
+      "bsonType": "string",
+      "description": "缓存状态（generating/ready/failed）",
+      "trim": "both"
+    },
+    "storage_type": {
+      "bsonType": "string",
+      "description": "存储类型（local/oss）",
+      "defaultValue": "local",
+      "trim": "both"
+    },
+    "audio_file_id": {
+      "bsonType": "string",
+      "description": "uniCloud文件ID",
+      "trim": "both"
+    },
+    "audio_url": {
+      "bsonType": "string",
+      "description": "音频URL（如OSS地址）",
+      "trim": "both"
+    },
+    "audio_size": {
+      "bsonType": "int",
+      "description": "音频字节数",
+      "defaultValue": 0
+    },
+    "duration_ms": {
+      "bsonType": "int",
+      "description": "音频时长（毫秒）",
+      "defaultValue": 0
+    },
+    "hit_count": {
+      "bsonType": "int",
+      "description": "命中次数",
+      "defaultValue": 0
+    },
+    "last_error": {
+      "bsonType": "string",
+      "description": "最后一次错误信息"
+    },
+    "lock_owner": {
+      "bsonType": "string",
+      "description": "生成锁持有者ID",
+      "trim": "both"
+    },
+    "lock_expire_at": {
+      "bsonType": "timestamp",
+      "description": "生成锁过期时间"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    },
+    "updated_at": {
+      "bsonType": "timestamp",
+      "description": "更新时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}
