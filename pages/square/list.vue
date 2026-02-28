@@ -20,6 +20,19 @@
     <view class="loading" v-if="loading">
       <text>加载中...</text>
     </view>
+
+    <view class="action-bar">
+      <view class="favorite-action" @click="toggleSubcollectionFavorite">
+        <uni-icons
+          :type="subcollectionFavorited ? 'star-filled' : 'star'"
+          size="20"
+          :color="subcollectionFavorited ? '#f59e0b' : '#86909c'"
+        />
+        <text :class="['favorite-text', subcollectionFavorited ? 'active' : '']">
+          {{ subcollectionFavorited ? '已收藏该合集' : '收藏该合集' }}
+        </text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -32,6 +45,8 @@ export default {
       categoryName: '',
       subcollectionName: '',
       list: [],
+      subcollectionFavorited: false,
+      favoriteLoading: false,
       loading: false,
       page: 1,
       pageSize: 20,
@@ -49,7 +64,11 @@ export default {
         title: this.subcollectionName
       })
     }
+    this.loadSubcollectionFavoriteStatus()
     this.loadData()
+  },
+  onShow() {
+    this.loadSubcollectionFavoriteStatus()
   },
   onPullDownRefresh() {
     this.page = 1
@@ -62,6 +81,14 @@ export default {
     }
   },
   methods: {
+    getUniIdToken() {
+      const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
+      if (!currentUserInfo.token) return ''
+      if (currentUserInfo.tokenExpired && currentUserInfo.tokenExpired < Date.now()) {
+        return ''
+      }
+      return currentUserInfo.token
+    },
     async loadData(append = false) {
       this.loading = true
       try {
@@ -100,6 +127,69 @@ export default {
     getReciteStatus(item) {
       return item && item.recite_status ? item.recite_status : '未背诵'
     },
+    async loadSubcollectionFavoriteStatus() {
+      if (!this.subcollectionId) return
+      try {
+        const uniIdToken = this.getUniIdToken()
+        const res = await uniCloud.callFunction({
+          name: 'gw_ancient-search',
+          data: {
+            action: 'getSubcollectionFavoriteStatus',
+            data: {
+              subcollectionId: this.subcollectionId,
+              uniIdToken
+            },
+            uniIdToken
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0 && result.data) {
+          this.subcollectionFavorited = !!result.data.favorited
+        }
+      } catch (e) {
+        this.subcollectionFavorited = false
+      }
+    },
+    async toggleSubcollectionFavorite() {
+      if (this.favoriteLoading || !this.subcollectionId) return
+      this.favoriteLoading = true
+      try {
+        const uniIdToken = this.getUniIdToken()
+        const res = await uniCloud.callFunction({
+          name: 'gw_ancient-search',
+          data: {
+            action: 'toggleSubcollectionFavorite',
+            data: {
+              categoryId: this.categoryId,
+              subcollectionId: this.subcollectionId,
+              subcollectionName: this.subcollectionName,
+              uniIdToken
+            },
+            uniIdToken
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0 || !result.data) {
+          if (result.msg === '请先登录') {
+            uni.showToast({ title: '请先登录后收藏', icon: 'none' })
+            return
+          }
+          throw new Error(result.msg || '操作失败')
+        }
+        this.subcollectionFavorited = !!result.data.favorited
+        uni.showToast({
+          title: this.subcollectionFavorited ? '收藏成功' : '已取消收藏',
+          icon: 'none'
+        })
+      } catch (e) {
+        uni.showToast({
+          title: e.message || '操作失败',
+          icon: 'none'
+        })
+      } finally {
+        this.favoriteLoading = false
+      }
+    },
     goDetail(item) {
       if (!item || !item._id) return
       getApp().globalData = getApp().globalData || {}
@@ -115,6 +205,7 @@ export default {
 <style scoped>
 .container {
   padding: 20rpx;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   min-height: 100vh;
   background: #f5f5f5;
 }
@@ -161,6 +252,38 @@ export default {
   font-size: 28rpx;
   color: #666;
   line-height: 1.6;
+}
+
+.favorite-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 18rpx 0;
+  border-radius: 12rpx;
+  background: #fff7e6;
+  border: 2rpx solid #ffe6b0;
+}
+
+.favorite-text {
+  font-size: 24rpx;
+  color: #86909c;
+}
+
+.favorite-text.active {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16rpx 20rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .empty,

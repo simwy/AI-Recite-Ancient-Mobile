@@ -1,0 +1,50 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "subcollection_id"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": "doc.user_id == auth.uid",
+    "delete": "doc.user_id == auth.uid"
+  },
+  "properties": {
+    "_id": {
+      "description": "ID，系统自动生成"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "收藏用户ID，参考uni-id-users表",
+      "foreignKey": "uni-id-users._id"
+    },
+    "category_id": {
+      "bsonType": "string",
+      "description": "分类ID",
+      "trim": "both"
+    },
+    "subcollection_id": {
+      "bsonType": "string",
+      "description": "子合集ID，参考gw-square-subcollections._id",
+      "trim": "both",
+      "foreignKey": "gw-square-subcollections._id"
+    },
+    "subcollection_name": {
+      "bsonType": "string",
+      "description": "子合集名称快照",
+      "trim": "both"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "收藏时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    },
+    "updated_at": {
+      "bsonType": "timestamp",
+      "description": "更新时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

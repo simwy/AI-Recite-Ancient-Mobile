@@ -4,6 +4,7 @@ const collection = db.collection('gw-ancient-texts')
 const categoryCollection = db.collection('gw-square-categories')
 const subcollectionCollection = db.collection('gw-square-subcollections')
 const relationCollection = db.collection('gw-square-text-relations')
+const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -42,11 +43,21 @@ function isTimeoutError(error) {
   return msg.includes('Response timeout') || msg.includes('ETIMEDOUT')
 }
 
+function isCollectionNotFoundError(error) {
+  const msg = String((error && error.message) || '')
+  return msg.includes('not found collection')
+}
+
 async function getAuthUid(event, context) {
   const uniIdCommon = uniID.createInstance({ context })
   let uid = (context.auth && context.auth.uid) || ''
-  if (!uid && event.uniIdToken) {
-    const tokenRes = await uniIdCommon.checkToken(event.uniIdToken)
+  const token =
+    (event && event.uniIdToken) ||
+    (event && event.uni_id_token) ||
+    (event && event.data && (event.data.uniIdToken || event.data.uni_id_token)) ||
+    ''
+  if (!uid && token) {
+    const tokenRes = await uniIdCommon.checkToken(token)
     if (tokenRes && tokenRes.code === 0 && tokenRes.uid) {
       uid = tokenRes.uid
     }
@@ -354,6 +365,93 @@ async function getTextsBySubcollection(data = {}) {
   }
 }
 
+async function getSubcollectionFavoriteStatus(event, data = {}, context) {
+  const uid = await getAuthUid(event, context)
+  const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
+  if (!subcollectionId) {
+    return { code: -1, msg: '缺少子合集ID' }
+  }
+  if (!uid) {
+    return {
+      code: 0,
+      data: {
+        favorited: false,
+        needLogin: true
+      }
+    }
+  }
+
+  let favoriteRes = { data: [] }
+  try {
+    favoriteRes = await subcollectionFavoriteCollection
+      .where({ user_id: uid, subcollection_id: subcollectionId })
+      .limit(1)
+      .get()
+  } catch (e) {
+    if (!isCollectionNotFoundError(e)) {
+      throw e
+    }
+  }
+  return {
+    code: 0,
+    data: {
+      favorited: !!(favoriteRes.data && favoriteRes.data.length > 0),
+      needLogin: false
+    }
+  }
+}
+
+async function toggleSubcollectionFavorite(event, data = {}, context) {
+  const uid = await getAuthUid(event, context)
+  if (!uid) {
+    return { code: -1, msg: '请先登录' }
+  }
+
+  const categoryId = normalizeText(data.categoryId || data.category_id)
+  const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
+  const subcollectionName = normalizeText(data.subcollectionName || data.subcollection_name)
+  if (!subcollectionId) {
+    return { code: -1, msg: '缺少子合集ID' }
+  }
+
+  let favoriteRes = { data: [] }
+  try {
+    favoriteRes = await subcollectionFavoriteCollection
+      .where({ user_id: uid, subcollection_id: subcollectionId })
+      .limit(1)
+      .get()
+  } catch (e) {
+    if (!isCollectionNotFoundError(e)) {
+      throw e
+    }
+  }
+  const existed = favoriteRes.data && favoriteRes.data[0]
+  if (existed && existed._id) {
+    await subcollectionFavoriteCollection.doc(existed._id).remove()
+    return {
+      code: 0,
+      data: {
+        favorited: false
+      }
+    }
+  }
+
+  await subcollectionFavoriteCollection.add({
+    user_id: uid,
+    category_id: categoryId,
+    subcollection_id: subcollectionId,
+    subcollection_name: subcollectionName,
+    created_at: new Date(),
+    updated_at: new Date()
+  })
+  return {
+    code: 0,
+    data: {
+      favorited: true
+    }
+  }
+}
+
 async function confirmAdd(event, data, context) {
   const uid = await getAuthUid(event, context)
   if (!uid) {
@@ -415,6 +513,10 @@ exports.main = async (event, context) => {
         return await getSubcollectionsByCategory(data)
       case 'getTextsBySubcollection':
         return await getTextsBySubcollection(data)
+      case 'getSubcollectionFavoriteStatus':
+        return await getSubcollectionFavoriteStatus(event, data, context)
+      case 'toggleSubcollectionFavorite':
+        return await toggleSubcollectionFavorite(event, data, context)
       case 'confirmAdd':
         return await confirmAdd(event, data, context)
       default:

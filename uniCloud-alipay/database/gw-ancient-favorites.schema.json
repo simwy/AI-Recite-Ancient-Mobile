@@ -1,0 +1,65 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "text_id"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": false,
+    "delete": "doc.user_id == auth.uid"
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "forceDefaultValue": {
+        "$env": "uid"
+      },
+      "foreignKey": "uni-id-users._id"
+    },
+    "text_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "gw-ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题"
+    },
+    "text_author": {
+      "bsonType": "string",
+      "description": "古文作者"
+    },
+    "text_dynasty": {
+      "bsonType": "string",
+      "description": "古文朝代"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "收藏时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  },
+  "indexes": [
+    {
+      "IndexName": "user_text_unique",
+      "MongodIndexOptions": {
+        "unique": true
+      },
+      "Keys": [
+        {
+          "Name": "user_id",
+          "Direction": "1"
+        },
+        {
+          "Name": "text_id",
+          "Direction": "1"
+        }
+      ]
+    }
+  ]
+}

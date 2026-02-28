@@ -1,6 +1,17 @@
 <template>
   <view class="container">
     <view class="header">
+      <view class="header-top">
+        <view class="header-placeholder"></view>
+        <view class="fav-icon-btn" @click="toggleFavorite">
+          <uni-icons
+            :type="isFavorited ? 'star-filled' : 'star'"
+            size="16"
+            :color="isFavorited ? '#d97706' : '#b45309'"
+          />
+          <text class="fav-icon-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+        </view>
+      </view>
       <text class="title">{{ detail.title }}</text>
       <text class="meta">{{ detail.dynasty }} · {{ detail.author }}</text>
     </view>
@@ -29,18 +40,31 @@
 </template>
 
 <script>
+import { store } from '@/uni_modules/uni-id-pages/common/store.js'
+
 const db = uniCloud.database()
 
 export default {
   data() {
     return {
       id: '',
-      detail: {}
+      detail: {},
+      isFavorited: false,
+      togglingFavorite: false
     }
   },
   onLoad(options) {
     this.id = options.id
     this.loadDetail()
+    this.checkFavorite()
+  },
+  onShow() {
+    this.checkFavorite()
+  },
+  computed: {
+    hasLogin() {
+      return store.hasLogin
+    }
   },
   methods: {
     async loadDetail() {
@@ -74,6 +98,65 @@ export default {
       uni.navigateTo({
         url: `/pages/ancient/read?id=${this.id}`
       })
+    },
+    async checkFavorite() {
+      if (!this.id || !this.hasLogin) {
+        this.isFavorited = false
+        return
+      }
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_favorite',
+          data: {
+            action: 'check',
+            data: { text_id: this.id }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0) {
+          this.isFavorited = !!(result.data && result.data.favorited)
+        }
+      } catch (e) {
+        console.error('检查收藏状态失败', e)
+      }
+    },
+    async toggleFavorite() {
+      if (!this.hasLogin) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      if (!this.id || this.togglingFavorite) return
+      this.togglingFavorite = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_favorite',
+          data: {
+            action: 'toggle',
+            data: {
+              text_id: this.id,
+              text_title: this.detail.title || '',
+              text_author: this.detail.author || '',
+              text_dynasty: this.detail.dynasty || ''
+            }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0) {
+          throw new Error(result.msg || '操作失败')
+        }
+        this.isFavorited = !!(result.data && result.data.favorited)
+        uni.showToast({
+          title: this.isFavorited ? '已收藏' : '已取消收藏',
+          icon: 'none'
+        })
+      } catch (e) {
+        uni.showToast({
+          title: (e && e.message) || '操作失败',
+          icon: 'none'
+        })
+      } finally {
+        this.togglingFavorite = false
+      }
     }
   }
 }
@@ -86,8 +169,20 @@ export default {
   background: #f5f5f5;
 }
 .header {
-  text-align: center;
-  margin-bottom: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30rpx;
+}
+.header-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4rpx;
+}
+.header-placeholder {
+  width: 1rpx;
+  height: 1rpx;
 }
 .title {
   display: block;
@@ -106,6 +201,20 @@ export default {
   padding: 40rpx;
   margin-bottom: 40rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+.fav-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 1rpx 10rpx;
+  border-radius: 18rpx;
+  background: #fffbeb;
+  border: 1rpx solid #fde68a;
+}
+.fav-icon-text {
+  font-size: 20rpx;
+  color: #b45309;
+  line-height: 1.2;
 }
 .content {
   font-size: 34rpx;

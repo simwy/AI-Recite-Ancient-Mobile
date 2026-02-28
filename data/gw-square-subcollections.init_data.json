@@ -2,8 +2,15 @@
   {
     "_id": "gw-ss-001",
     "category_id": "gw-sc-001",
-    "name": "初二古文",
+    "name": "八年级上册",
     "sort": 1,
+    "enabled": true
+  },
+  {
+    "_id": "gw-ss-002",
+    "category_id": "gw-sc-001",
+    "name": "八年级下册",
+    "sort": 2,
     "enabled": true
   }
 ]
