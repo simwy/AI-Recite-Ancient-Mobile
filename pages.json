@@ -267,23 +267,23 @@
 		"backgroundColor": "#FFFFFF",
 		"list": [{
 			"pagePath": "pages/ancient/list",
-			"iconPath": "static/tabbar/list.png",
-			"selectedIconPath": "static/tabbar/list_active.png",
+			"iconPath": "static/tabbar/tabbar-1.png",
+			"selectedIconPath": "static/tabbar/tabbar-1-a.png",
 			"text": "古文"
 		}, {
 			"pagePath": "pages/square/index",
-			"iconPath": "static/tabbar/list.png",
-			"selectedIconPath": "static/tabbar/list_active.png",
+			"iconPath": "static/tabbar/tabbar-2.png",
+			"selectedIconPath": "static/tabbar/tabbar-2-a.png",
 			"text": "广场"
 		}, {
 			"pagePath": "pages/review/index",
-			"iconPath": "static/tabbar/list.png",
-			"selectedIconPath": "static/tabbar/list_active.png",
+			"iconPath": "static/tabbar/tabbar-3.png",
+			"selectedIconPath": "static/tabbar/tabbar-3-a.png",
 			"text": "复盘"
 		}, {
 			"pagePath": "pages/ucenter/ucenter",
-			"iconPath": "static/tabbar/me.png",
-			"selectedIconPath": "static/tabbar/me_active.png",
+			"iconPath": "static/tabbar/tabbar-4.png",
+			"selectedIconPath": "static/tabbar/tabbar-4-a.png",
 			"text": "我的"
 		}]
 	},

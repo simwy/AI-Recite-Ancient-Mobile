@@ -53,8 +53,18 @@
       </scroll-view>
     </view>
 
-    <view v-if="speechCurrentSentenceText" class="speech-floating-row">
-      <text class="speech-current-text">{{ speechCurrentSentenceText }}</text>
+    <view v-if="showReadHistoryPanel" class="read-history-card" :class="{ 'read-history-card-animate': readHistoryMotion }">
+      <view class="read-history-close" @tap="onCloseReadHistory">×</view>
+      <scroll-view
+        class="read-history-scroll"
+        scroll-y
+        scroll-with-animation
+        :scroll-into-view="readHistoryScrollIntoViewId"
+      >
+        <text v-if="allReadTextDisplay" class="read-history-text">{{ allReadTextDisplay }}</text>
+        <text v-else class="read-history-empty">正在等待朗读内容...</text>
+        <view :id="readHistoryBottomAnchorId" class="read-history-bottom-anchor"></view>
+      </scroll-view>
     </view>
     <view class="bottom-bar">
       <view class="speech-btn-row">
@@ -66,6 +76,9 @@
           @touchcancel.stop.prevent="onPressEnd"
         >
           <text>{{ speechButtonText }}</text>
+        </view>
+        <view class="clear-btn" @tap="onClearReadProgress">
+          <uni-icons type="reload" size="24" color="#4f46e5"></uni-icons>
         </view>
       </view>
     </view>
@@ -146,7 +159,13 @@ export default {
       speechLiveCandidateHits: 0,
       speechLastSwitchAt: 0,
       speechFlowCursorIndex: 0,
-      speechLatestChunkText: ''
+      speechLatestChunkText: '',
+      speechReadHistoryList: [],
+      speechReadPanelVisible: false,
+      readHistoryMotion: false,
+      readHistoryMotionTimer: null,
+      readHistoryScrollIntoViewId: '',
+      readHistoryBottomAnchorId: 'read-history-bottom-anchor'
     }
   },
   computed: {
@@ -171,17 +190,14 @@ export default {
       }
       return '按住朗读'
     },
-    speechCurrentSentenceText() {
-      if (!this.speechPressing && !this.speechStarting) return ''
-      const source = String(this.speechLatestChunkText || this.speechRealtimeText || '').trim()
-      if (!source) return ''
-      const current = this.extractCurrentSentenceText(source)
-      const noPunctuation = current
-        .replace(/[，。！？；：、,.!?;:'"“”‘’（）()《》〈〉【】\[\]—…\-\s]/g, '')
-        .trim()
-      if (!noPunctuation) return ''
-      if (noPunctuation.length <= 36) return noPunctuation
-      return `${noPunctuation.slice(0, 36)}...`
+    allReadTextDisplay() {
+      const history = this.speechReadHistoryList.join('\n')
+      const realtime = String(this.speechRealtimeText || '').trim()
+      if (!realtime) return history
+      return history ? `${history}\n${realtime}` : realtime
+    },
+    showReadHistoryPanel() {
+      return this.speechReadPanelVisible
     }
   },
   onLoad(options) {
@@ -263,6 +279,7 @@ export default {
       this.speechSentenceAttemptMap = {}
       this.lastMatchedIndex = -1
       this.speechRealtimeText = ''
+      this.speechReadHistoryList = []
       this.syncSentenceSnapshot(rawContent)
     },
     buildPlayUnits(content) {
@@ -450,6 +467,17 @@ export default {
     setFontSize(size) {
       this.fontSize = size
     },
+    getScrollAnchorIndex(targetIndex) {
+      const index = Number(targetIndex)
+      if (!Number.isInteger(index) || index < 0 || !this.playUnits.length) return 0
+      // 当前句到第 3 行后，固定显示在可视区第 3 行，保留前两句上下文
+      if (index >= 2) return index - 2
+      return index
+    },
+    scrollToReadAnchor(targetIndex) {
+      const anchorIndex = this.getScrollAnchorIndex(targetIndex)
+      this.scrollIntoViewId = `play-unit-${anchorIndex}`
+    },
     openPrintEntry() {
       uni.showToast({
         title: '打印功能即将上线',
@@ -459,6 +487,8 @@ export default {
     onPressStart() {
       if (!this.playUnits.length) return
       if (this.speechActive || this.speechStarting) return
+      this.speechReadPanelVisible = true
+      this.scrollReadHistoryToBottom()
       this.speechPressing = true
       this.startSpeechRecognition()
     },
@@ -485,9 +515,6 @@ export default {
       const result = this.speechSentenceResultMap[unit.unitId]
       if (result && Array.isArray(result.diffResult) && result.diffResult.length) {
         return result.diffResult
-      }
-      if (Array.isArray(liveResult) && liveResult.length) {
-        return liveResult
       }
       return String(unit.text || '').split('').map(char => ({ char, status: 'normal' }))
     },
@@ -518,6 +545,8 @@ export default {
       this.speechFrameFlushTimer = null
       clearTimeout(this.speechUiUpdateTimer)
       this.speechUiUpdateTimer = null
+      clearTimeout(this.readHistoryMotionTimer)
+      this.readHistoryMotionTimer = null
     },
     async ensureRecordPermission() {
       // #ifndef MP-WEIXIN
@@ -629,6 +658,7 @@ export default {
           uni.showToast({ title: hint, icon: 'none', duration: 2800 })
           return
         }
+        this.appendReadHistory(recognizedText)
         await this.applySpeechResult(recognizedText)
       } catch (error) {
         uni.showToast({
@@ -639,6 +669,70 @@ export default {
       } finally {
         this.endSpeechSession()
       }
+    },
+    appendReadHistory(text) {
+      const normalized = String(text || '').replace(/\s+/g, '').trim()
+      if (!normalized) return
+      this.speechReadHistoryList.push(normalized)
+      if (this.speechReadHistoryList.length > 120) {
+        this.speechReadHistoryList.splice(0, this.speechReadHistoryList.length - 120)
+      }
+      this.triggerReadHistoryMotion()
+    },
+    onClearReadProgress() {
+      this.onStopPlay()
+      if (this.isSpeechRecognitionBusy()) {
+        this.endSpeechSession()
+      }
+      this.resetReadProgressState()
+      uni.showToast({ title: '已清空朗读内容', icon: 'none' })
+    },
+    resetReadProgressState() {
+      this.currentUnitIndex = -1
+      this.loadingUnitIndex = -1
+      this.scrollIntoViewId = ''
+      this.lastFinishedUnitIndex = -1
+      this.lastMatchedIndex = -1
+      this.speechLiveDiffMap = {}
+      this.speechSentenceResultMap = {}
+      this.speechSentenceAttemptMap = {}
+      this.speechReadHistoryList = []
+      this.speechReadPanelVisible = false
+      this.speechRealtimeText = ''
+      this.speechLatestChunkText = ''
+      this.speechPendingMergedText = ''
+      this.speechPendingChunkText = ''
+      this.speechLiveMatchedIndex = -1
+      this.speechLiveMatchedAccuracy = 0
+      this.speechLiveCandidateIndex = -1
+      this.speechLiveCandidateHits = 0
+      this.speechLastSwitchAt = 0
+      this.speechFlowCursorIndex = 0
+      this.speechTargetIndex = -1
+      this.readHistoryMotion = false
+      this.readHistoryScrollIntoViewId = ''
+    },
+    onCloseReadHistory() {
+      this.speechReadPanelVisible = false
+    },
+    scrollReadHistoryToBottom() {
+      if (!this.speechReadPanelVisible) return
+      this.readHistoryScrollIntoViewId = ''
+      this.$nextTick(() => {
+        this.readHistoryScrollIntoViewId = this.readHistoryBottomAnchorId
+      })
+    },
+    triggerReadHistoryMotion() {
+      this.readHistoryMotion = false
+      clearTimeout(this.readHistoryMotionTimer)
+      this.scrollReadHistoryToBottom()
+      this.$nextTick(() => {
+        this.readHistoryMotion = true
+        this.readHistoryMotionTimer = setTimeout(() => {
+          this.readHistoryMotion = false
+          this.readHistoryMotionTimer = null
+        }, 520)
+      })
     },
     failSpeechSession(error) {
       const wsUrl = (this.speechAsrConfig && this.speechAsrConfig.wsUrl) || ''
@@ -709,75 +803,216 @@ export default {
     },
     async applySpeechResult(recognizedText) {
       const mergedText = String(recognizedText || '').trim()
-      const currentChunk = String(this.speechLatestChunkText || '').trim()
       const initialCursor = this.speechTargetIndex >= 0
         ? this.speechTargetIndex
         : Math.max(0, this.lastMatchedIndex >= 0 ? this.lastMatchedIndex : this.speechFlowCursorIndex)
-      const sequenceMatches = this.matchRecognizedTextInOrder(mergedText, initialCursor)
-      const chunkMatched = currentChunk
-        ? this.findBestMatchedUnit(currentChunk, sequenceMatches.nextCursor, { allowFallbackCurrent: false })
-        : null
-      const matched = chunkMatched || sequenceMatches.lastMatch
-      const targetText = (chunkMatched && currentChunk) || sequenceMatches.lastText || mergedText
-      if (!matched || matched.index < 0 || !targetText) {
+      const sequenceMatches = this.matchRecognizedTextSequentially(mergedText, initialCursor)
+      const matchedList = Array.isArray(sequenceMatches.matchedSegments) ? sequenceMatches.matchedSegments : []
+      if (!matchedList.length) {
         uni.showToast({ title: '未匹配到对应句子', icon: 'none' })
         return
       }
-      const targetUnit = this.playUnits[matched.index]
-      if (!targetUnit) return
-      this.currentUnitIndex = matched.index
-      this.lastMatchedIndex = matched.index
-      this.scrollIntoViewId = `play-unit-${matched.index}`
-
-      const diffResult = diffChars(targetUnit.text, targetText)
-      const accuracy = calcAccuracy(diffResult)
-      const wrongChars = diffResult
-        .filter(item => item.status === 'missing' || item.status === 'wrong')
-        .map(item => item.char)
-        .filter(char => /[\u4e00-\u9fff]/.test(char))
-      const attemptNo = (this.speechSentenceAttemptMap[targetUnit.unitId] || 0) + 1
-      this.speechSentenceAttemptMap[targetUnit.unitId] = attemptNo
-      this.speechSentenceResultMap = {
-        ...this.speechSentenceResultMap,
-        [targetUnit.unitId]: {
+      let lastAppliedIndex = -1
+      for (let i = 0; i < matchedList.length; i++) {
+        const matched = matchedList[i]
+        const targetUnit = this.playUnits[matched.index]
+        if (!targetUnit) continue
+        const targetText = String(matched.text || '').trim()
+        if (!targetText) continue
+        const diffResult = diffChars(targetUnit.text, targetText)
+        const accuracy = calcAccuracy(diffResult)
+        const wrongChars = diffResult
+          .filter(item => item.status === 'missing' || item.status === 'wrong')
+          .map(item => item.char)
+          .filter(char => /[\u4e00-\u9fff]/.test(char))
+        const attemptNo = (this.speechSentenceAttemptMap[targetUnit.unitId] || 0) + 1
+        this.speechSentenceAttemptMap[targetUnit.unitId] = attemptNo
+        this.speechSentenceResultMap = {
+          ...this.speechSentenceResultMap,
+          [targetUnit.unitId]: {
+            diffResult,
+            accuracy,
+            attemptNo,
+            recognizedText: targetText,
+            wrongChars
+          }
+        }
+        await this.saveSpeechRecord({
+          unit: targetUnit,
+          sentenceIndex: matched.index,
+          recognizedText: targetText,
           diffResult,
           accuracy,
-          attemptNo,
-          recognizedText: targetText,
-          wrongChars
-        }
+          wrongChars,
+          attemptNo
+        })
+        lastAppliedIndex = matched.index
       }
-      await this.saveSpeechRecord({
-        unit: targetUnit,
-        sentenceIndex: matched.index,
-        recognizedText: targetText,
-        diffResult,
-        accuracy,
-        wrongChars,
-        attemptNo
-      })
-      this.speechFlowCursorIndex = Math.min(matched.index + 1, this.playUnits.length - 1)
+      if (lastAppliedIndex >= 0) {
+        this.currentUnitIndex = lastAppliedIndex
+        this.lastMatchedIndex = lastAppliedIndex
+        this.scrollToReadAnchor(lastAppliedIndex)
+        this.speechFlowCursorIndex = sequenceMatches.nextCursor
+      }
     },
-    matchRecognizedTextInOrder(recognizedText, initialCursor) {
+    matchRecognizedTextSequentially(recognizedText, initialCursor) {
       const text = String(recognizedText || '').trim()
       if (!text || !this.playUnits.length) {
-        return { lastMatch: null, lastText: '', nextCursor: Math.max(0, initialCursor || 0) }
-      }
-      const segments = this.splitRecognizedTextSegments(text)
-      if (!segments.length) {
-        return { lastMatch: null, lastText: '', nextCursor: Math.max(0, initialCursor || 0) }
+        return {
+          lastMatch: null,
+          lastText: '',
+          nextCursor: Math.max(0, initialCursor || 0),
+          matchedSegments: []
+        }
       }
       let cursor = Math.max(0, Math.min(Number(initialCursor || 0), this.playUnits.length - 1))
+      let remaining = text
       let lastMatch = null
       let lastText = ''
-      segments.forEach((segment) => {
-        const matched = this.findBestMatchedUnit(segment, cursor, { allowFallbackCurrent: false })
-        if (!matched || matched.index < 0) return
-        lastMatch = matched
-        lastText = segment
-        cursor = Math.min(matched.index + 1, this.playUnits.length - 1)
-      })
-      return { lastMatch, lastText, nextCursor: cursor }
+      const matchedSegments = []
+      let guard = 0
+      while (remaining && guard < 24 && cursor < this.playUnits.length) {
+        guard += 1
+        const step = this.pickSequentialMatchStep(remaining, cursor)
+        if (!step || step.index < 0 || !step.segment || step.consumedLength <= 0) break
+        lastMatch = { index: step.index, accuracy: step.accuracy }
+        lastText = step.segment
+        matchedSegments.push({
+          index: step.index,
+          accuracy: step.accuracy,
+          text: step.segment
+        })
+        cursor = Math.min(step.index + 1, this.playUnits.length - 1)
+        remaining = String(remaining.slice(step.consumedLength) || '')
+          .replace(/^[\s，,。！？!?；;、]+/, '')
+          .trim()
+      }
+      return { lastMatch, lastText, nextCursor: cursor, matchedSegments }
+    },
+    pickSequentialMatchStep(source, cursor) {
+      const text = String(source || '').trim()
+      if (!text || cursor < 0 || cursor >= this.playUnits.length) return null
+      const candidateIndexes = [cursor, cursor + 1].filter(index => index >= 0 && index < this.playUnits.length)
+      if (!candidateIndexes.length) return null
+      const scored = candidateIndexes.map((index) => {
+        const unit = this.playUnits[index]
+        if (!unit) return null
+        const extracted = this.extractSequentialSegmentByTarget(text, unit.text)
+        const segment = String((extracted && extracted.segment) || '').trim()
+        const consumedLength = Number((extracted && extracted.consumedLength) || 0)
+        if (!segment || consumedLength <= 0) return null
+        const diffResult = diffChars(unit.text, segment)
+        const accuracy = calcAccuracy(diffResult)
+        return { index, segment, consumedLength, accuracy }
+      }).filter(Boolean)
+      if (!scored.length) return null
+      const current = scored.find(item => item.index === cursor) || null
+      const next = scored.find(item => item.index === cursor + 1) || null
+      if (!next) return current
+      if (!current) return next
+      // 仅当下一句明显更匹配时才允许前跳，避免中间句漏标
+      if (next.accuracy >= current.accuracy + 10 && current.accuracy < 42) {
+        return next
+      }
+      return current
+    },
+    extractSequentialSegmentByTarget(source, targetText) {
+      const text = String(source || '').trim()
+      const expectedLen = Math.max(4, Math.floor(String(targetText || '').length || 0))
+      if (!text || expectedLen <= 0) return { segment: '', consumedLength: 0 }
+      const endMarks = /[。！？!?；;\n]/
+      const firstEnd = text.match(endMarks)
+      if (firstEnd && typeof firstEnd.index === 'number') {
+        const consumedLength = firstEnd.index + 1
+        return { segment: text.slice(0, consumedLength), consumedLength }
+      }
+      const minLen = Math.max(4, expectedLen - 5)
+      const maxLen = Math.min(text.length, expectedLen + 8)
+      let consumedLength = Math.min(text.length, expectedLen)
+      for (let i = minLen; i <= maxLen; i++) {
+        const ch = text[i]
+        if (ch === '，' || ch === ',') {
+          consumedLength = i + 1
+          break
+        }
+      }
+      return {
+        segment: text.slice(0, consumedLength),
+        consumedLength
+      }
+    },
+    matchRecognizedTextInOrder(recognizedText, initialCursor, options = {}) {
+      const text = String(recognizedText || '').trim()
+      if (!text || !this.playUnits.length) {
+        return {
+          lastMatch: null,
+          lastText: '',
+          nextCursor: Math.max(0, initialCursor || 0),
+          matchedSegments: []
+        }
+      }
+      let cursor = Math.max(0, Math.min(Number(initialCursor || 0), this.playUnits.length - 1))
+      let remaining = text
+      let lastMatch = null
+      let lastText = ''
+      const matchedSegments = []
+      let guard = 0
+      while (remaining && guard < 24 && cursor < this.playUnits.length) {
+        guard += 1
+        const extracted = this.extractSequentialSegment(remaining, cursor)
+        const segment = String((extracted && extracted.segment) || '').trim()
+        const consumedLength = Number((extracted && extracted.consumedLength) || 0)
+        if (!segment || consumedLength <= 0) break
+        const matched = this.findBestMatchedUnit(segment, cursor, {
+          allowFallbackCurrent: false,
+          preferCurrentStrong: Boolean(options.preferCurrentStrong)
+        })
+        if (matched && matched.index >= 0) {
+          lastMatch = matched
+          lastText = segment
+          matchedSegments.push({
+            index: matched.index,
+            accuracy: matched.accuracy,
+            text: segment
+          })
+          cursor = Math.min(matched.index + 1, this.playUnits.length - 1)
+        }
+        remaining = String(remaining.slice(consumedLength) || '')
+          .replace(/^[\s，,。！？!?；;、]+/, '')
+          .trim()
+      }
+      return { lastMatch, lastText, nextCursor: cursor, matchedSegments }
+    },
+    extractSequentialSegment(source, cursor) {
+      const text = String(source || '').trim()
+      if (!text) return { segment: '', consumedLength: 0 }
+      const firstDelimMatch = text.match(/[。！？!?；;\n]/)
+      if (firstDelimMatch && typeof firstDelimMatch.index === 'number') {
+        const idx = firstDelimMatch.index
+        const consumedLength = idx + 1
+        return {
+          segment: text.slice(0, consumedLength),
+          consumedLength
+        }
+      }
+      const currentUnit = this.playUnits[cursor]
+      const currentLen = currentUnit ? String(currentUnit.text || '').length : 0
+      const expectedLen = Math.max(6, Math.floor(currentLen * 0.9) || 10)
+      const commaWindowStart = Math.max(3, expectedLen - 4)
+      const commaWindowEnd = Math.min(text.length - 1, expectedLen + 6)
+      let consumedLength = Math.min(text.length, expectedLen)
+      if (commaWindowEnd >= commaWindowStart) {
+        for (let i = commaWindowStart; i <= commaWindowEnd; i++) {
+          if (text[i] === '，' || text[i] === ',') {
+            consumedLength = i + 1
+            break
+          }
+        }
+      }
+      return {
+        segment: text.slice(0, consumedLength),
+        consumedLength
+      }
     },
     splitRecognizedTextSegments(source) {
       const text = String(source || '').trim()
@@ -792,11 +1027,25 @@ export default {
     findBestMatchedUnit(recognizedText, preferredIndex, options = {}) {
       const target = String(recognizedText || '').trim()
       if (!target || !this.playUnits.length) return null
-      const { allowFallbackCurrent = true } = options
+      const { allowFallbackCurrent = true, preferCurrentStrong = false } = options
       let best = null
       const hasPreferred = Number.isInteger(preferredIndex) && preferredIndex >= 0 && preferredIndex < this.playUnits.length
+      if (hasPreferred && preferCurrentStrong) {
+        const currentUnit = this.playUnits[preferredIndex]
+        if (currentUnit) {
+          const currentDiff = diffChars(currentUnit.text, target)
+          const currentAccuracy = calcAccuracy(currentDiff)
+          if (currentAccuracy >= 35) {
+            return {
+              index: preferredIndex,
+              score: currentAccuracy * 100,
+              accuracy: currentAccuracy
+            }
+          }
+        }
+      }
       const candidateIndexes = hasPreferred
-        ? [preferredIndex, preferredIndex + 1, preferredIndex + 2].filter(index => index >= 0 && index < this.playUnits.length)
+        ? [preferredIndex, preferredIndex + 1].filter(index => index >= 0 && index < this.playUnits.length)
         : this.playUnits.map((_, index) => index)
       candidateIndexes.forEach((index) => {
         const unit = this.playUnits[index]
@@ -1016,6 +1265,7 @@ export default {
       if (!merged && !chunk) return
       this.speechRealtimeText = merged
       this.speechLatestChunkText = chunk
+      this.triggerReadHistoryMotion()
       this.updateSpeechLiveMatch(merged)
     },
     updateSpeechLiveMatch(recognizedChunk) {
@@ -1060,7 +1310,7 @@ export default {
       if (switched || this.speechLiveMatchedIndex < 0) {
         this.speechLiveMatchedIndex = activeIndex
         this.currentUnitIndex = activeIndex
-        this.scrollIntoViewId = `play-unit-${activeIndex}`
+        this.scrollToReadAnchor(activeIndex)
         this.speechLastSwitchAt = now
       }
       this.speechLiveMatchedAccuracy = Number(matched.accuracy || 0)
@@ -1381,7 +1631,7 @@ export default {
         const audioSrc = await this.ensureUnitAudio(unit)
         this.stopActiveAudio()
         this.currentUnitIndex = index
-        this.scrollIntoViewId = `play-unit-${index}`
+        this.scrollToReadAnchor(index)
         this.audioContext.src = audioSrc
         this.audioContext.play()
         this.loadingUnitIndex = -1
@@ -1542,7 +1792,7 @@ export default {
   min-height: 100vh;
   background: #f5f5f5;
   padding: 24rpx;
-  padding-bottom: calc(228rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 .top-tools {
@@ -1555,6 +1805,7 @@ export default {
   background: #fff;
   border-radius: 16rpx;
   padding: 24rpx;
+  margin-bottom: 20rpx;
   box-sizing: border-box;
 }
 .header {
@@ -1720,26 +1971,73 @@ export default {
 }
 .speech-btn-row {
   margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
-.speech-floating-row {
+.read-history-card {
   position: fixed;
   left: 24rpx;
   right: 24rpx;
-  bottom: calc(112rpx + env(safe-area-inset-bottom));
-  z-index: 12;
-  pointer-events: none;
+  bottom: calc(140rpx + env(safe-area-inset-bottom));
+  z-index: 11;
+  background: #dde3ee;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #d5dce7;
+  box-sizing: border-box;
 }
-.speech-current-text {
-  display: block;
+.read-history-card-animate {
+  animation: readHistoryPop 0.5s ease;
+}
+.read-history-close {
+  position: absolute;
+  right: 14rpx;
+  top: 10rpx;
+  width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
   text-align: center;
-  font-size: 34rpx;
-  color: #f97316;
-  font-weight: 600;
+  font-size: 22rpx;
+  color: #6b7280;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 2;
+}
+.read-history-scroll {
+  height: 170rpx;
+  padding-right: 26rpx;
+}
+.read-history-bottom-anchor {
+  height: 1rpx;
+}
+.read-history-text {
+  display: block;
+  font-size: 26rpx;
+  color: #1d4ed8;
   line-height: 1.6;
-  text-shadow: 0 2rpx 8rpx rgba(255, 255, 255, 0.8);
+  white-space: pre-wrap;
+  word-break: break-all;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.5);
+}
+.read-history-empty {
+  display: block;
+  font-size: 24rpx;
+  color: #6b7280;
+  line-height: 1.6;
+}
+@keyframes readHistoryPop {
+  0% {
+    opacity: 0.35;
+    transform: translateY(8rpx) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .speech-btn {
-  width: 100%;
+  flex: 1;
   height: 72rpx;
   display: flex;
   align-items: center;
@@ -1752,5 +2050,15 @@ export default {
 }
 .speech-btn.active {
   background: #dc2626;
+}
+.clear-btn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  border: 1rpx solid #c7d2fe;
 }
 </style>

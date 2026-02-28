@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <view class="header">
-      <view class="header-top">
+      <view class="npm install @fontsource/noto-sans-sc-top">
         <view class="header-placeholder"></view>
         <view class="fav-icon-btn" @click="toggleFavorite">
           <uni-icons

@@ -45,7 +45,7 @@
 
     <view class="action-bar">
       <view class="action-row">
-        <button class="btn-print" @tap="openPrintEntry">打印默写纸</button>
+        <button class="btn-print" :loading="printingPdf" @tap="openPrintEntry">打印默写纸</button>
         <button class="btn-capture" @tap="openPhotoEntry">拍照检查</button>
       </view>
     </view>
@@ -71,7 +71,8 @@ export default {
         { label: '大', value: 'large' },
         { label: '中', value: 'medium' },
         { label: '小', value: 'small' }
-      ]
+      ],
+      printingPdf: false
     }
   },
   computed: {
@@ -111,11 +112,45 @@ export default {
         uni.showToast({ title: '加载失败', icon: 'none' })
       }
     },
-    openPrintEntry() {
-      uni.showToast({
-        title: `打印功能即将上线（${this.getFontSizeLabel()}）`,
-        icon: 'none'
-      })
+    async openPrintEntry() {
+      if (this.printingPdf) return
+      const content = this.safeText(this.dictationPaperContent)
+      if (!content) {
+        uni.showToast({ title: '暂无可打印内容', icon: 'none' })
+        return
+      }
+      this.printingPdf = true
+      uni.showLoading({ title: '正在生成PDF...' })
+      try {
+        const callRes = await uniCloud.callFunction({
+          name: 'gw_dictation-print-pdf',
+          data: {
+            action: 'generate',
+            data: {
+              title: this.safeText(this.detail.title || '古文默写'),
+              author: this.safeText(this.detail.author || ''),
+              content,
+              fontSize: this.selectedFontSize,
+              difficulty: this.selectedDifficulty,
+              difficultyLabel: this.getDifficultyLabel()
+            }
+          }
+        })
+        const result = (callRes && callRes.result) || {}
+        if (result.code !== 0 || !result.data || !result.data.fileID) {
+          throw new Error(result.msg || '生成PDF失败')
+        }
+        await this.openPdfDocument(result.data.fileID)
+      } catch (error) {
+        uni.showToast({
+          title: (error && error.message) || '打印失败，请稍后再试',
+          icon: 'none',
+          duration: 2500
+        })
+      } finally {
+        uni.hideLoading()
+        this.printingPdf = false
+      }
     },
     openPhotoEntry() {
       uni.showToast({
@@ -141,6 +176,59 @@ export default {
     getFontSizeLabel() {
       const target = this.fontSizeOptions.find((item) => item.value === this.selectedFontSize)
       return target ? `${target.label}号字体` : '中号字体'
+    },
+    getDifficultyLabel() {
+      const target = this.difficultyOptions.find((item) => item.value === this.selectedDifficulty)
+      return target ? target.label : '中级默写'
+    },
+    async openPdfDocument(fileID) {
+      const tempUrl = await this.getCloudFileTempUrl(fileID)
+      if (!tempUrl) {
+        throw new Error('获取PDF地址失败')
+      }
+      // #ifdef H5
+      if (typeof window !== 'undefined' && window.open) {
+        window.open(tempUrl, '_blank')
+        uni.showToast({ title: 'PDF已打开', icon: 'none' })
+        return
+      }
+      // #endif
+      const localPath = await this.downloadPdf(tempUrl)
+      await this.openLocalPdf(localPath)
+    },
+    async getCloudFileTempUrl(fileID) {
+      const res = await uniCloud.getTempFileURL({
+        fileList: [fileID]
+      })
+      const first = res && res.fileList && res.fileList[0]
+      if (!first || !first.tempFileURL) return ''
+      return first.tempFileURL
+    },
+    downloadPdf(url) {
+      return new Promise((resolve, reject) => {
+        uni.downloadFile({
+          url,
+          success: (res) => {
+            if (res.statusCode !== 200 || !res.tempFilePath) {
+              reject(new Error('PDF下载失败'))
+              return
+            }
+            resolve(res.tempFilePath)
+          },
+          fail: (err) => reject(err || new Error('PDF下载失败'))
+        })
+      })
+    },
+    openLocalPdf(filePath) {
+      return new Promise((resolve, reject) => {
+        uni.openDocument({
+          filePath,
+          fileType: 'pdf',
+          showMenu: true,
+          success: resolve,
+          fail: (err) => reject(err || new Error('打开PDF失败'))
+        })
+      })
     },
     maskContentByDifficulty(content, difficulty) {
       let startChecker = () => false

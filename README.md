@@ -11,3 +11,8 @@
 2. 报错 `onDBError {code: "SYSTEM_ERROR", message: "Config parameter missing, tokenSecret is required"}`
 
 	在目录 `uniCloud/cloudfunctions/common/uni-config-center/uni-id/config.json` 中配置tokenSecret，参考文档[https://doc.dcloud.net.cn/uniCloud/uni-id/summary.html#config](https://doc.dcloud.net.cn/uniCloud/uni-id/summary.html#config)
+	
+	
+	
+## 图标库
+[icon](https://www.iconfont.cn/collections/detail?spm=a313x.collections_index.i1.d9df05512.4d623a81LEafM6&cid=33)
