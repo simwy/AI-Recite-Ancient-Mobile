@@ -10,6 +10,7 @@
         <button class="tool-btn" size="mini" @tap="openPrintEntry">打印</button>
         <button class="tool-btn" size="mini" @tap="onToggleFullRead">{{ fullReadButtonText }}</button>
         <button class="tool-btn" size="mini" @tap="onResumeFromNext">继续朗读</button>
+        <button class="tool-btn" size="mini" @tap="toggleSpeechDebug">{{ speechDebugEnabled ? '隐藏诊断' : '开发诊断' }}</button>
       </view>
     </view>
 
@@ -54,15 +55,22 @@
       <text class="speech-current-text">{{ speechCurrentSentenceText }}</text>
     </view>
     <view class="bottom-bar">
+      <view v-if="speechDebugEnabled" class="speech-debug-panel">
+        <text class="speech-debug-text">连接: {{ speechDebug.connection }}</text>
+        <text class="speech-debug-text">会话: {{ speechDebug.sessionId || '-' }}</text>
+        <text class="speech-debug-text">发帧: {{ speechDebug.sentFrames }} · 收包: {{ speechDebug.receivedMessages }}</text>
+        <text class="speech-debug-text">最近事件: {{ speechDebug.lastEvent || '-' }}</text>
+        <text class="speech-debug-text">最近错误: {{ speechDebug.lastError || '-' }}</text>
+      </view>
       <view class="speech-btn-row">
         <view
           class="speech-btn"
-          :class="{ active: speechActive || speechStarting }"
+          :class="{ active: speechPressing || speechStarting }"
           @longpress.stop.prevent="onPressStart"
           @touchend.stop.prevent="onPressEnd"
           @touchcancel.stop.prevent="onPressEnd"
         >
-          <text>{{ speechActive || speechStarting ? '松开结束朗读' : '按住朗读' }}</text>
+          <text>{{ speechPressing || speechStarting ? '松开结束朗读' : '按住朗读' }}</text>
         </view>
       </view>
     </view>
@@ -109,6 +117,7 @@ export default {
       },
       snapshotSyncing: false,
       speechStarting: false,
+      speechPressing: false,
       speechActive: false,
       speechPendingStop: false,
       speechTargetIndex: -1,
@@ -119,6 +128,16 @@ export default {
       speechSocketTask: null,
       speechSocketReady: false,
       speechTaskFinished: false,
+      speechLastErrorMsg: '',
+      speechDebugEnabled: false,
+      speechDebug: {
+        connection: 'idle',
+        sessionId: '',
+        sentFrames: 0,
+        receivedMessages: 0,
+        lastEvent: '',
+        lastError: ''
+      },
       speechUiUpdateTimer: null,
       speechPendingMergedText: '',
       speechPendingChunkText: '',
@@ -166,7 +185,7 @@ export default {
       return '长按下方按钮开始朗读，松手后自动匹配句子并标注正误'
     },
     speechCurrentSentenceText() {
-      if (!this.speechActive && !this.speechStarting) return ''
+      if (!this.speechPressing && !this.speechStarting) return ''
       const source = String(this.speechLatestChunkText || this.speechRealtimeText || '').trim()
       if (!source) return ''
       const current = this.extractCurrentSentenceText(source)
@@ -452,12 +471,27 @@ export default {
         icon: 'none'
       })
     },
+    toggleSpeechDebug() {
+      this.speechDebugEnabled = !this.speechDebugEnabled
+    },
+    resetSpeechDebug() {
+      this.speechDebug = {
+        connection: 'idle',
+        sessionId: '',
+        sentFrames: 0,
+        receivedMessages: 0,
+        lastEvent: '',
+        lastError: ''
+      }
+    },
     onPressStart() {
       if (!this.playUnits.length) return
       if (this.speechActive || this.speechStarting) return
+      this.speechPressing = true
       this.startSpeechRecognition()
     },
     onPressEnd() {
+      this.speechPressing = false
       if (!this.speechActive) {
         if (this.speechStarting) {
           this.speechPendingStop = true
@@ -503,6 +537,50 @@ export default {
       clearTimeout(this.speechUiUpdateTimer)
       this.speechUiUpdateTimer = null
     },
+    async ensureRecordPermission() {
+      // #ifndef MP-WEIXIN
+      return true
+      // #endif
+      // #ifdef MP-WEIXIN
+      const settingRes = await new Promise((resolve) => {
+        uni.getSetting({
+          success: resolve,
+          fail: () => resolve({})
+        })
+      })
+      const authSetting = (settingRes && settingRes.authSetting) || {}
+      if (authSetting['scope.record'] === true) {
+        return true
+      }
+      const authorized = await new Promise((resolve) => {
+        uni.authorize({
+          scope: 'scope.record',
+          success: () => resolve(true),
+          fail: () => resolve(false)
+        })
+      })
+      if (authorized) {
+        return true
+      }
+      const modalRes = await new Promise((resolve) => {
+        uni.showModal({
+          title: '需要麦克风权限',
+          content: '请在设置中开启麦克风权限，用于实时朗读识别。',
+          confirmText: '去设置',
+          success: resolve,
+          fail: () => resolve({ confirm: false })
+        })
+      })
+      if (!modalRes.confirm) return false
+      const openRes = await new Promise((resolve) => {
+        uni.openSetting({
+          success: resolve,
+          fail: () => resolve({})
+        })
+      })
+      return Boolean(openRes && openRes.authSetting && openRes.authSetting['scope.record'])
+      // #endif
+    },
     async ensureSpeechAsrConfig() {
       const res = await uniCloud.callFunction({
         name: 'gw_asr-config',
@@ -517,8 +595,18 @@ export default {
     },
     async startSpeechRecognition() {
       if (this.speechActive || this.speechStarting) return
+      const permissionGranted = await this.ensureRecordPermission()
+      if (!permissionGranted) {
+        this.speechPressing = false
+        uni.showToast({ title: '未开启麦克风权限', icon: 'none' })
+        return
+      }
+      this.logMiniProgramRuntimeInfo()
       this.speechStarting = true
       this.speechPendingStop = false
+      this.resetSpeechDebug()
+      this.speechDebug.connection = 'starting'
+      this.speechDebug.lastEvent = 'start-press'
       try {
         await this.ensureSpeechAsrConfig()
         this.resetSpeechRuntimeState()
@@ -539,6 +627,7 @@ export default {
           this.stopSpeechRecognition()
         }
       } catch (error) {
+        this.speechPressing = false
         this.speechStarting = false
         this.failSpeechSession(error)
       }
@@ -554,7 +643,8 @@ export default {
         this.flushSpeechUiUpdate()
         const recognizedText = this.speechRealtimeText
         if (!recognizedText) {
-          uni.showToast({ title: '未识别到语音内容', icon: 'none' })
+          const hint = this.speechLastErrorMsg || '未识别到语音内容'
+          uni.showToast({ title: hint, icon: 'none', duration: 2800 })
           return
         }
         await this.applySpeechResult(recognizedText)
@@ -569,6 +659,15 @@ export default {
       }
     },
     failSpeechSession(error) {
+      const wsUrl = (this.speechAsrConfig && this.speechAsrConfig.wsUrl) || ''
+      const wsHost = this.extractSocketHost(wsUrl)
+      let runtimeAppId = ''
+      // #ifdef MP-WEIXIN
+      try {
+        const accountInfo = wx.getAccountInfoSync ? wx.getAccountInfoSync() : null
+        runtimeAppId = (accountInfo && accountInfo.miniProgram && accountInfo.miniProgram.appId) || ''
+      } catch (e) {}
+      // #endif
       this.endSpeechSession()
       uni.showToast({
         title: (error && error.message) || '启动朗读识别失败',
@@ -576,17 +675,25 @@ export default {
         duration: 2500
       })
       console.error('启动朗读识别失败:', error)
+      console.error('实时识别连接信息:', {
+        wsUrl,
+        wsHost,
+        runtimeAppId
+      })
     },
     endSpeechSession() {
       this.cleanupSpeechTimers()
       this.stopSpeechWebRecorder()
       this.closeSpeechSocket()
+      this.speechDebug.connection = 'idle'
       this.speechStarting = false
+      this.speechPressing = false
       this.speechActive = false
       this.speechPendingStop = false
       this.speechStopping = false
       this.speechSocketReady = false
       this.speechTaskFinished = false
+      this.speechLastErrorMsg = ''
       this.speechPendingMergedText = ''
       this.speechPendingChunkText = ''
       this.speechSessionId = ''
@@ -604,6 +711,7 @@ export default {
     resetSpeechRuntimeState() {
       this.speechSocketReady = false
       this.speechTaskFinished = false
+      this.speechLastErrorMsg = ''
       this.speechPendingMergedText = ''
       this.speechPendingChunkText = ''
       this.speechSessionId = ''
@@ -723,6 +831,9 @@ export default {
       return new Promise((resolve, reject) => {
         const socketTimeout = Number(this.speechAsrConfig.timeout || 20000) || 20000
         const timer = setTimeout(() => {
+          this.speechLastErrorMsg = '语音服务连接超时'
+          this.speechDebug.connection = 'timeout'
+          this.speechDebug.lastError = this.speechLastErrorMsg
           reject(new Error('语音服务连接超时'))
         }, socketTimeout)
         this.speechSocketTask = uni.connectSocket({
@@ -732,30 +843,75 @@ export default {
         this.speechSocketTask.onOpen(() => {
           clearTimeout(timer)
           this.speechSocketReady = true
+          this.speechDebug.connection = 'connected'
+          this.speechDebug.lastEvent = 'socket-open'
           resolve()
         })
         this.speechSocketTask.onMessage(({ data }) => {
+          this.speechDebug.receivedMessages += 1
           this.handleSpeechSocketMessage(data)
         })
         this.speechSocketTask.onError((err) => {
           clearTimeout(timer)
+          this.speechLastErrorMsg = '语音服务连接失败'
+          this.speechDebug.connection = 'error'
+          this.speechDebug.lastError = this.speechLastErrorMsg
+          const wsUrl = (this.speechAsrConfig && this.speechAsrConfig.wsUrl) || ''
+          const wsHost = this.extractSocketHost(wsUrl)
+          let runtimeAppId = ''
+          // #ifdef MP-WEIXIN
+          try {
+            const accountInfo = wx.getAccountInfoSync ? wx.getAccountInfoSync() : null
+            runtimeAppId = (accountInfo && accountInfo.miniProgram && accountInfo.miniProgram.appId) || ''
+          } catch (e) {}
+          // #endif
+          console.error('实时识别socket连接失败详情:', {
+            err,
+            wsUrl,
+            wsHost,
+            runtimeAppId
+          })
           reject(err)
         })
         this.speechSocketTask.onClose(() => {
           this.speechSocketTask = null
           this.speechSocketReady = false
+          this.speechDebug.connection = 'closed'
+          this.speechDebug.lastEvent = 'socket-close'
         })
       })
     },
     closeSpeechSocket() {
       if (!this.speechSocketTask) return
       try {
+        this.speechDebug.connection = 'closing'
         this.speechSocketTask.close({})
       } catch (error) {
         console.error('关闭朗读 socket 失败:', error)
       }
       this.speechSocketTask = null
       this.speechSocketReady = false
+    },
+    logMiniProgramRuntimeInfo() {
+      // #ifdef MP-WEIXIN
+      try {
+        const accountInfo = wx.getAccountInfoSync ? wx.getAccountInfoSync() : null
+        const runtimeAppId = accountInfo && accountInfo.miniProgram && accountInfo.miniProgram.appId
+        const envVersion = accountInfo && accountInfo.miniProgram && accountInfo.miniProgram.envVersion
+        console.error('实时识别运行时信息:', {
+          runtimeAppId: runtimeAppId || '',
+          envVersion: envVersion || ''
+        })
+      } catch (error) {
+        console.error('读取小程序运行时信息失败:', error)
+      }
+      // #endif
+    },
+    extractSocketHost(url) {
+      const raw = String(url || '').trim()
+      if (!raw) return ''
+      const m = raw.match(/^wss?:\/\/([^/?#]+)/i)
+      return (m && m[1]) || ''
     },
     handleSpeechSocketMessage(rawData) {
       const decoded = this.decodeSpeechSocketData(rawData)
@@ -768,13 +924,25 @@ export default {
       }
       if (message.action === 'started') {
         this.speechSessionId = message.sid || this.speechSessionId
+        this.speechDebug.sessionId = this.speechSessionId || ''
+        this.speechDebug.lastEvent = 'started'
         return
       }
       if (message.action === 'error' || Number(message.code) > 0) {
         const errorMessage = message.desc || '语音识别异常'
+        this.speechLastErrorMsg = errorMessage
+        this.speechDebug.lastError = errorMessage
+        this.speechDebug.lastEvent = 'error'
         console.error('朗读识别异常:', errorMessage, message)
       }
       if (message.msg_type === 'result' && message.res_type === 'asr') {
+        this.speechDebug.lastEvent = 'asr-result'
+        this.consumeSpeechResult(message.data)
+        return
+      }
+      // 兼容部分返回仅有 action/data 结构
+      if (message.action === 'result' && message.data && message.data.cn) {
+        this.speechDebug.lastEvent = 'result'
         this.consumeSpeechResult(message.data)
       }
     },
@@ -807,6 +975,7 @@ export default {
       this.scheduleSpeechUiUpdate()
       if (data.ls === true) {
         this.speechTaskFinished = true
+        this.speechDebug.lastEvent = 'task-finished'
         if (typeof this.speechWaitFinishResolver === 'function') {
           this.speechWaitFinishResolver()
           this.speechWaitFinishResolver = null
@@ -933,6 +1102,7 @@ export default {
       for (let offset = 0; offset < bytes.length; offset += frameBytes) {
         const slice = bytes.slice(offset, Math.min(offset + frameBytes, bytes.length))
         this.speechFrameQueue.push(slice.buffer)
+        this.speechDebug.sentFrames += 1
       }
     },
     initSpeechRecorder() {
@@ -970,10 +1140,10 @@ export default {
         return
       }
       this.speechRecorderManager.start({
-        format: 'PCM',
+        format: this.speechAsrConfig.format || 'pcm',
         sampleRate: Number(this.speechAsrConfig.sampleRate || 16000) || 16000,
         numberOfChannels: 1,
-        frameSize: 2
+        frameSize: 5
       })
     },
     async stopSpeechRecorder() {
@@ -1538,6 +1708,19 @@ export default {
 }
 .speech-btn-row {
   margin-top: 0;
+}
+.speech-debug-panel {
+  margin-bottom: 10rpx;
+  padding: 10rpx 12rpx;
+  border-radius: 10rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e5e7eb;
+}
+.speech-debug-text {
+  display: block;
+  font-size: 20rpx;
+  line-height: 1.45;
+  color: #475467;
 }
 .speech-floating-row {
   position: fixed;

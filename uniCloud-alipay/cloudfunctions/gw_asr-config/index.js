@@ -118,6 +118,7 @@ function buildIflytekConfig(event) {
     appId,
     apiKey,
     sampleRate,
+    format: 'pcm',
     audioEncode,
     lang,
     frameBytes: Number(iflytekAsr.frameBytes || 1280) || 1280,

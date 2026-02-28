@@ -7372,7 +7372,7 @@ function isConsoleWritable() {
 function initRuntimeSocketService() {
   const hosts = "127.0.0.1,192.168.1.51,172.29.0.1";
   const port = "8090";
-  const id = "mp-weixin_YdF9Pp";
+  const id = "mp-weixin_q2dlNy";
   const lazy = typeof swan !== "undefined";
   let restoreError = lazy ? () => {
   } : initOnError();
@@ -8893,7 +8893,7 @@ class S {
 function T(e2) {
   return e2 && "string" == typeof e2 ? JSON.parse(e2) : e2;
 }
-const b = true, E = "mp-weixin", A = T(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), P = E, C = T('{"address":["127.0.0.1","192.168.1.51","172.29.0.1"],"servePort":7002,"debugPort":9001,"initialLaunchType":"local","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), O = T('[{"provider":"alipay","spaceName":"ai-recite-ancient-mobile","spaceId":"env-00jy5xw5nv6i","spaceAppId":"2021006133633665","accessKey":"VB8z7Wko9ZZGIS5h","secretKey":"ogbicqC27huMLwLz"}]') || [];
+const b = true, E = "mp-weixin", A = T(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), P = E, C = T('{"address":["127.0.0.1","192.168.1.51","172.29.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"remote","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), O = T('[{"provider":"alipay","spaceName":"ai-recite-ancient-mobile","spaceId":"env-00jy5xw5nv6i","spaceAppId":"2021006133633665","accessKey":"VB8z7Wko9ZZGIS5h","secretKey":"ogbicqC27huMLwLz"}]') || [];
 let N = "";
 try {
   N = "__UNI__1397D60";

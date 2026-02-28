@@ -4,11 +4,5 @@
     "name": "初中古文",
     "sort": 1,
     "enabled": true
-  },
-  {
-    "_id": "gw-sc-002",
-    "name": "经典名篇",
-    "sort": 2,
-    "enabled": true
   }
 ]

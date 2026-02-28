@@ -76,5 +76,10 @@
       }
     ]
   },
+  "permission": {
+    "scope.record": {
+      "desc": "用于实时语音朗读识别与纠错"
+    }
+  },
   "usingComponents": {}
 }

@@ -51,6 +51,11 @@
     "quickapp" : {},
     "mp-weixin" : {
         "appid" : "wx8f0a012573bc8bac",
+        "permission" : {
+            "scope.record" : {
+                "desc" : "用于实时语音朗读识别与纠错"
+            }
+        },
         "setting" : {
             "urlCheck" : false
         },

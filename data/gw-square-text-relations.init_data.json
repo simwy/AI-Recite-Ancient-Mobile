@@ -78,37 +78,5 @@
     "subcollection_id": "gw-ss-001",
     "sort": 10,
     "enabled": true
-  },
-  {
-    "_id": "gw-str-011",
-    "text_id": "gw-at-002",
-    "category_id": "gw-sc-002",
-    "subcollection_id": "gw-ss-002",
-    "sort": 1,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-012",
-    "text_id": "gw-at-003",
-    "category_id": "gw-sc-002",
-    "subcollection_id": "gw-ss-002",
-    "sort": 2,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-013",
-    "text_id": "gw-at-004",
-    "category_id": "gw-sc-002",
-    "subcollection_id": "gw-ss-002",
-    "sort": 3,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-014",
-    "text_id": "gw-at-008",
-    "category_id": "gw-sc-002",
-    "subcollection_id": "gw-ss-002",
-    "sort": 4,
-    "enabled": true
   }
 ]
