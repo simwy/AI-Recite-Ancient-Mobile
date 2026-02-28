@@ -84,21 +84,77 @@ exports.main = async (event = {}) => {
 }
 
 function buildIflytekConfig(event) {
-  if (!iflytekAsr || !iflytekAsr.endpoint || !iflytekAsr.appId || !iflytekAsr.apiKey || !iflytekAsr.apiSecret) {
-    throw new Error('请先在 uniCloud-alipay/cloudfunctions/common/config/index.js 中配置讯飞实时识别参数')
+  const forceMode = String(event.asrMode || '').trim().toLowerCase()
+  if (forceMode === 'standard') {
+    return buildIflytekStandardConfig()
   }
-  const endpoint = String(iflytekAsr.endpoint).trim()
-  const appId = String(iflytekAsr.appId).trim()
-  const apiKey = String(iflytekAsr.apiKey).trim()
-  const apiSecret = String(iflytekAsr.apiSecret).trim()
-  const lang = String(iflytekAsr.lang || 'autodialect').trim()
-  const audioEncode = String(iflytekAsr.audioEncode || 'pcm_s16le').trim()
-  const sampleRate = Number(iflytekAsr.sampleRate || 16000) || 16000
-  const utcOffset = String(iflytekAsr.utcOffset || '+0800').trim()
-  const uuidPrefix = String(iflytekAsr.uuidPrefix || 'gw-read').trim()
+  if (forceMode === 'llm') {
+    return buildIflytekLlmConfig(event)
+  }
+  const useStandardRtasr = !iflytekAsr || iflytekAsr.useStandardRtasr !== false
+  return useStandardRtasr ? buildIflytekStandardConfig() : buildIflytekLlmConfig(event)
+}
+
+function buildIflytekStandardConfig() {
+  const config = (iflytekAsr && iflytekAsr.standard) || {}
+  if (!config.endpoint || !config.appId || !config.apiKey) {
+    throw new Error('请先在 common/config/index.js 中配置讯飞实时语音转写标准版参数')
+  }
+  const endpoint = String(config.endpoint).trim()
+  const appId = String(config.appId).trim()
+  const apiKey = String(config.apiKey).trim()
+  const ts = String(Math.floor(Date.now() / 1000))
+  const signa = buildIflytekStandardSigna(appId, ts, apiKey)
+  const query = {
+    appid: appId,
+    ts,
+    signa
+  }
+  if (config.lang) query.lang = String(config.lang).trim()
+  if (config.punc !== undefined && config.punc !== null && String(config.punc) !== '') {
+    query.punc = String(config.punc)
+  }
+  if (config.pd) query.pd = String(config.pd).trim()
+  if (config.vadMdn !== undefined && config.vadMdn !== null && String(config.vadMdn) !== '') {
+    query.vadMdn = String(config.vadMdn)
+  }
+  if (config.roleType !== undefined && config.roleType !== null && String(config.roleType) !== '') {
+    query.roleType = String(config.roleType)
+  }
+  if (config.engLangType !== undefined && config.engLangType !== null && String(config.engLangType) !== '') {
+    query.engLangType = String(config.engLangType)
+  }
+  const wsUrl = `${endpoint}?${buildSortedQueryString(query)}`
+  return {
+    provider: 'iflytek-rtasr',
+    asrMode: 'standard',
+    wsUrl,
+    appId,
+    sampleRate: Number(config.sampleRate || 16000) || 16000,
+    format: 'pcm',
+    lang: query.lang || 'cn',
+    frameBytes: Number(config.frameBytes || 1280) || 1280,
+    frameIntervalMs: Number(config.frameIntervalMs || 40) || 40,
+    timeout: Number(config.timeout || 20000) || 20000
+  }
+}
+
+function buildIflytekLlmConfig(event) {
+  const config = (iflytekAsr && iflytekAsr.llm) || {}
+  if (!config.endpoint || !config.appId || !config.apiKey || !config.apiSecret) {
+    throw new Error('请先在 common/config/index.js 中配置讯飞实时语音转写大模型参数')
+  }
+  const endpoint = String(config.endpoint).trim()
+  const appId = String(config.appId).trim()
+  const apiKey = String(config.apiKey).trim()
+  const apiSecret = String(config.apiSecret).trim()
+  const lang = String(config.lang || 'autodialect').trim()
+  const audioEncode = String(config.audioEncode || 'pcm_s16le').trim()
+  const sampleRate = Number(config.sampleRate || 16000) || 16000
+  const utcOffset = String(config.utcOffset || '+0800').trim()
+  const uuidPrefix = String(config.uuidPrefix || 'gw-read').trim()
   const uuid = String(event.uuid || `${uuidPrefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`)
   const utc = buildUtcString(utcOffset)
-
   const sortedQuery = {
     accessKeyId: apiKey,
     appId,
@@ -111,20 +167,24 @@ function buildIflytekConfig(event) {
   const baseString = buildSortedQueryString(sortedQuery)
   const signature = crypto.createHmac('sha1', apiSecret).update(baseString).digest('base64')
   const wsUrl = `${endpoint}?${baseString}&signature=${encodeURIComponent(signature)}`
-
   return {
     provider: 'iflytek-rtasr',
+    asrMode: 'llm',
     wsUrl,
     appId,
-    apiKey,
     sampleRate,
     format: 'pcm',
     audioEncode,
     lang,
-    frameBytes: Number(iflytekAsr.frameBytes || 1280) || 1280,
-    frameIntervalMs: Number(iflytekAsr.frameIntervalMs || 40) || 40,
-    timeout: Number(iflytekAsr.timeout || 20000) || 20000
+    frameBytes: Number(config.frameBytes || 1280) || 1280,
+    frameIntervalMs: Number(config.frameIntervalMs || 40) || 40,
+    timeout: Number(config.timeout || 20000) || 20000
   }
+}
+
+function buildIflytekStandardSigna(appId, ts, apiKey) {
+  const md5Base = crypto.createHash('md5').update(`${appId}${ts}`).digest('hex')
+  return crypto.createHmac('sha1', apiKey).update(md5Base).digest('base64')
 }
 
 function buildSortedQueryString(params) {

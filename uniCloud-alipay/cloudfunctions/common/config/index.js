@@ -12,18 +12,33 @@ module.exports = {
     inverseTextNormalizationEnabled: true
   },
   iflytekAsr: {
-    endpoint: 'wss://office-api-ast-dx.iflyaisol.com/ast/communicate/v1',
-    appId: '43758daa',
-    apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',
-    apiSecret: 'ZjE4ZmJhOTFhYjhjYzE5NTk2NGViZjIy',
-    uuidPrefix: 'gw-read',
-    sampleRate: 16000,
-    audioEncode: 'pcm_s16le',
-    lang: 'autodialect',
-    frameBytes: 1280,
-    frameIntervalMs: 40,
-    timeout: 20000,
-    utcOffset: '+0800'
+    // 默认使用实时语音转写标准版，保留大模型版配置用于后续切换
+    useStandardRtasr: true,
+    standard: {
+      endpoint: 'wss://rtasr.xfyun.cn/v1/ws',
+      appId: '43758daa',
+      apiKey: '06df65940f5b99c189f5b08f58557880',
+      lang: 'cn',
+      punc: 1,
+      frameBytes: 1280,
+      frameIntervalMs: 40,
+      sampleRate: 16000,
+      timeout: 20000
+    },
+    llm: {
+      endpoint: 'wss://office-api-ast-dx.iflyaisol.com/ast/communicate/v1',
+      appId: '43758daa',
+      apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',
+      apiSecret: 'ZjE4ZmJhOTFhYjhjYzE5NTk2NGViZjIy',
+      uuidPrefix: 'gw-read',
+      sampleRate: 16000,
+      audioEncode: 'pcm_s16le',
+      lang: 'autodialect',
+      frameBytes: 1280,
+      frameIntervalMs: 40,
+      timeout: 20000,
+      utcOffset: '+0800'
+    }
   },
   iflytekTts: {
     appId: '43758daa',

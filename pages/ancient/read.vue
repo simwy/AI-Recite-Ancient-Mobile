@@ -65,12 +65,12 @@
       <view class="speech-btn-row">
         <view
           class="speech-btn"
-          :class="{ active: speechPressing || speechStarting }"
+          :class="{ active: speechPressing || speechStarting || speechStopping || speechPendingStop }"
           @longpress.stop.prevent="onPressStart"
           @touchend.stop.prevent="onPressEnd"
           @touchcancel.stop.prevent="onPressEnd"
         >
-          <text>{{ speechPressing || speechStarting ? '松开结束朗读' : '按住朗读' }}</text>
+          <text>{{ speechButtonText }}</text>
         </view>
       </view>
     </view>
@@ -183,6 +183,18 @@ export default {
         return `实时识别：${this.speechRealtimeText}`
       }
       return '长按下方按钮开始朗读，松手后自动匹配句子并标注正误'
+    },
+    speechButtonText() {
+      if (this.speechPressing || (this.speechActive && !this.speechStopping)) {
+        return '松开结束朗读'
+      }
+      if (this.speechStopping || this.speechPendingStop) {
+        return this.speechRealtimeText ? '识别中，请稍候...' : '识别中...'
+      }
+      if (this.speechStarting) {
+        return '准备中...'
+      }
+      return '按住朗读'
     },
     speechCurrentSentenceText() {
       if (!this.speechPressing && !this.speechStarting) return ''
@@ -878,6 +890,10 @@ export default {
           this.speechSocketReady = false
           this.speechDebug.connection = 'closed'
           this.speechDebug.lastEvent = 'socket-close'
+          if (this.speechStopping && typeof this.speechWaitFinishResolver === 'function') {
+            this.speechWaitFinishResolver()
+            this.speechWaitFinishResolver = null
+          }
         })
       })
     },
@@ -940,10 +956,10 @@ export default {
         this.consumeSpeechResult(message.data)
         return
       }
-      // 兼容部分返回仅有 action/data 结构
-      if (message.action === 'result' && message.data && message.data.cn) {
+      // 兼容标准版：action=result 且 data 为 JSON 字符串
+      if (message.action === 'result' && message.data) {
         this.speechDebug.lastEvent = 'result'
-        this.consumeSpeechResult(message.data)
+        this.consumeSpeechResult(this.parseSpeechResultData(message.data))
       }
     },
     decodeSpeechSocketData(rawData) {
@@ -973,7 +989,7 @@ export default {
       this.speechPendingMergedText = merged
       this.speechPendingChunkText = text
       this.scheduleSpeechUiUpdate()
-      if (data.ls === true) {
+      if (this.isSpeechResultFinished(data)) {
         this.speechTaskFinished = true
         this.speechDebug.lastEvent = 'task-finished'
         if (typeof this.speechWaitFinishResolver === 'function') {
@@ -981,6 +997,22 @@ export default {
           this.speechWaitFinishResolver = null
         }
       }
+    },
+    parseSpeechResultData(raw) {
+      if (!raw) return null
+      if (typeof raw === 'object') return raw
+      const text = String(raw || '').trim()
+      if (!text) return null
+      try {
+        return JSON.parse(text)
+      } catch (error) {
+        return null
+      }
+    },
+    isSpeechResultFinished(data) {
+      if (!data || !data.cn || !data.cn.st) return false
+      if (data.ls === true) return true
+      return false
     },
     scheduleSpeechUiUpdate() {
       if (this.speechUiUpdateTimer) return
