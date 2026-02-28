@@ -24,6 +24,12 @@
 			}
 		},
 		{
+			"path": "pages/ancient/read",
+			"style": {
+				"navigationBarTitleText": "读文章"
+			}
+		},
+		{
 			"path": "pages/ancient/recite",
 			"style": {
 				"navigationBarTitleText": "背诵模式"

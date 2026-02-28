@@ -11,9 +11,17 @@
 
     <view class="action-bar">
       <view class="action-row">
-        <button class="btn-dictation" @click="goDictation">默写文章</button>
-        <button type="primary" class="btn-recite" @click="goRecite">
-          开始背诵
+        <button class="action-btn btn-read" @click="goRead">
+          <uni-icons type="eye" size="18" color="#4f46e5" />
+          <text>读文章</text>
+        </button>
+        <button class="action-btn btn-recite" @click="goRecite">
+          <uni-icons type="mic" size="18" color="#0b57d0" />
+          <text>背文章</text>
+        </button>
+        <button class="action-btn btn-dictation" @click="goDictation">
+          <uni-icons type="compose" size="18" color="#2563eb" />
+          <text>默文章</text>
         </button>
       </view>
     </view>
@@ -58,6 +66,13 @@ export default {
       getApp().globalData.currentText = this.detail
       uni.navigateTo({
         url: `/pages/ancient/dictation?id=${this.id}`
+      })
+    },
+    goRead() {
+      getApp().globalData = getApp().globalData || {}
+      getApp().globalData.currentText = this.detail
+      uni.navigateTo({
+        url: `/pages/ancient/read?id=${this.id}`
       })
     }
   }
@@ -112,13 +127,30 @@ export default {
   display: flex;
   gap: 20rpx;
 }
-.btn-dictation,
-.btn-recite {
+.action-btn {
   flex: 1;
   border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  padding: 0;
+  line-height: 1;
+  height: 84rpx;
+}
+.btn-read {
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 2rpx solid #c7d2fe;
+}
+.btn-recite {
+  color: #0b57d0;
+  background: #e8f1ff;
+  border: 2rpx solid #bdd5ff;
 }
 .btn-dictation {
-  color: #2f6fff;
+  color: #2563eb;
   background: #eef4ff;
   border: 2rpx solid #c9dcff;
 }
