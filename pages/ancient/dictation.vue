@@ -34,7 +34,7 @@
         </view>
         <view class="paper-line">
           <text class="paper-label">作者：</text>
-          <text class="paper-value author-placeholder">{{ authorPlaceholder }}</text>
+          <text class="paper-value author-placeholder">{{ authorDisplayText }}</text>
         </view>
         <view class="paper-content">
           <text class="paper-label">正文：</text>
@@ -75,10 +75,12 @@ export default {
     }
   },
   computed: {
-    authorPlaceholder() {
+    authorDisplayText() {
+      const dynasty = this.safeText(this.detail.dynasty)
       const author = this.safeText(this.detail.author)
-      if (!author) return this.buildUnderline(8)
-      return this.buildUnderline(Math.max(author.length, 4))
+      if (dynasty && author) return `${dynasty} · ${author}`
+      if (author) return author
+      return '——'
     },
     dictationPaperContent() {
       const content = this.safeText(this.detail.content)
@@ -130,6 +132,7 @@ export default {
             action: 'generate',
             data: {
               title: this.detail.title || '',
+              dynasty: this.detail.dynasty || '',
               author: this.detail.author || '',
               content: maskedContent,
               fontSize: this.selectedFontSize,

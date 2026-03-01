@@ -34,7 +34,9 @@ function getFontSizeConfig(size) {
 
 async function generateDictationPdf(data) {
   const title = normalizeText(data.title || '古文默写')
+  const dynasty = normalizeText(data.dynasty || '')
   const author = normalizeText(data.author || '')
+  const authorDisplay = dynasty && author ? `${dynasty} · ${author}` : (author || '')
   const content = normalizeText(data.content || '')
   const fontSize = String(data.fontSize || 'medium')
   const difficultyLabel = normalizeText(data.difficultyLabel || '')
@@ -89,7 +91,7 @@ async function generateDictationPdf(data) {
         .fillColor('#374151')
         .text(`标题：${title}`)
       doc.moveDown(0.4)
-      doc.text(`作者：${author || '________'}`)
+      doc.text(`作者：${authorDisplay || '________'}`)
       if (difficultyLabel) {
         doc.moveDown(0.4)
         doc.text(`默写级别：${difficultyLabel}`)
