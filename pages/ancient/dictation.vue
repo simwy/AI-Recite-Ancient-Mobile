@@ -143,12 +143,19 @@ export default {
           return
         }
         const fileID = result.data.fileID
+        const fileName = result.data.fileName || '默写纸.pdf'
         const urlRes = await uniCloud.getTempFileURL({ fileList: [fileID] })
         const fileUrl = (urlRes.fileList && urlRes.fileList[0] && urlRes.fileList[0].tempFileURL) || ''
         if (!fileUrl) {
           uni.showToast({ title: '获取文件地址失败', icon: 'none' })
           return
         }
+        // H5/Chrome：直接用临时链接在新标签页打开 PDF，避免 uni.downloadFile 跨域报错
+        // #ifdef H5
+        window.open(fileUrl, '_blank', 'noopener')
+        uni.showToast({ title: '已在新标签页打开', icon: 'none' })
+        return
+        // #endif
         const dlRes = await uni.downloadFile({ url: fileUrl })
         if (dlRes.statusCode !== 200 || !dlRes.tempFilePath) {
           uni.showToast({ title: '下载失败', icon: 'none' })

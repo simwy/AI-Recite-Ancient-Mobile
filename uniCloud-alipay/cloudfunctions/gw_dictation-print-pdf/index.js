@@ -8,37 +8,6 @@ const PDFDocument = require('pdfkit')
 const A4_WIDTH = 595.28
 const PAGE_MARGIN = 56
 const CONTENT_WIDTH = A4_WIDTH - PAGE_MARGIN * 2
-const FONT_DIRS = ['/usr/share/fonts', '/usr/local/share/fonts', '/usr/share/texmf/fonts']
-const FONT_EXTS = ['.ttf', '.otf', '.ttc']
-
-function scanAllFonts() {
-  const results = []
-  function walk(dir) {
-    let entries
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch (e) { return }
-    for (const entry of entries) {
-      const full = path.join(dir, entry.name)
-      if (entry.isDirectory()) { walk(full) }
-      else if (FONT_EXTS.includes(path.extname(entry.name).toLowerCase())) {
-        results.push(full)
-      }
-    }
-  }
-  for (const dir of FONT_DIRS) walk(dir)
-  return results
-}
-
-function tryResolveFontPath() {
-  const all = scanAllFonts()
-  // prefer CJK fonts
-  const cjkKeys = ['cjk', 'noto', 'wqy', 'uming', 'ukai', 'hans', 'chinese', 'droid', 'arphic', 'wenquanyi']
-  for (const f of all) {
-    const lower = f.toLowerCase()
-    if (cjkKeys.some(k => lower.includes(k))) return f
-  }
-  // fallback: return first font found (better than nothing)
-  return all.length > 0 ? all[0] : ''
-}
 
 function normalizeText(value) {
   return String(value || '')
@@ -78,10 +47,6 @@ async function generateDictationPdf(data) {
   const tmpFile = path.join('/tmp', `dictation-${id}.pdf`)
   const cloudPath = `dictation-papers/${Date.now()}-${id}.pdf`
   const fontConfig = getFontSizeConfig(fontSize)
-  const cjkFontPath = tryResolveFontPath()
-  if (!cjkFontPath) {
-    return { code: -1, msg: '缺少中文字体文件，无法生成PDF' }
-  }
 
   try {
     await new Promise((resolve, reject) => {
@@ -100,8 +65,6 @@ async function generateDictationPdf(data) {
       output.on('error', reject)
       doc.on('error', reject)
       doc.pipe(output)
-
-      doc.font(cjkFontPath)
 
       doc
         .fontSize(fontConfig.title)
