@@ -24,15 +24,15 @@
       <view class="action-row">
         <button class="action-btn btn-read" @click="goRead">
           <uni-icons type="eye" size="18" color="#4f46e5" />
-          <text>读文章</text>
+          <text>跟读</text>
         </button>
         <button class="action-btn btn-recite" @click="goRecite">
           <uni-icons type="mic" size="18" color="#0b57d0" />
-          <text>背文章</text>
+          <text>背诵</text>
         </button>
         <button class="action-btn btn-dictation" @click="goDictation">
           <uni-icons type="compose" size="18" color="#2563eb" />
-          <text>默文章</text>
+          <text>默写</text>
         </button>
       </view>
     </view>
