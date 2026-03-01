@@ -84,13 +84,24 @@ export default {
       )
       this.accuracy = calcAccuracy(this.diffResult)
     },
+    getUniIdToken() {
+      const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
+      if (!currentUserInfo.token) return ''
+      if (currentUserInfo.tokenExpired && currentUserInfo.tokenExpired < Date.now()) {
+        return ''
+      }
+      return currentUserInfo.token
+    },
     async saveRecord() {
       if (this.saved) return
+      if (!this.id || !this.textData || !this.textData.title) return
       try {
-        await uniCloud.callFunction({
+        const uniIdToken = this.getUniIdToken()
+        const res = await uniCloud.callFunction({
           name: 'gw_recite-record',
           data: {
             action: 'save',
+            uniIdToken,
             data: {
               text_id: this.id,
               text_title: this.textData.title,
@@ -102,9 +113,19 @@ export default {
             }
           }
         })
-        this.saved = true
+        const result = (res && res.result) || {}
+        if (result.code === 0) {
+          this.saved = true
+        } else {
+          if (result.msg === '请先登录') {
+            uni.showToast({ title: '请先登录后记录会保存到历史', icon: 'none' })
+          } else {
+            uni.showToast({ title: result.msg || '保存失败', icon: 'none' })
+          }
+        }
       } catch (e) {
         console.error('保存记录失败:', e)
+        uni.showToast({ title: '保存记录失败', icon: 'none' })
       }
     },
     goReciteAgain() {

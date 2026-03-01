@@ -38,7 +38,12 @@
         </view>
         <view class="paper-content">
           <text class="paper-label">正文：</text>
-          <text class="paper-value paper-main">{{ dictationPaperContent }}</text>
+          <view class="paper-value paper-main">
+            <template v-for="(seg, i) in paperSegments" :key="i">
+              <text v-if="seg.type !== 'blank'">{{ seg.value }}</text>
+              <view v-else class="underline-cell"></view>
+            </template>
+          </view>
         </view>
       </view>
     </view>
@@ -82,10 +87,12 @@ export default {
       if (author) return author
       return '——'
     },
-    dictationPaperContent() {
+    paperSegments() {
       const content = this.safeText(this.detail.content)
-      if (!content) return this.buildUnderline(30)
-      return this.maskContentByDifficulty(content, this.selectedDifficulty)
+      if (!content) {
+        return Array.from({ length: 30 }, () => ({ type: 'blank', value: '' }))
+      }
+      return this.getPaperSegments(content, this.selectedDifficulty)
     },
     paperFontClass() {
       return `paper-font-${this.selectedFontSize}`
@@ -122,7 +129,6 @@ export default {
       const diffLabel = (this.difficultyOptions.find(
         d => d.value === this.selectedDifficulty
       ) || {}).label || ''
-      const maskedContent = this.maskContentByDifficulty(content, this.selectedDifficulty)
 
       uni.showLoading({ title: '生成中...' })
       try {
@@ -130,14 +136,13 @@ export default {
           name: 'gw_dictation-print-pdf',
           data: {
             action: 'generate',
-            data: {
-              title: this.detail.title || '',
-              dynasty: this.detail.dynasty || '',
-              author: this.detail.author || '',
-              content: maskedContent,
-              fontSize: this.selectedFontSize,
-              difficultyLabel: diffLabel
-            }
+            title: this.detail.title || '',
+            dynasty: this.detail.dynasty || '',
+            author: this.detail.author || '',
+            content,
+            difficulty: this.selectedDifficulty,
+            fontSize: this.selectedFontSize,
+            difficultyLabel: diffLabel
           }
         })
         const result = res.result || {}
@@ -199,7 +204,7 @@ export default {
     isSentenceDelimiter(char) {
       return /[。！？!?]/.test(char)
     },
-    maskContentByDifficulty(content, difficulty) {
+    getPaperSegments(content, difficulty) {
       let startChecker = () => false
       if (difficulty === 'junior') {
         startChecker = this.isPhraseDelimiter
@@ -208,34 +213,38 @@ export default {
       }
 
       let shouldHint = difficulty !== 'advanced'
-      let output = ''
+      const segments = []
 
       for (let i = 0; i < content.length; i++) {
         const char = content[i]
         if (char === '\n') {
-          output += '\n'
+          segments.push({ type: 'char', value: '\n' })
           shouldHint = difficulty !== 'advanced'
           continue
         }
         if (/\s/.test(char)) {
-          output += char
+          segments.push({ type: 'char', value: char })
           continue
         }
         if (this.isPunctuation(char)) {
-          output += char
+          segments.push({ type: 'char', value: char })
           if (difficulty !== 'advanced' && startChecker(char)) {
             shouldHint = true
           }
           continue
         }
         if (difficulty !== 'advanced' && shouldHint) {
-          output += char
+          segments.push({ type: 'char', value: char })
           shouldHint = false
         } else {
-          output += '＿'
+          segments.push({ type: 'blank', value: '' })
         }
       }
-      return output
+      return segments
+    },
+    maskContentByDifficulty(content, difficulty) {
+      const segments = this.getPaperSegments(content, difficulty)
+      return segments.map(s => (s.type === 'blank' ? '＿' : s.value)).join('')
     }
   }
 }
@@ -345,6 +354,14 @@ export default {
   letter-spacing: 2rpx;
   white-space: pre-wrap;
   word-break: break-all;
+}
+.underline-cell {
+  display: inline-block;
+  min-width: 40rpx;
+  height: 1.2em;
+  border-bottom: 2rpx solid #1f2937;
+  vertical-align: bottom;
+  margin: 0 2rpx;
 }
 .action-bar {
   position: fixed;

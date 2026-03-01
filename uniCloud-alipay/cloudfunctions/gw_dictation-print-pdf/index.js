@@ -15,6 +15,10 @@ function normalizeText(value) {
     .trim()
 }
 
+function normalizeContent(value) {
+  return String(value || '').replace(/\r\n/g, '\n')
+}
+
 function sanitizeFilenamePart(value) {
   return String(value || '')
     .replace(/[\\/:*?"<>|]/g, '')
@@ -32,17 +36,80 @@ function getFontSizeConfig(size) {
   return { title: 22, meta: 14, body: 16.5, lineGap: 12 }
 }
 
-async function generateDictationPdf(data) {
-  const title = normalizeText(data.title || '古文默写')
-  const dynasty = normalizeText(data.dynasty || '')
-  const author = normalizeText(data.author || '')
-  const authorDisplay = dynasty && author ? `${dynasty} · ${author}` : (author || '')
-  const content = normalizeText(data.content || '')
-  const fontSize = String(data.fontSize || 'medium')
-  const difficultyLabel = normalizeText(data.difficultyLabel || '')
+function isPunctuation(char) {
+  return /[，。、！？；：、""''（）《》〈〉【】『』「」…,.!?;:'"()\-、]/.test(char)
+}
+function isPhraseDelimiter(char) {
+  return /[，、；：,;:]/.test(char)
+}
+function isSentenceDelimiter(char) {
+  return /[。！？!?]/.test(char)
+}
 
-  if (!content) {
+function normalizeDifficulty(value) {
+  const v = String(value || '').toLowerCase().trim()
+  if (v === 'middle' || v === '中级') return 'middle'
+  if (v === 'advanced' || v === '高级') return 'advanced'
+  return 'junior'
+}
+
+function getPaperSegments(content, difficulty) {
+  const level = normalizeDifficulty(difficulty)
+  let startChecker = () => false
+  if (level === 'junior') {
+    startChecker = isPhraseDelimiter
+  } else if (level === 'middle') {
+    startChecker = isSentenceDelimiter
+  }
+  let shouldHint = level !== 'advanced'
+  const segments = []
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i]
+    if (char === '\n') {
+      segments.push({ type: 'char', value: '\n' })
+      shouldHint = level !== 'advanced'
+      continue
+    }
+    if (/\s/.test(char)) {
+      segments.push({ type: 'char', value: char })
+      continue
+    }
+    if (isPunctuation(char)) {
+      segments.push({ type: 'char', value: char })
+      if (level !== 'advanced' && startChecker(char)) {
+        shouldHint = true
+      }
+      continue
+    }
+    if (level !== 'advanced' && shouldHint) {
+      segments.push({ type: 'char', value: char })
+      shouldHint = false
+    } else {
+      segments.push({ type: 'blank', value: '' })
+    }
+  }
+  return segments
+}
+
+async function generateDictationPdf(data) {
+  const inner = data && data.data && typeof data.data === 'object' ? data.data : data
+  const title = normalizeText((inner && inner.title) || data.title || '古文默写')
+  const dynasty = normalizeText((inner && inner.dynasty) || data.dynasty || '')
+  const author = normalizeText((inner && inner.author) || data.author || '')
+  const authorDisplay = dynasty && author ? `${dynasty} · ${author}` : (author || '')
+  const rawContent = normalizeContent((inner && inner.content) || data.content || '')
+  const difficulty = normalizeDifficulty((inner && inner.difficulty) || data.difficulty)
+  const fontSize = String((inner && inner.fontSize) || data.fontSize || 'medium')
+  const difficultyLabel = normalizeText((inner && inner.difficultyLabel) || data.difficultyLabel || '')
+
+  if (!rawContent) {
     return { code: -1, msg: '缺少正文内容' }
+  }
+
+  let segments = getPaperSegments(rawContent, difficulty)
+  const blankCount = segments.filter(s => s && String(s.type) === 'blank').length
+  if (blankCount === 0 && segments.length > 0) {
+    segments = getPaperSegments(rawContent, 'advanced')
   }
 
   const id = crypto.randomBytes(8).toString('hex')
@@ -107,14 +174,48 @@ async function generateDictationPdf(data) {
         .stroke()
       doc.moveDown(0.8)
 
-      doc
-        .fontSize(fontConfig.body)
-        .fillColor('#111827')
-        .text(content, {
-          width: CONTENT_WIDTH,
-          align: 'left',
-          lineGap: fontConfig.lineGap
-        })
+      doc.fontSize(fontConfig.body).fillColor('#111827')
+
+      const lineHeight = fontConfig.body + fontConfig.lineGap
+      const rightEdge = A4_WIDTH - PAGE_MARGIN
+      let x = PAGE_MARGIN
+      let y = doc.y
+      const underlineGap = 2
+      for (const seg of segments) {
+        const isBlank = seg && String(seg.type) === 'blank'
+        const value = seg && seg.value !== undefined ? String(seg.value) : ''
+        if (isBlank) {
+          const charWidth = doc.widthOfString('字')
+          const blankWidth = charWidth * 1.15
+          if (x + blankWidth > rightEdge) {
+            x = PAGE_MARGIN
+            y += lineHeight
+          }
+          const underlineY = y + fontConfig.body * 1.05 + underlineGap
+          doc
+            .moveTo(x, underlineY)
+            .lineTo(x + charWidth, underlineY)
+            .lineWidth(1)
+            .strokeColor('#1f2937')
+            .stroke()
+          doc.fillColor('#111827')
+          x += blankWidth
+        } else {
+          if (value === '\n') {
+            x = PAGE_MARGIN
+            y += lineHeight
+            continue
+          }
+          if (value === '') continue
+          const w = doc.widthOfString(value)
+          if (x + w > rightEdge) {
+            x = PAGE_MARGIN
+            y += lineHeight
+          }
+          doc.text(value, x, y, { lineBreak: false })
+          x += w
+        }
+      }
 
       doc.end()
     })
@@ -145,16 +246,20 @@ async function generateDictationPdf(data) {
   }
 }
 
+function getPayload(event) {
+  const inner = (event && event.data) || event || {}
+  return (inner.data && typeof inner.data === 'object') ? inner.data : inner
+}
+
 exports.main = async (event) => {
   try {
     const action = (event && event.action) || ''
-    const data = (event && event.data) || {}
-    switch (action) {
-      case 'generate':
-        return await generateDictationPdf(data)
-      default:
-        return { code: -1, msg: '未知操作' }
+    const data = getPayload(event)
+    const isGenerate = action === 'generate' || (data && data.action === 'generate')
+    if (isGenerate) {
+      return await generateDictationPdf(data)
     }
+    return { code: -1, msg: '未知操作' }
   } catch (error) {
     return {
       code: -1,
