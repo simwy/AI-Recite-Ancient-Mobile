@@ -2,7 +2,7 @@
   <view class="container">
     <view class="section-top">
       <view class="section-header">
-        <view class="section-title">打印默写纸</view>
+        <view class="section-title">默写练习</view>
         <view class="font-tabs">
           <view
             v-for="item in fontSizeOptions"
@@ -45,7 +45,7 @@
 
     <view class="action-bar">
       <view class="action-row">
-        <button class="btn-print" :loading="printingPdf" @tap="openPrintEntry">打印默写纸</button>
+        <button class="btn-print" @tap="printDictationPaper">打印默写纸</button>
         <button class="btn-capture" @tap="openPhotoEntry">拍照检查</button>
       </view>
     </view>
@@ -71,8 +71,7 @@ export default {
         { label: '大', value: 'large' },
         { label: '中', value: 'medium' },
         { label: '小', value: 'small' }
-      ],
-      printingPdf: false
+      ]
     }
   },
   computed: {
@@ -112,44 +111,61 @@ export default {
         uni.showToast({ title: '加载失败', icon: 'none' })
       }
     },
-    async openPrintEntry() {
-      if (this.printingPdf) return
-      const content = this.safeText(this.dictationPaperContent)
+    async printDictationPaper() {
+      const content = this.safeText(this.detail.content)
       if (!content) {
-        uni.showToast({ title: '暂无可打印内容', icon: 'none' })
+        uni.showToast({ title: '暂无正文内容', icon: 'none' })
         return
       }
-      this.printingPdf = true
-      uni.showLoading({ title: '正在生成PDF...' })
+      const diffLabel = (this.difficultyOptions.find(
+        d => d.value === this.selectedDifficulty
+      ) || {}).label || ''
+      const maskedContent = this.maskContentByDifficulty(content, this.selectedDifficulty)
+
+      uni.showLoading({ title: '生成中...' })
       try {
-        const callRes = await uniCloud.callFunction({
+        const res = await uniCloud.callFunction({
           name: 'gw_dictation-print-pdf',
           data: {
             action: 'generate',
             data: {
-              title: this.safeText(this.detail.title || '古文默写'),
-              author: this.safeText(this.detail.author || ''),
-              content,
+              title: this.detail.title || '',
+              author: this.detail.author || '',
+              content: maskedContent,
               fontSize: this.selectedFontSize,
-              difficulty: this.selectedDifficulty,
-              difficultyLabel: this.getDifficultyLabel()
+              difficultyLabel: diffLabel
             }
           }
         })
-        const result = (callRes && callRes.result) || {}
-        if (result.code !== 0 || !result.data || !result.data.fileID) {
-          throw new Error(result.msg || '生成PDF失败')
+        const result = res.result || {}
+        if (result.code !== 0) {
+          uni.showToast({ title: result.msg || '生成失败', icon: 'none' })
+          return
         }
-        await this.openPdfDocument(result.data.fileID)
-      } catch (error) {
-        uni.showToast({
-          title: (error && error.message) || '打印失败，请稍后再试',
-          icon: 'none',
-          duration: 2500
+        const fileID = result.data.fileID
+        const urlRes = await uniCloud.getTempFileURL({ fileList: [fileID] })
+        const fileUrl = (urlRes.fileList && urlRes.fileList[0] && urlRes.fileList[0].tempFileURL) || ''
+        if (!fileUrl) {
+          uni.showToast({ title: '获取文件地址失败', icon: 'none' })
+          return
+        }
+        const dlRes = await uni.downloadFile({ url: fileUrl })
+        if (dlRes.statusCode !== 200 || !dlRes.tempFilePath) {
+          uni.showToast({ title: '下载失败', icon: 'none' })
+          return
+        }
+        uni.openDocument({
+          filePath: dlRes.tempFilePath,
+          fileType: 'pdf',
+          showMenu: true,
+          fail: () => {
+            uni.showToast({ title: '打开PDF失败', icon: 'none' })
+          }
         })
+      } catch (e) {
+        uni.showToast({ title: '生成PDF失败', icon: 'none' })
       } finally {
         uni.hideLoading()
-        this.printingPdf = false
       }
     },
     openPhotoEntry() {
@@ -172,63 +188,6 @@ export default {
     },
     isSentenceDelimiter(char) {
       return /[。！？!?]/.test(char)
-    },
-    getFontSizeLabel() {
-      const target = this.fontSizeOptions.find((item) => item.value === this.selectedFontSize)
-      return target ? `${target.label}号字体` : '中号字体'
-    },
-    getDifficultyLabel() {
-      const target = this.difficultyOptions.find((item) => item.value === this.selectedDifficulty)
-      return target ? target.label : '中级默写'
-    },
-    async openPdfDocument(fileID) {
-      const tempUrl = await this.getCloudFileTempUrl(fileID)
-      if (!tempUrl) {
-        throw new Error('获取PDF地址失败')
-      }
-      // #ifdef H5
-      if (typeof window !== 'undefined' && window.open) {
-        window.open(tempUrl, '_blank')
-        uni.showToast({ title: 'PDF已打开', icon: 'none' })
-        return
-      }
-      // #endif
-      const localPath = await this.downloadPdf(tempUrl)
-      await this.openLocalPdf(localPath)
-    },
-    async getCloudFileTempUrl(fileID) {
-      const res = await uniCloud.getTempFileURL({
-        fileList: [fileID]
-      })
-      const first = res && res.fileList && res.fileList[0]
-      if (!first || !first.tempFileURL) return ''
-      return first.tempFileURL
-    },
-    downloadPdf(url) {
-      return new Promise((resolve, reject) => {
-        uni.downloadFile({
-          url,
-          success: (res) => {
-            if (res.statusCode !== 200 || !res.tempFilePath) {
-              reject(new Error('PDF下载失败'))
-              return
-            }
-            resolve(res.tempFilePath)
-          },
-          fail: (err) => reject(err || new Error('PDF下载失败'))
-        })
-      })
-    },
-    openLocalPdf(filePath) {
-      return new Promise((resolve, reject) => {
-        uni.openDocument({
-          filePath,
-          fileType: 'pdf',
-          showMenu: true,
-          success: resolve,
-          fail: (err) => reject(err || new Error('打开PDF失败'))
-        })
-      })
     },
     maskContentByDifficulty(content, difficulty) {
       let startChecker = () => false
@@ -391,15 +350,17 @@ export default {
   display: flex;
   gap: 16rpx;
 }
-.btn-print,
-.btn-capture {
+.btn-print {
   flex: 1;
   border-radius: 12rpx;
-}
-.btn-print {
-  background: #eef4ff;
+  background: #fff;
   color: #2f6fff;
-  border: 1rpx solid #c9dcff;
+  border: 1rpx solid #2f6fff;
+}
+.btn-capture {
+  flex: 1;
+  width: auto;
+  border-radius: 12rpx;
 }
 .btn-capture {
   background: #2f6fff;

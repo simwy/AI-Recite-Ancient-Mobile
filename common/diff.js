@@ -24,25 +24,29 @@ function normalizeForDiff(text) {
   return { chars, filtered }
 }
 
-function getCharPinyin(char) {
-  if (!char) return ''
+function getCharPinyinSet(char) {
+  if (!char) return []
   if (pinyinCache.has(char)) return pinyinCache.get(char)
 
   const value = pinyin(char, {
     toneType: 'none',
-    type: 'array'
+    type: 'array',
+    multiple: true
   })
-  const first = Array.isArray(value) && value.length ? value[0] : ''
-  pinyinCache.set(char, first)
-  return first
+  const list = Array.isArray(value)
+    ? Array.from(new Set(value.filter(Boolean).map(item => String(item).toLowerCase())))
+    : []
+  pinyinCache.set(char, list)
+  return list
 }
 
 function isHomophone(a, b) {
   if (!a || !b) return false
   if (a === b) return true
-  const aPy = getCharPinyin(a)
-  const bPy = getCharPinyin(b)
-  return Boolean(aPy && bPy && aPy === bPy)
+  const aPySet = getCharPinyinSet(a)
+  const bPySet = getCharPinyinSet(b)
+  if (!aPySet.length || !bPySet.length) return false
+  return aPySet.some(py => bPySet.includes(py))
 }
 
 /**
@@ -69,9 +73,10 @@ function buildLCSTable(a, b) {
  * 逐字对比原文和识别文字
  * @param {string} original - 原文
  * @param {string} recognized - 语音识别文字
- * @returns {Array<{char: string, status: 'correct'|'wrong'|'missing'}>}
+ * @returns {Array<{char: string, status: 'correct'|'wrong'|'missing'|'normal'}>}
  */
-export function diffChars(original, recognized) {
+export function diffChars(original, recognized, options = {}) {
+  const tailUnmatchedAsNormal = Boolean(options && options.tailUnmatchedAsNormal)
   const source = normalizeForDiff(original)
   const target = normalizeForDiff(recognized)
   const a = source.filtered
@@ -105,6 +110,20 @@ export function diffChars(original, recognized) {
     }
   })
 
+  // 仅把“最后命中位置之后”的未匹配字符视为未读完，不标红。
+  if (tailUnmatchedAsNormal && matchedOriginalIndexes.size > 0) {
+    let lastMatchedIndex = -1
+    matchedOriginalIndexes.forEach((idx) => {
+      if (idx > lastMatchedIndex) lastMatchedIndex = idx
+    })
+    source.chars.forEach((char, index) => {
+      if (index <= lastMatchedIndex) return
+      if (isPunctuation(char)) return
+      if (matchedOriginalIndexes.has(index)) return
+      result[index] = { char, status: 'normal' }
+    })
+  }
+
   return result
 }
 
@@ -115,7 +134,7 @@ export function diffChars(original, recognized) {
  */
 export function calcAccuracy(diffResult) {
   if (!diffResult || diffResult.length === 0) return 0
-  const compareChars = diffResult.filter(d => d.status !== 'punctuation')
+  const compareChars = diffResult.filter(d => d.status !== 'punctuation' && d.status !== 'normal')
   if (compareChars.length === 0) return 0
   const correct = compareChars.filter(d => d.status === 'correct').length
   return Math.round((correct / compareChars.length) * 100)

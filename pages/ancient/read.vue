@@ -7,7 +7,6 @@
         <text class="font-item" :class="{ active: fontSize === 'small' }" @tap="setFontSize('small')">小</text>
       </view>
       <view class="right-tools">
-        <button class="tool-btn" size="mini" @tap="openPrintEntry">打印</button>
         <button class="tool-btn" size="mini" @tap="onReadFromCurrent">朗读</button>
         <button v-if="isFullReading" class="tool-btn tool-btn-stop" size="mini" @tap="onStopPlay">停止</button>
       </view>
@@ -130,6 +129,7 @@ export default {
       speechDurationSeconds: 0,
       speechDurationTimer: null,
       speechRealtimeText: '',
+      speechFinalRecognizedText: '',
       speechAsrConfig: null,
       speechSocketTask: null,
       speechSocketReady: false,
@@ -161,6 +161,7 @@ export default {
       speechFlowCursorIndex: 0,
       speechLatestChunkText: '',
       speechReadHistoryList: [],
+      speechRawDisplayText: '',
       speechReadPanelVisible: false,
       readHistoryMotion: false,
       readHistoryMotionTimer: null,
@@ -191,10 +192,7 @@ export default {
       return '按住朗读'
     },
     allReadTextDisplay() {
-      const history = this.speechReadHistoryList.join('\n')
-      const realtime = String(this.speechRealtimeText || '').trim()
-      if (!realtime) return history
-      return history ? `${history}\n${realtime}` : realtime
+      return String(this.speechRawDisplayText || '')
     },
     showReadHistoryPanel() {
       return this.speechReadPanelVisible
@@ -478,12 +476,6 @@ export default {
       const anchorIndex = this.getScrollAnchorIndex(targetIndex)
       this.scrollIntoViewId = `play-unit-${anchorIndex}`
     },
-    openPrintEntry() {
-      uni.showToast({
-        title: '打印功能即将上线',
-        icon: 'none'
-      })
-    },
     onPressStart() {
       if (!this.playUnits.length) return
       if (this.speechActive || this.speechStarting) return
@@ -652,7 +644,7 @@ export default {
         await this.stopSpeechRecorder()
         await this.finishSpeechTask()
         this.flushSpeechUiUpdate()
-        const recognizedText = this.speechRealtimeText
+        const recognizedText = String(this.speechFinalRecognizedText || this.speechRealtimeText || '').trim()
         if (!recognizedText) {
           const hint = this.speechLastErrorMsg || '未识别到语音内容'
           uni.showToast({ title: hint, icon: 'none', duration: 2800 })
@@ -679,6 +671,41 @@ export default {
       }
       this.triggerReadHistoryMotion()
     },
+    updateSpeechRawDisplayText(nextText) {
+      const incoming = String(nextText || '')
+      if (!incoming) return false
+      // 直接使用当前完整快照，避免二次增量拼接导致重复显示
+      if (incoming === this.speechRawDisplayText) return false
+      this.speechRawDisplayText = incoming
+      return true
+    },
+    extractSpeechDisplayText(payload) {
+      if (payload === undefined || payload === null) return ''
+      let parsed = payload
+      if (typeof payload === 'string') {
+        const raw = String(payload)
+        if (!raw) return ''
+        try {
+          parsed = JSON.parse(raw)
+        } catch (error) {
+          return raw
+        }
+      }
+      const rt = ((((parsed || {}).cn || {}).st || {}).rt)
+      if (!Array.isArray(rt)) return ''
+      const words = []
+      rt.forEach((part) => {
+        const wsList = (part && part.ws) || []
+        wsList.forEach((wsItem) => {
+          const cwList = (wsItem && wsItem.cw) || []
+          // 仅取首候选，展示用户可读的识别结果文本
+          const first = cwList[0] || {}
+          const token = first.w || ''
+          if (token) words.push(token)
+        })
+      })
+      return words.join('')
+    },
     onClearReadProgress() {
       this.onStopPlay()
       if (this.isSpeechRecognitionBusy()) {
@@ -697,6 +724,8 @@ export default {
       this.speechSentenceResultMap = {}
       this.speechSentenceAttemptMap = {}
       this.speechReadHistoryList = []
+      this.speechRawDisplayText = ''
+      this.speechFinalRecognizedText = ''
       this.speechReadPanelVisible = false
       this.speechRealtimeText = ''
       this.speechLatestChunkText = ''
@@ -781,6 +810,7 @@ export default {
       this.speechFlowCursorIndex = 0
       this.speechRealtimeText = ''
       this.speechLatestChunkText = ''
+      this.speechFinalRecognizedText = ''
     },
     resetSpeechRuntimeState() {
       this.speechSocketReady = false
@@ -799,6 +829,7 @@ export default {
       this.speechLastSwitchAt = 0
       this.speechFlowCursorIndex = 0
       this.speechLatestChunkText = ''
+      this.speechFinalRecognizedText = ''
       this.speechWaitFinishResolver = null
     },
     async applySpeechResult(recognizedText) {
@@ -819,7 +850,7 @@ export default {
         if (!targetUnit) continue
         const targetText = String(matched.text || '').trim()
         if (!targetText) continue
-        const diffResult = diffChars(targetUnit.text, targetText)
+        const diffResult = diffChars(targetUnit.text, targetText, { tailUnmatchedAsNormal: true })
         const accuracy = calcAccuracy(diffResult)
         const wrongChars = diffResult
           .filter(item => item.status === 'missing' || item.status === 'wrong')
@@ -1216,6 +1247,8 @@ export default {
       const segId = Number(data.seg_id || 0)
       const text = this.extractSpeechTextFromData(data)
       if (!text) return
+      const stType = Number((((data || {}).cn || {}).st || {}).type)
+      const isFinalSegment = stType === 0
       // 讯飞标准版 RTASR：pgs="rpl" 时需要清除 rg 范围内的旧分段再写入
       const pgs = data.pgs || ''
       if (pgs === 'rpl' && Array.isArray(data.rg) && data.rg.length >= 2) {
@@ -1225,16 +1258,19 @@ export default {
           delete this.speechSegmentMap[k]
         }
       }
-      this.speechSegmentMap[segId] = text
-      const merged = Object.keys(this.speechSegmentMap)
-        .map(key => Number(key))
-        .sort((a, b) => a - b)
-        .map(key => this.speechSegmentMap[key] || '')
-        .join('')
+      // 参照 RTASR 官方 demo：仅将“最终(type=0)”分段写入总结果，避免中间态重复累加
+      if (isFinalSegment) {
+        this.speechSegmentMap[segId] = text
+      }
+      const finalized = this.composeSpeechTextFromSegments()
+      const merged = isFinalSegment
+        ? finalized
+        : this.mergeTextWithOverlap(finalized, text)
       this.speechPendingMergedText = merged
       this.speechPendingChunkText = text
       this.scheduleSpeechUiUpdate()
       if (this.isSpeechResultFinished(data)) {
+        this.speechFinalRecognizedText = finalized || merged
         this.speechTaskFinished = true
         if (typeof this.speechWaitFinishResolver === 'function') {
           this.speechWaitFinishResolver()
@@ -1274,7 +1310,9 @@ export default {
       if (!merged && !chunk) return
       this.speechRealtimeText = merged
       this.speechLatestChunkText = chunk
-      this.triggerReadHistoryMotion()
+      if (this.updateSpeechRawDisplayText(merged)) {
+        this.triggerReadHistoryMotion()
+      }
       this.updateSpeechLiveMatch(merged)
     },
     updateSpeechLiveMatch(recognizedChunk) {
@@ -1357,13 +1395,43 @@ export default {
         const wsList = (part && part.ws) || []
         wsList.forEach((wsItem) => {
           const cwList = (wsItem && wsItem.cw) || []
-          cwList.forEach((cw) => {
-            const token = (cw && cw.w) || ''
-            if (token) words.push(token)
-          })
+          // 识别候选中仅取第一候选，避免将同位置备选词重复拼接
+          const first = cwList[0] || {}
+          const token = first.w || ''
+          if (token) words.push(token)
         })
       })
       return words.join('')
+    },
+    composeSpeechTextFromSegments() {
+      const orderedTexts = Object.keys(this.speechSegmentMap)
+        .map(key => Number(key))
+        .filter(key => Number.isFinite(key))
+        .sort((a, b) => a - b)
+        .map(key => String(this.speechSegmentMap[key] || ''))
+        .filter(Boolean)
+      let merged = ''
+      orderedTexts.forEach((part) => {
+        merged = this.mergeTextWithOverlap(merged, part)
+      })
+      return merged
+    },
+    mergeTextWithOverlap(baseText, incomingText) {
+      const base = String(baseText || '')
+      const incoming = String(incomingText || '')
+      if (!incoming) return base
+      if (!base) return incoming
+      // 若新片段已完整包含在末尾，不重复追加
+      if (base.endsWith(incoming)) return base
+      const maxOverlap = Math.min(base.length, incoming.length)
+      for (let overlap = maxOverlap; overlap > 0; overlap--) {
+        const baseTail = base.slice(base.length - overlap)
+        const incomingHead = incoming.slice(0, overlap)
+        if (baseTail === incomingHead) {
+          return `${base}${incoming.slice(overlap)}`
+        }
+      }
+      return `${base}${incoming}`
     },
     startSpeechFrameFlusher() {
       clearInterval(this.speechFrameFlushTimer)

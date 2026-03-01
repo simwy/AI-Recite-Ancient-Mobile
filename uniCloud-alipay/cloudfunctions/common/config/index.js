@@ -13,7 +13,7 @@ module.exports = {
   },
   iflytekAsr: {
     // 默认使用实时语音转写标准版，保留大模型版配置用于后续切换
-    useStandardRtasr: true,
+    useStandardRtasr: false,
     standard: {
       endpoint: 'wss://rtasr.xfyun.cn/v1/ws',
       appId: '43758daa',

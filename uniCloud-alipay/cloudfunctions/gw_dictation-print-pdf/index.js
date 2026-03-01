@@ -6,9 +6,39 @@ const crypto = require('crypto')
 const PDFDocument = require('pdfkit')
 
 const A4_WIDTH = 595.28
-const A4_HEIGHT = 841.89
 const PAGE_MARGIN = 56
 const CONTENT_WIDTH = A4_WIDTH - PAGE_MARGIN * 2
+const FONT_DIRS = ['/usr/share/fonts', '/usr/local/share/fonts', '/usr/share/texmf/fonts']
+const FONT_EXTS = ['.ttf', '.otf', '.ttc']
+
+function scanAllFonts() {
+  const results = []
+  function walk(dir) {
+    let entries
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch (e) { return }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) { walk(full) }
+      else if (FONT_EXTS.includes(path.extname(entry.name).toLowerCase())) {
+        results.push(full)
+      }
+    }
+  }
+  for (const dir of FONT_DIRS) walk(dir)
+  return results
+}
+
+function tryResolveFontPath() {
+  const all = scanAllFonts()
+  // prefer CJK fonts
+  const cjkKeys = ['cjk', 'noto', 'wqy', 'uming', 'ukai', 'hans', 'chinese', 'droid', 'arphic', 'wenquanyi']
+  for (const f of all) {
+    const lower = f.toLowerCase()
+    if (cjkKeys.some(k => lower.includes(k))) return f
+  }
+  // fallback: return first font found (better than nothing)
+  return all.length > 0 ? all[0] : ''
+}
 
 function normalizeText(value) {
   return String(value || '')
@@ -21,28 +51,6 @@ function sanitizeFilenamePart(value) {
     .replace(/[\\/:*?"<>|]/g, '')
     .replace(/\s+/g, '')
     .slice(0, 30)
-}
-
-function tryResolveFontPath() {
-  const localCandidates = [
-    path.join(__dirname, 'fonts/NotoSansSC-Regular.otf'),
-    path.join(__dirname, 'fonts/NotoSansSC-Regular.ttf'),
-    path.join(__dirname, 'fonts/SourceHanSansCN-Regular.otf'),
-    path.join(__dirname, 'node_modules/noto-fontface-cjk-jp/fonts/Noto/NotoSansCJKjp-Regular.otf')
-  ]
-  for (const filePath of localCandidates) {
-    if (fs.existsSync(filePath)) return filePath
-  }
-  const candidates = [
-    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-    '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
-    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
-    '/usr/share/fonts/truetype/arphic/uming.ttc'
-  ]
-  for (const filePath of candidates) {
-    if (fs.existsSync(filePath)) return filePath
-  }
-  return ''
 }
 
 function getFontSizeConfig(size) {
@@ -137,7 +145,7 @@ async function generateDictationPdf(data) {
       doc.end()
     })
 
-    const fileContent = fs.readFileSync(tmpFile)
+    const fileContent = await fs.promises.readFile(tmpFile)
     const uploadRes = await uniCloud.uploadFile({
       cloudPath,
       fileContent
@@ -158,19 +166,21 @@ async function generateDictationPdf(data) {
     }
   } finally {
     try {
-      if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile)
+      await fs.promises.unlink(tmpFile)
     } catch (e) {}
   }
 }
 
 exports.main = async (event) => {
   try {
-    const action = (event && event.action) || 'generate'
+    const action = (event && event.action) || ''
     const data = (event && event.data) || {}
-    if (action !== 'generate') {
-      return { code: -1, msg: '未知操作' }
+    switch (action) {
+      case 'generate':
+        return await generateDictationPdf(data)
+      default:
+        return { code: -1, msg: '未知操作' }
     }
-    return await generateDictationPdf(data)
   } catch (error) {
     return {
       code: -1,
