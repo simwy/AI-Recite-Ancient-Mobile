@@ -48,6 +48,12 @@ async function generateDictationPdf(data) {
   const cloudPath = `dictation-papers/${Date.now()}-${id}.pdf`
   const fontConfig = getFontSizeConfig(fontSize)
 
+  const fontPath = path.join(__dirname, 'fonts', 'NotoSansSC-VariableFont_wght.ttf')
+  const fontExists = fs.existsSync(fontPath)
+  if (!fontExists) {
+    return { code: -1, msg: '本地字体文件不存在：fonts/NotoSansSC-VariableFont_wght.ttf' }
+  }
+
   try {
     await new Promise((resolve, reject) => {
       const doc = new PDFDocument({
@@ -65,6 +71,9 @@ async function generateDictationPdf(data) {
       output.on('error', reject)
       doc.on('error', reject)
       doc.pipe(output)
+
+      doc.registerFont('NotoSansSC', fontPath)
+      doc.font('NotoSansSC')
 
       doc
         .fontSize(fontConfig.title)
