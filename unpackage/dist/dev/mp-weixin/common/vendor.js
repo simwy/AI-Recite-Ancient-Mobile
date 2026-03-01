@@ -8357,6 +8357,13 @@ const pages = [
     needLogin: false
   },
   {
+    path: "pages/ancient/recite2",
+    style: {
+      navigationBarTitleText: "背诵模式"
+    },
+    needLogin: false
+  },
+  {
     path: "pages/ancient/result",
     style: {
       navigationBarTitleText: "背诵结果"

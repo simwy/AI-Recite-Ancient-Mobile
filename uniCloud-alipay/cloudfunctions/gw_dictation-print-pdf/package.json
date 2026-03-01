@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@fontsource/noto-sans-sc": "^5.2.9",
-    "@fontsource/noto-serif-sc": "^5.2.9",
-    "noto-sans-sc": "^37.0.0",
+    "noto-fontface-cjk-jp": "^1.0.2",
     "pdfkit": "^0.17.2"
   }
 }

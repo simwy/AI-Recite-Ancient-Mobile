@@ -12,6 +12,7 @@ if (!Math) {
   "./pages/ancient/dictation.js";
   "./pages/ancient/read.js";
   "./pages/ancient/recite.js";
+  "./pages/ancient/recite2.js";
   "./pages/ancient/result.js";
   "./pages/square/index.js";
   "./pages/square/list.js";

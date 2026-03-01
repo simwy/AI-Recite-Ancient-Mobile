@@ -24,6 +24,15 @@ function sanitizeFilenamePart(value) {
 }
 
 function tryResolveFontPath() {
+  const localCandidates = [
+    path.join(__dirname, 'fonts/NotoSansSC-Regular.otf'),
+    path.join(__dirname, 'fonts/NotoSansSC-Regular.ttf'),
+    path.join(__dirname, 'fonts/SourceHanSansCN-Regular.otf'),
+    path.join(__dirname, 'node_modules/noto-fontface-cjk-jp/fonts/Noto/NotoSansCJKjp-Regular.otf')
+  ]
+  for (const filePath of localCandidates) {
+    if (fs.existsSync(filePath)) return filePath
+  }
   const candidates = [
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
     '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
@@ -52,7 +61,6 @@ async function generateDictationPdf(data) {
   const content = normalizeText(data.content || '')
   const fontSize = String(data.fontSize || 'medium')
   const difficultyLabel = normalizeText(data.difficultyLabel || '')
-  const generatedAt = new Date()
 
   if (!content) {
     return { code: -1, msg: '缺少正文内容' }
@@ -63,6 +71,9 @@ async function generateDictationPdf(data) {
   const cloudPath = `dictation-papers/${Date.now()}-${id}.pdf`
   const fontConfig = getFontSizeConfig(fontSize)
   const cjkFontPath = tryResolveFontPath()
+  if (!cjkFontPath) {
+    return { code: -1, msg: '缺少中文字体文件，无法生成PDF' }
+  }
 
   try {
     await new Promise((resolve, reject) => {
@@ -82,9 +93,7 @@ async function generateDictationPdf(data) {
       doc.on('error', reject)
       doc.pipe(output)
 
-      if (cjkFontPath) {
-        doc.font(cjkFontPath)
-      }
+      doc.font(cjkFontPath)
 
       doc
         .fontSize(fontConfig.title)
@@ -123,15 +132,6 @@ async function generateDictationPdf(data) {
           width: CONTENT_WIDTH,
           align: 'left',
           lineGap: fontConfig.lineGap
-        })
-
-      const footerText = `生成时间：${generatedAt.getFullYear()}-${String(generatedAt.getMonth() + 1).padStart(2, '0')}-${String(generatedAt.getDate()).padStart(2, '0')} ${String(generatedAt.getHours()).padStart(2, '0')}:${String(generatedAt.getMinutes()).padStart(2, '0')}`
-      doc
-        .fontSize(10)
-        .fillColor('#9ca3af')
-        .text(footerText, PAGE_MARGIN, A4_HEIGHT - PAGE_MARGIN + 12, {
-          width: CONTENT_WIDTH,
-          align: 'right'
         })
 
       doc.end()

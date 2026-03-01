@@ -1216,6 +1216,15 @@ export default {
       const segId = Number(data.seg_id || 0)
       const text = this.extractSpeechTextFromData(data)
       if (!text) return
+      // 讯飞标准版 RTASR：pgs="rpl" 时需要清除 rg 范围内的旧分段再写入
+      const pgs = data.pgs || ''
+      if (pgs === 'rpl' && Array.isArray(data.rg) && data.rg.length >= 2) {
+        const rgStart = Number(data.rg[0])
+        const rgEnd = Number(data.rg[1])
+        for (let k = rgStart; k <= rgEnd; k++) {
+          delete this.speechSegmentMap[k]
+        }
+      }
       this.speechSegmentMap[segId] = text
       const merged = Object.keys(this.speechSegmentMap)
         .map(key => Number(key))
