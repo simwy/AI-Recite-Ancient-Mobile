@@ -13,6 +13,7 @@
 				<text class="uer-name" v-else>{{$t('mine.notLogged')}}</text>
 			</view>
 		</view>
+		<view class="trial-hint">试用期间，所有AI算力免费试用</view>
 		<uni-grid class="grid" :column="4" :showBorder="false" :square="true">
 			<uni-grid-item class="item" v-for="(item,index) in gridList" @click.native="tapGrid(index)" :key="index">
 				<text class="stat-value">{{item.value}}</text>
@@ -502,6 +503,16 @@
 		line-height: 100rpx;
 		font-size: 38rpx;
 		color: #FFFFFF;
+	}
+
+	.trial-hint {
+		padding: 20rpx 30rpx;
+		margin: 20rpx 24rpx;
+		background-color: #e8f4ff;
+		color: #007aff;
+		font-size: 26rpx;
+		text-align: center;
+		border-radius: 12rpx;
 	}
 
 	.center-list {
