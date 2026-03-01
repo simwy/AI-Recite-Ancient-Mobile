@@ -36,6 +36,10 @@
           <text class="paper-label">作者：</text>
           <text class="paper-value author-placeholder">{{ authorDisplayText }}</text>
         </view>
+        <view class="paper-line paper-id-line">
+          <text class="paper-label">文章ID：</text>
+          <text class="paper-value paper-id-value">{{ id || '—' }}</text>
+        </view>
         <view class="paper-content">
           <text class="paper-label">正文：</text>
           <view class="paper-value paper-main">
@@ -136,6 +140,7 @@ export default {
           name: 'gw_dictation-print-pdf',
           data: {
             action: 'generate',
+            articleId: this.id || this.detail._id || '',
             title: this.detail.title || '',
             dynasty: this.detail.dynasty || '',
             author: this.detail.author || '',
@@ -335,6 +340,11 @@ export default {
 }
 .paper-line {
   margin-bottom: 12rpx;
+}
+.paper-id-line .paper-id-value {
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #6b7280;
 }
 .paper-content {
   margin-top: 10rpx;

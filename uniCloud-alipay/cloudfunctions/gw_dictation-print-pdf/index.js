@@ -93,6 +93,7 @@ function getPaperSegments(content, difficulty) {
 
 async function generateDictationPdf(data) {
   const inner = data && data.data && typeof data.data === 'object' ? data.data : data
+  const articleId = normalizeText((inner && inner.articleId) || data.articleId || '')
   const title = normalizeText((inner && inner.title) || data.title || '古文默写')
   const dynasty = normalizeText((inner && inner.dynasty) || data.dynasty || '')
   const author = normalizeText((inner && inner.author) || data.author || '')
@@ -162,6 +163,12 @@ async function generateDictationPdf(data) {
       if (difficultyLabel) {
         doc.moveDown(0.4)
         doc.text(`默写级别：${difficultyLabel}`)
+      }
+      if (articleId) {
+        doc.moveDown(0.4)
+        doc.fontSize(fontConfig.meta - 1).fillColor('#6b7280')
+        doc.text(`文章ID：${articleId}`)
+        doc.fontSize(fontConfig.meta).fillColor('#374151')
       }
       doc.moveDown(0.6)
 
