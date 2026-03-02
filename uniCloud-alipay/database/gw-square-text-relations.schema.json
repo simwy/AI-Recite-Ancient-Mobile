@@ -1,6 +1,6 @@
 {
   "bsonType": "object",
-  "required": ["text_id", "category_id", "subcollection_id"],
+  "required": ["text_id", "subcollection_id"],
   "permission": {
     "read": true,
     "create": false,
@@ -14,11 +14,6 @@
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
-      "trim": "both"
-    },
-    "category_id": {
-      "bsonType": "string",
-      "description": "分类ID",
       "trim": "both"
     },
     "subcollection_id": {

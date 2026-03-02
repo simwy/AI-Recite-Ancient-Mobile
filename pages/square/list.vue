@@ -1,7 +1,16 @@
 <template>
   <view class="container">
-    <view class="list" v-if="list.length > 0">
-      <view class="list-item" v-for="item in list" :key="item._id" @click="goDetail(item)">
+    <view class="search-bar">
+      <uni-search-bar
+        v-model="keyword"
+        placeholder="在本合集中搜索标题、作者或内容"
+        @confirm="onSearch"
+        @clear="onClear"
+      />
+    </view>
+
+    <view class="list" v-if="filteredList.length > 0">
+      <view class="list-item" v-for="item in filteredList" :key="item._id" @click="goDetail(item)">
         <view class="item-header">
           <view class="item-title">{{ item.title }}</view>
           <text class="item-status">{{ getReciteStatus(item) }}</text>
@@ -14,7 +23,7 @@
     </view>
 
     <view class="empty" v-else-if="!loading">
-      <text class="empty-text">该子合集暂无古文</text>
+      <text class="empty-text">{{ keyword ? '未找到匹配的古文' : '该子合集暂无古文' }}</text>
     </view>
 
     <view class="loading" v-if="loading">
@@ -40,6 +49,7 @@
 export default {
   data() {
     return {
+      keyword: '',
       categoryId: '',
       subcollectionId: '',
       categoryName: '',
@@ -51,6 +61,27 @@ export default {
       page: 1,
       pageSize: 20,
       total: 0
+    }
+  },
+  computed: {
+    filteredList() {
+      const k = (this.keyword || '').trim()
+      if (!k) return this.list
+      const lower = k.toLowerCase()
+      return this.list.filter((item) => {
+        const title = (item.title || '').toLowerCase()
+        const author = (item.author || '').toLowerCase()
+        const dynasty = (item.dynasty || '').toLowerCase()
+        const content = (item.content || '').toLowerCase()
+        const intro = (item.intro || '').toLowerCase()
+        return (
+          title.includes(lower) ||
+          author.includes(lower) ||
+          dynasty.includes(lower) ||
+          content.includes(lower) ||
+          intro.includes(lower)
+        )
+      })
     }
   },
   onLoad(options) {
@@ -81,6 +112,12 @@ export default {
     }
   },
   methods: {
+    onSearch() {
+      // 使用 computed filteredList，无需额外操作
+    },
+    onClear() {
+      this.keyword = ''
+    },
     getUniIdToken() {
       const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
       if (!currentUserInfo.token) return ''
@@ -208,6 +245,10 @@ export default {
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   min-height: 100vh;
   background: #f5f5f5;
+}
+
+.search-bar {
+  margin-bottom: 20rpx;
 }
 
 .list-item {

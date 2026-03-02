@@ -291,21 +291,18 @@ async function getSubcollectionsByCategory(data = {}) {
 
 async function getTextsBySubcollection(data = {}) {
   const command = db.command
-  const categoryId = normalizeText(data.categoryId || data.category_id)
   const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
   const safePage = Number(data.page) > 0 ? Number(data.page) : 1
   const safePageSize = Number(data.pageSize) > 0 ? Number(data.pageSize) : 20
   const skip = (safePage - 1) * safePageSize
 
-  if (!categoryId || !subcollectionId) {
-    return { code: -1, msg: '缺少分类或子合集ID' }
+  if (!subcollectionId) {
+    return { code: -1, msg: '缺少子合集ID' }
   }
 
   const legacySubcollectionCode = subcollectionId.replace(/^sub_/, '')
 
-  let relationWhere = { enabled: true }
-  relationWhere.category_id = categoryId
-  relationWhere.subcollection_id = subcollectionId
+  const relationWhere = { enabled: true, subcollection_id: subcollectionId }
 
   let relationCountRes = await relationCollection.where(relationWhere).count()
   let relationRes = { data: [] }
