@@ -3,7 +3,7 @@
     <view class="search-bar">
       <uni-search-bar
         v-model="keyword"
-        placeholder="搜索古文标题、作者或内容"
+        placeholder="搜索古文标题、作者或出处、内容"
         @confirm="onSearch"
         @clear="onClear"
         @input="onInput"
@@ -19,7 +19,7 @@
       >
         <view class="item-title">{{ item.title }}</view>
         <view class="item-meta">
-          <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
+          <text class="item-author">{{ item.dynasty }} · {{ item.author || '出处未知' }}</text>
         </view>
         <view class="item-preview">{{ getPreview(item.content) }}</view>
       </view>
@@ -61,11 +61,11 @@
           />
         </view>
         <view class="field-group">
-          <view class="field-label">作者</view>
+          <view class="field-label">作者或出处</view>
           <input
             class="manual-input"
             v-model="manualAuthor"
-            placeholder="请输入作者"
+            placeholder="选填，如无作者可填出处或留空"
             confirm-type="search"
           />
         </view>
@@ -79,7 +79,7 @@
           <view class="ai-candidate" v-for="(item, idx) in aiCandidates" :key="idx">
             <view class="candidate-index">版本 {{ idx + 1 }}</view>
             <view class="candidate-title">{{ item.title }}</view>
-            <view class="candidate-meta">{{ item.dynasty || '未知朝代' }} · {{ item.author }}</view>
+            <view class="candidate-meta">{{ item.dynasty || '未知朝代' }} · {{ item.author || '出处未知' }}</view>
             <view class="candidate-content">{{ getPreview(item.content, 110) }}</view>
             <button
               class="manual-btn"
@@ -199,8 +199,8 @@ export default {
     async searchByAI() {
       const title = (this.manualTitle || '').trim()
       const author = (this.manualAuthor || '').trim()
-      if (!title || !author) {
-        uni.showToast({ title: '请先填写古文名称和作者', icon: 'none' })
+      if (!title) {
+        uni.showToast({ title: '请先填写古文名称', icon: 'none' })
         return
       }
 
@@ -234,7 +234,7 @@ export default {
         }
 
         if (!data.candidates || data.candidates.length === 0) {
-          uni.showToast({ title: '未找到精确匹配古文', icon: 'none' })
+          uni.showToast({ title: '未找到匹配的古文', icon: 'none' })
           return
         }
 
@@ -253,7 +253,7 @@ export default {
       setTimeout(() => {
         uni.showModal({
           title: '确认添加古文',
-          content: `将《${item.title}》- ${item.author} 加入古文库？`,
+          content: `将《${item.title}》${item.author ? `- ${item.author} ` : ''}加入古文库？`,
           success: async (modalRes) => {
             if (!modalRes.confirm) {
               this.showAddPopup = true

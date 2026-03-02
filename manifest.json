@@ -1,7 +1,7 @@
 {
     "name" : "AI-Recite-Ancient-Mobile",
     "appid" : "__UNI__1397D60",
-    "description" : "AI古文背诵小助手",
+    "description" : "AI文言文读背默小助手",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,

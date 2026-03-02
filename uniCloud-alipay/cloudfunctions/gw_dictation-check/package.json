@@ -1,0 +1,9 @@
+{
+  "name": "gw_dictation-check",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "config": "file:../common/config",
+    "uni-id-common": "file:../../../uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common"
+  }
+}

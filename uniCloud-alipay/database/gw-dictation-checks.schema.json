@@ -1,0 +1,87 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "article_id"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "article_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "gw-ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题"
+    },
+    "text_author": {
+      "bsonType": "string",
+      "description": "作者"
+    },
+    "text_dynasty": {
+      "bsonType": "string",
+      "description": "朝代"
+    },
+    "original_text": {
+      "bsonType": "string",
+      "description": "原文内容"
+    },
+    "recognized_text": {
+      "bsonType": "string",
+      "description": "识别的手写文字"
+    },
+    "difficulty": {
+      "bsonType": "string",
+      "description": "难度等级（junior/middle/advanced）"
+    },
+    "diff_result": {
+      "bsonType": "array",
+      "description": "逐字比对结果",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "char": { "bsonType": "string" },
+          "status": { "bsonType": "string" },
+          "recognized": { "bsonType": "string" }
+        }
+      }
+    },
+    "accuracy": {
+      "bsonType": "double",
+      "description": "准确率"
+    },
+    "wrong_chars": {
+      "bsonType": "array",
+      "description": "错字列表",
+      "items": {
+        "bsonType": "string"
+      }
+    },
+    "image_file_id": {
+      "bsonType": "string",
+      "description": "图片云存储文件ID"
+    },
+    "image_url": {
+      "bsonType": "string",
+      "description": "图片临时访问URL"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

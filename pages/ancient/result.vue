@@ -63,6 +63,10 @@ export default {
     }
   },
   onLoad(options) {
+    if (options.recordId) {
+      this.loadRecordDetail(options.recordId)
+      return
+    }
     this.id = options.id
     const app = getApp()
     const result = app.globalData && app.globalData.reciteResult
@@ -76,6 +80,35 @@ export default {
     this.saveRecord()
   },
   methods: {
+    async loadRecordDetail(recordId) {
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_recite-record',
+          data: { action: 'detail', data: { id: recordId } }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0 || !result.data) {
+          uni.showToast({ title: result.msg || '记录加载失败', icon: 'none' })
+          setTimeout(() => uni.navigateBack(), 1500)
+          return
+        }
+        const r = result.data
+        this.id = r.text_id
+        this.textData = {
+          title: r.text_title || '',
+          author: r.text_author || '',
+          dynasty: r.text_dynasty || ''
+        }
+        this.recognizedText = r.recognized_text || ''
+        this.hintCount = Number(r.hint_count) || 0
+        this.duration = Number(r.duration_seconds) || 0
+        this.diffResult = Array.isArray(r.diff_result) ? r.diff_result : []
+        this.accuracy = Number(r.accuracy) || 0
+      } catch (e) {
+        uni.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })
+        setTimeout(() => uni.navigateBack(), 1500)
+      }
+    },
     doDiff() {
       if (!this.textData.content) return
       this.diffResult = diffChars(

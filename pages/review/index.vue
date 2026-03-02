@@ -30,8 +30,16 @@
             <text class="item-title">{{ getItemTitle(item) }}</text>
             <text v-if="activeTab === 'records'" class="item-badge">{{ getModeText(item.practice_mode) }}</text>
           </view>
-          <view class="item-meta">
+          <view v-if="activeTab === 'records' && item.record_type" class="item-brief">
+            <text class="item-brief-line">{{ getRecordBriefLine(item) }}</text>
+            <text v-if="item.recognized_snippet" class="item-snippet">{{ item.recognized_snippet }}</text>
+          </view>
+          <view v-else-if="activeTab !== 'records'" class="item-meta">
             <text>{{ getItemMeta(item) }}</text>
+            <text>{{ formatTime(item.created_at) }}</text>
+          </view>
+          <view class="item-meta">
+            <text v-if="activeTab !== 'records'">{{ getItemMeta(item) }}</text>
             <text>{{ formatTime(item.created_at) }}</text>
           </view>
         </view>
@@ -154,7 +162,7 @@ export default {
     async loadRecords(append) {
       const page = this.pageMap.records
       const res = await uniCloud.callFunction({
-        name: 'gw_recite-record',
+        name: 'gw_learning-records',
         data: {
           action: 'list',
           data: {
@@ -208,6 +216,19 @@ export default {
       if (mode === 'dictation') return '默写'
       return '背诵'
     },
+    getRecordBriefLine(item) {
+      const acc = Number(item.accuracy) || 0
+      if (item.record_type === 'dictation') {
+        const n = Number(item.wrong_count) || 0
+        return `准确率 ${acc}%${n > 0 ? ` · 错 ${n} 字` : ''}`
+      }
+      const hint = Number(item.hint_count) || 0
+      const sec = Number(item.duration_seconds) || 0
+      const min = Math.floor(sec / 60)
+      const s = sec % 60
+      const timeStr = min > 0 ? `${min}分${s}秒` : `${s}秒`
+      return `准确率 ${acc}% · 提示 ${hint} 次 · ${timeStr}`
+    },
     getItemTitle(item) {
       if (this.activeTab === 'collectionFavorites') {
         return item.subcollection_name || '未命名合集'
@@ -249,6 +270,20 @@ export default {
           url: `/pages/square/list?${query}`
         })
         return
+      }
+      if (this.activeTab === 'records' && item.record_type) {
+        if (item.record_type === 'recite') {
+          uni.navigateTo({
+            url: `/pages/ancient/result?recordId=${item._id}`
+          })
+          return
+        }
+        if (item.record_type === 'dictation') {
+          uni.navigateTo({
+            url: `/pages/ancient/dictation-result?recordId=${item._id}`
+          })
+          return
+        }
       }
       if (!item.text_id) return
       getApp().globalData = getApp().globalData || {}
@@ -343,6 +378,24 @@ export default {
   padding: 6rpx 14rpx;
 }
 
+.item-brief {
+  margin-bottom: 10rpx;
+}
+.item-brief-line {
+  display: block;
+  font-size: 24rpx;
+  color: #1677ff;
+  margin-bottom: 6rpx;
+}
+.item-snippet {
+  display: block;
+  font-size: 24rpx;
+  color: #86909c;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .item-meta {
   display: flex;
   align-items: center;

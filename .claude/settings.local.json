@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile -name \"*check*\" -o -name \"*photo*\" 2>/dev/null | head -20)",
+      "mcp__ide__getDiagnostics"
+    ]
+  }
+}

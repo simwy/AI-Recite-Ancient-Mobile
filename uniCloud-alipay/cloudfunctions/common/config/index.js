@@ -60,7 +60,8 @@ module.exports = {
     defaultWatermark: 0,
     defaultImplicitWatermark: false,
     defaultEncoding: 'lame',
-    defaultSampleRate: 24000,
+    // 8kHz 兼容性最好，真机报 62 时优先用此；可改为 16000/24000 提升音质
+    defaultSampleRate: 8000,
     defaultChannels: 1,
     defaultBitDepth: 16,
     defaultFrameSize: 0,
@@ -71,5 +72,11 @@ module.exports = {
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-plus',
     timeout: 20000
+  },
+  bailianVision: {
+    apiKey: 'sk-2a5626f893bf4455825b04cee41a879d',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    model: 'qwen-vl-plus',
+    timeout: 60000
   }
 }

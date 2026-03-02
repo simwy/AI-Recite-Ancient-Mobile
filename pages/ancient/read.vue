@@ -9,6 +9,7 @@
       <view class="right-tools">
         <button v-if="!showStopButton" class="tool-btn" size="mini" @tap="onReadFromCurrent">朗读</button>
         <button v-if="showStopButton" class="tool-btn tool-btn-stop" size="mini" @tap="onStopPlay">停止</button>
+        <button class="tool-btn tool-btn-test" size="mini" @tap="testPlayKnownUrl">测试播放</button>
       </view>
     </view>
 
@@ -60,6 +61,11 @@ const MAX_LOCAL_CACHE_ITEMS = 80
 const SPLIT_VERSION = 'v1'
 const TTS_PENDING_RETRY_MAX = 6
 const TTS_PENDING_RETRY_DELAY = 800
+
+// 小程序真机原生解码不支持 data URI，仅支持网络 URL，否则会报 errCode 62
+function isMiniProgram() {
+  return typeof wx !== 'undefined' || typeof my !== 'undefined'
+}
 
 export default {
   computed: {
@@ -143,7 +149,14 @@ export default {
         if (this.isFullReading) {
           this.playNextInQueue()
         }
-        console.error('音频播放失败:', err)
+        const outerCode = err.errCode ?? err.code
+        const msg = err.errMsg ? String(err.errMsg) : ''
+        const inner62 = msg.match(/errCode:\s*62|err:\s*.*decode\s*so\s*fail/i)
+        const codeForShow = inner62 ? '62' : outerCode
+        const is62 = outerCode === 62 || inner62 || msg.includes('62')
+        const hint = is62 ? '可能为格式或 data URI' : '其它播放错误'
+        console.error('音频播放失败:', err, hint)
+        uni.showToast({ title: `播放错误 ${codeForShow} ${hint}`, icon: 'none', duration: 3000 })
       })
     },
     rebuildPlayUnits() {
@@ -411,6 +424,17 @@ export default {
       this.loadingUnitIndex = -1
       this.resolveAudioPlay('stopped')
     },
+    testPlayKnownUrl() {
+      if (!this.audioContext) {
+        uni.showToast({ title: '当前环境不支持音频', icon: 'none' })
+        return
+      }
+      const testUrl = 'https://mdn.github.io/learning-area/html/multimedia-and-embedding/video-and-audio-content/viper.mp3'
+      this.stopActiveAudio()
+      this.audioContext.src = testUrl
+      this.audioContext.play()
+      uni.showToast({ title: '正在播放测试 URL (公网 MP3)', icon: 'none', duration: 2000 })
+    },
     startFullRead(startIndex) {
       if (!this.playUnits.length) return
       const start = Math.max(0, Math.min(startIndex, this.playUnits.length - 1))
@@ -467,6 +491,10 @@ export default {
       this.loadingUnitIndex = index
       try {
         const audioSrc = await this.ensureUnitAudio(unit)
+        const isDataUri = typeof audioSrc === 'string' && audioSrc.startsWith('data:')
+        const sourceType = isDataUri ? 'Data URI (base64)' : '网络 URL'
+        uni.showToast({ title: `播放源: ${sourceType}`, icon: 'none', duration: 2500 })
+        console.log('[朗读测试] 播放源:', sourceType, 'src 前80字符:', String(audioSrc).slice(0, 80))
         this.stopActiveAudio()
         this.currentUnitIndex = index
         this.scrollToReadAnchor(index)
@@ -502,6 +530,9 @@ export default {
       }
       if (!result.data.audioBase64) {
         throw new Error('语音合成结果为空')
+      }
+      if (isMiniProgram()) {
+        throw new Error('语音播放暂时不可用，请稍后重试')
       }
       const format = result.data.format || this.ttsOptions.format || 'mp3'
       const dataUri = this.buildDataUri(result.data.audioBase64, format)
@@ -564,6 +595,9 @@ export default {
       const meta = this.localCacheIndex[hash]
       if (meta && meta.url) {
         return meta.url
+      }
+      if (isMiniProgram()) {
+        return ''
       }
       const base64 = uni.getStorageSync(`${CACHE_AUDIO_PREFIX}${hash}`)
       if (!base64 || typeof base64 !== 'string') return ''
@@ -669,6 +703,11 @@ export default {
   color: #b42318;
   background: #fff1f0;
   border-color: #fecdc9;
+}
+.tool-btn-test {
+  color: #667085;
+  background: #f0f0f0;
+  border-color: #d9d9d9;
 }
 .font-switch {
   display: flex;

@@ -30,8 +30,36 @@ function safeJsonParse(text) {
   }
 }
 
-function isExactTitleAuthorMatch(candidate, title, author) {
-  return normalizeText(candidate.title) === title && normalizeText(candidate.author) === author
+/** 计算两字符串相似度，返回 0~1，用于约 80% 模糊匹配 */
+function similarity(a, b) {
+  const sa = normalizeText(a)
+  const sb = normalizeText(b)
+  if (sa === sb) return 1
+  if (!sa || !sb) return sb ? 0 : 1
+  if (sa.includes(sb) || sb.includes(sa)) return Math.min(sa.length, sb.length) / Math.max(sa.length, sb.length) || 1
+  const longer = sa.length >= sb.length ? sa : sb
+  const shorter = sa.length < sb.length ? sa : sb
+  let matchCount = 0
+  for (let i = 0; i <= longer.length - shorter.length; i++) {
+    let same = 0
+    for (let j = 0; j < shorter.length; j++) {
+      if (longer[i + j] === shorter[j]) same++
+    }
+    matchCount = Math.max(matchCount, same)
+  }
+  return matchCount / Math.max(longer.length, 1)
+}
+
+const FUZZY_MATCH_THRESHOLD = 0.8
+
+function isFuzzyTitleAuthorMatch(candidate, title, author) {
+  const cTitle = normalizeText(candidate.title)
+  const cAuthor = normalizeText(candidate.author)
+  if (!cTitle || !title) return false
+  if (similarity(cTitle, title) < FUZZY_MATCH_THRESHOLD) return false
+  if (!author) return true
+  if (!cAuthor) return true
+  return similarity(cAuthor, author) >= FUZZY_MATCH_THRESHOLD
 }
 
 function sleep(ms) {
@@ -66,7 +94,11 @@ async function getAuthUid(event, context) {
 }
 
 async function findExactInDB(title, author) {
-  const existedRes = await collection.where({ title, author }).limit(1).get()
+  if (author) {
+    const existedRes = await collection.where({ title, author }).limit(1).get()
+    return existedRes.data && existedRes.data[0]
+  }
+  const existedRes = await collection.where({ title }).limit(1).get()
   return existedRes.data && existedRes.data[0]
 }
 
@@ -76,6 +108,7 @@ async function requestPoemsFromBailian(title, author) {
   }
 
   const endpoint = bailianPoemSearch.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  const authorHint = author ? `，作者或出处=${author}` : '（作者或出处未提供，可填未知或出处）'
   const requestBody = {
     model: bailianPoemSearch.model || 'qwen-plus',
     temperature: 0.1,
@@ -84,11 +117,11 @@ async function requestPoemsFromBailian(title, author) {
       {
         role: 'system',
         content:
-          '你是古诗文检索助手。必须严格检索“标题+作者同时精确匹配”的古诗文。仅输出 JSON，不要输出其他文字。若存在多个版本（如异文、不同断句），可以返回多条。'
+          '你是古诗文检索助手。根据标题（必选）和作者或出处（可选）检索古诗文。标题需高度一致，作者或出处可模糊（同名、别称、出处均可）。仅输出 JSON。若存在多个版本（如异文、不同断句），可返回多条。'
       },
       {
         role: 'user',
-        content: `请检索古诗文。标题=${title}，作者=${author}。\n要求：\n1) 返回 JSON 格式：{"found":boolean,"items":[{"title":"","author":"","dynasty":"","content":""}]}。\n2) 若你能确认“标题与作者都完全一致”，则 found=true。\n3) 即使 found=false，也请尽量返回你认为最接近的候选 items（最多 5 条），不要留空数组。\n4) content 必须是可背诵的完整正文，保留常见标点。`
+        content: `请检索古诗文。标题=${title}${authorHint}。\n要求：\n1) 返回 JSON 格式：{"found":boolean,"items":[{"title":"","author":"","dynasty":"","content":""}]}。\n2) author 字段填作者名或出处（如无作者可填“未知”或出处来源）。\n3) 标题一致或高度相似即 found=true；作者/出处大致相符即可，不必完全一致。\n4) 即使 found=false 也请返回最接近的候选 items（最多 5 条）。\n5) content 必须是可背诵的完整正文，保留常见标点。`
       }
     ]
   }
@@ -151,7 +184,7 @@ async function requestPoemsFromBailian(title, author) {
       content: normalizeText(item.content)
     }
     if (!candidate.content) return
-    if (!isExactTitleAuthorMatch(candidate, title, author)) return
+    if (!isFuzzyTitleAuthorMatch(candidate, title, author)) return
     const uniqueKey = `${candidate.title}::${candidate.author}::${candidate.content}`
     if (uniq.has(uniqueKey)) return
     uniq.add(uniqueKey)
@@ -200,8 +233,8 @@ async function searchList(keyword, page, pageSize) {
 async function aiSearch(data) {
   const title = normalizeText(data.title)
   const author = normalizeText(data.author)
-  if (!title || !author) {
-    return { code: -1, msg: '请填写古文名称和作者' }
+  if (!title) {
+    return { code: -1, msg: '请填写古文名称' }
   }
 
   const existed = await findExactInDB(title, author)
@@ -217,7 +250,7 @@ async function aiSearch(data) {
 
   const aiCandidates = await requestPoemsFromBailian(title, author)
   if (!aiCandidates || aiCandidates.length === 0) {
-    return { code: -1, msg: '未检索到标题和作者同时精确匹配的古文' }
+    return { code: -1, msg: '未检索到匹配的古文（标题约 80% 匹配，作者或出处选填）' }
   }
 
   return {
@@ -459,15 +492,15 @@ async function confirmAdd(event, data, context) {
   }
 
   const title = normalizeText(data.title)
-  const author = normalizeText(data.author)
+  const author = normalizeText(data.author) || ''
   const dynasty = normalizeText(data.dynasty)
   const content = normalizeText(data.content)
 
-  if (!title || !author || !content) {
-    return { code: -1, msg: '缺少必要古文信息' }
+  if (!title || !content) {
+    return { code: -1, msg: '缺少必要古文信息（标题与正文）' }
   }
 
-  const existed = await findExactInDB(title, author)
+  const existed = await findExactInDB(title, author || undefined)
   if (existed) {
     return {
       code: 0,

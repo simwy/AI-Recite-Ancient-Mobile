@@ -189,10 +189,152 @@ export default {
       }
     },
     openPhotoEntry() {
-      uni.showToast({
-        title: '拍照检查功能即将上线',
-        icon: 'none'
+      uni.chooseImage({
+        count: 1,
+        sourceType: ['camera', 'album'],
+        sizeType: ['compressed'],
+        success: (res) => {
+          const tempFilePath = res.tempFilePaths[0]
+          this.compressAndCheck(tempFilePath)
+        }
       })
+    },
+    compressAndCheck(filePath) {
+      uni.showLoading({ title: 'AI批改中...', mask: true })
+      // #ifdef APP-PLUS
+      this.compressImageApp(filePath).then(compressedPath => {
+        this.readAndUpload(compressedPath)
+      }).catch(() => {
+        uni.hideLoading()
+        uni.showToast({ title: '图片压缩失败', icon: 'none' })
+      })
+      // #endif
+      // #ifdef H5
+      this.compressImageH5(filePath).then(base64 => {
+        this.callCheckFunction(base64)
+      }).catch(() => {
+        uni.hideLoading()
+        uni.showToast({ title: '图片压缩失败', icon: 'none' })
+      })
+      // #endif
+      // #ifdef MP-WEIXIN
+      this.compressImageApp(filePath).then(compressedPath => {
+        this.readAndUpload(compressedPath)
+      }).catch(() => {
+        uni.hideLoading()
+        uni.showToast({ title: '图片压缩失败', icon: 'none' })
+      })
+      // #endif
+    },
+    compressImageApp(filePath) {
+      return new Promise((resolve) => {
+        uni.compressImage({
+          src: filePath,
+          quality: 65,
+          width: 'auto',
+          height: 'auto',
+          compressedWidth: 1080,
+          rotate: 0,
+          success: (res) => {
+            resolve(res.tempFilePath)
+          },
+          fail: () => {
+            resolve(filePath)
+          }
+        })
+      })
+    },
+    compressImageH5(filePath) {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => {
+          let { width, height } = img
+          const maxSide = 1080
+          if (width > maxSide || height > maxSide) {
+            if (width >= height) {
+              height = Math.round(height * maxSide / width)
+              width = maxSide
+            } else {
+              width = Math.round(width * maxSide / height)
+              height = maxSide
+            }
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          const base64 = canvas.toDataURL('image/jpeg', 0.65)
+          resolve(base64)
+        }
+        img.onerror = reject
+        img.src = filePath
+      })
+    },
+    readAndUpload(filePath) {
+      // #ifdef APP-PLUS
+      plus.io.resolveLocalFileSystemURL(filePath, (entry) => {
+        entry.file((file) => {
+          const reader = new plus.io.FileReader()
+          reader.onloadend = (e) => {
+            const base64 = e.target.result
+            this.callCheckFunction(base64)
+          }
+          reader.onerror = () => {
+            uni.hideLoading()
+            uni.showToast({ title: '读取图片失败', icon: 'none' })
+          }
+          reader.readAsDataURL(file)
+        })
+      }, () => {
+        uni.hideLoading()
+        uni.showToast({ title: '读取图片失败', icon: 'none' })
+      })
+      // #endif
+      // #ifdef MP-WEIXIN
+      const fs = uni.getFileSystemManager()
+      const base64Data = fs.readFileSync(filePath, 'base64')
+      const base64 = 'data:image/jpeg;base64,' + base64Data
+      this.callCheckFunction(base64)
+      // #endif
+    },
+    getUniIdToken() {
+      const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
+      if (!currentUserInfo.token) return ''
+      if (currentUserInfo.tokenExpired && currentUserInfo.tokenExpired < Date.now()) return ''
+      return currentUserInfo.token
+    },
+    async callCheckFunction(imageBase64) {
+      try {
+        const uniIdToken = this.getUniIdToken()
+        const res = await uniCloud.callFunction({
+          name: 'gw_dictation-check',
+          data: {
+            action: 'check',
+            uniIdToken,
+            data: {
+              imageBase64,
+              difficulty: this.selectedDifficulty
+            }
+          }
+        })
+        uni.hideLoading()
+        const result = (res && res.result) || {}
+        if (result.code !== 0) {
+          uni.showToast({ title: result.msg || '批改失败', icon: 'none' })
+          return
+        }
+        const app = getApp()
+        app.globalData = app.globalData || {}
+        app.globalData.dictationCheckResult = result.data
+        uni.navigateTo({
+          url: '/pages/ancient/dictation-result'
+        })
+      } catch (e) {
+        uni.hideLoading()
+        console.error('拍照检查失败:', e)
+        uni.showToast({ title: '批改服务异常', icon: 'none' })
+      }
     },
     safeText(value) {
       return (value || '').replace(/\r\n/g, '\n')

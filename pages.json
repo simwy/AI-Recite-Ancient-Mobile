@@ -50,6 +50,12 @@
 			}
 		},
 		{
+			"path": "pages/ancient/dictation-result",
+			"style": {
+				"navigationBarTitleText": "默写批改结果"
+			}
+		},
+		{
 			"path": "pages/square/index",
 			"style": {
 				"navigationBarTitleText": "广场"
