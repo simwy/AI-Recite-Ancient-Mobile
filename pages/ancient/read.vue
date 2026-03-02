@@ -465,7 +465,8 @@ export default {
       })
     },
     /**
-     * 小程序真机播网络 URL 易报 err 55，先下载到本地再播；同一句复用本地路径
+     * 小程序真机播网络 URL 易报 err 55，先下载到本地再播；同一句复用本地路径。
+     * 若 download 失败（如未配置下载域名），降级为直接使用网络地址播放。
      */
     resolvePlaySrc(unit, audioSrc) {
       if (!isMiniProgram()) return Promise.resolve(audioSrc)
@@ -474,7 +475,7 @@ export default {
       const hash = unit && unit.hash
       if (!hash) return Promise.resolve(audioSrc)
       if (this.downloadTempPathCache[hash]) return Promise.resolve(this.downloadTempPathCache[hash])
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         uni.downloadFile({
           url,
           success: (res) => {
@@ -482,10 +483,14 @@ export default {
               this.downloadTempPathCache[hash] = res.tempFilePath
               resolve(res.tempFilePath)
             } else {
-              reject(new Error(res.errMsg || '下载失败'))
+              // 非 200 或无临时路径：降级为直接播网络地址
+              resolve(url)
             }
           },
-          fail: (err) => reject(err && err.errMsg ? new Error(err.errMsg) : new Error('下载失败'))
+          fail: () => {
+            // download:fail 多为未配置「下载文件」合法域名，降级为直接播网络地址
+            resolve(url)
+          }
         })
       })
     },

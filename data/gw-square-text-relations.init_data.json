@@ -1,562 +1,149 @@
 [
   {
-    "_id": "gw-str-001",
-    "text_id": "gw-at-001",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-099",
+    "text_id": "gw-at-20260302-099",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 1,
     "enabled": true
   },
   {
-    "_id": "gw-str-002",
-    "text_id": "gw-at-002",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-100",
+    "text_id": "gw-at-20260302-100",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 2,
     "enabled": true
   },
   {
-    "_id": "gw-str-003",
-    "text_id": "gw-at-003",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-101",
+    "text_id": "gw-at-20260302-101",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 3,
     "enabled": true
   },
   {
-    "_id": "gw-str-004",
-    "text_id": "gw-at-004",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-102",
+    "text_id": "gw-at-20260302-102",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 4,
     "enabled": true
   },
   {
-    "_id": "gw-str-005",
-    "text_id": "gw-at-005",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-103",
+    "text_id": "gw-at-20260302-103",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 5,
     "enabled": true
   },
   {
-    "_id": "gw-str-006",
-    "text_id": "gw-at-006",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-104",
+    "text_id": "gw-at-20260302-104",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 6,
     "enabled": true
   },
   {
-    "_id": "gw-str-007",
-    "text_id": "gw-at-007",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-105",
+    "text_id": "gw-at-20260302-105",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 7,
     "enabled": true
   },
   {
-    "_id": "gw-str-008",
-    "text_id": "gw-at-008",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-106",
+    "text_id": "gw-at-20260302-106",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 8,
     "enabled": true
   },
   {
-    "_id": "gw-str-009",
-    "text_id": "gw-at-009",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-107",
+    "text_id": "gw-at-20260302-107",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 9,
     "enabled": true
   },
   {
-    "_id": "gw-str-010",
-    "text_id": "gw-at-010",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-108",
+    "text_id": "gw-at-20260302-108",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 10,
     "enabled": true
   },
   {
-    "_id": "gw-str-011",
-    "text_id": "gw-at-011",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-109",
+    "text_id": "gw-at-20260302-109",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 11,
     "enabled": true
   },
   {
-    "_id": "gw-str-012",
-    "text_id": "gw-at-012",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-110",
+    "text_id": "gw-at-20260302-110",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 12,
     "enabled": true
   },
   {
-    "_id": "gw-str-013",
-    "text_id": "gw-at-013",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-111",
+    "text_id": "gw-at-20260302-111",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 13,
     "enabled": true
   },
   {
-    "_id": "gw-str-014",
-    "text_id": "gw-at-014",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-112",
+    "text_id": "gw-at-20260302-112",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 14,
     "enabled": true
   },
   {
-    "_id": "gw-str-015",
-    "text_id": "gw-at-015",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-113",
+    "text_id": "gw-at-20260302-113",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 15,
     "enabled": true
   },
   {
-    "_id": "gw-str-016",
-    "text_id": "gw-at-016",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-114",
+    "text_id": "gw-at-20260302-114",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 16,
     "enabled": true
   },
   {
-    "_id": "gw-str-017",
-    "text_id": "gw-at-017",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-115",
+    "text_id": "gw-at-20260302-115",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 17,
     "enabled": true
   },
   {
-    "_id": "gw-str-018",
-    "text_id": "gw-at-018",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-116",
+    "text_id": "gw-at-20260302-116",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 18,
     "enabled": true
   },
   {
-    "_id": "gw-str-019",
-    "text_id": "gw-at-019",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-001",
+    "_id": "gw-str-117",
+    "text_id": "gw-at-20260302-117",
+    "subcollection_id": "sub_junior_g8_s2",
     "sort": 19,
     "enabled": true
   },
   {
-    "_id": "gw-str-020",
-    "text_id": "gw-at-020",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 1,
+    "_id": "gw-str-118",
+    "text_id": "gw-at-20260302-118",
+    "subcollection_id": "sub_junior_g8_s2",
+    "sort": 20,
     "enabled": true
   },
   {
-    "_id": "gw-str-021",
-    "text_id": "gw-at-021",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 2,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-022",
-    "text_id": "gw-at-022",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 3,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-023",
-    "text_id": "gw-at-023",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 4,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-024",
-    "text_id": "gw-at-024",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 5,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-025",
-    "text_id": "gw-at-025",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 6,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-026",
-    "text_id": "gw-at-026",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 7,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-027",
-    "text_id": "gw-at-027",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 8,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-028",
-    "text_id": "gw-at-028",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 9,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-029",
-    "text_id": "gw-at-029",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 10,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-030",
-    "text_id": "gw-at-030",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 11,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-031",
-    "text_id": "gw-at-031",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 12,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-032",
-    "text_id": "gw-at-032",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 13,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-033",
-    "text_id": "gw-at-033",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 14,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-034",
-    "text_id": "gw-at-034",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 15,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-035",
-    "text_id": "gw-at-035",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 16,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-036",
-    "text_id": "gw-at-036",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 17,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-037",
-    "text_id": "gw-at-037",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 18,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-038",
-    "text_id": "gw-at-038",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-002",
-    "sort": 19,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-039",
-    "text_id": "gw-at-039",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 1,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-040",
-    "text_id": "gw-at-040",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 2,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-041",
-    "text_id": "gw-at-041",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 3,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-042",
-    "text_id": "gw-at-042",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 4,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-043",
-    "text_id": "gw-at-043",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 5,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-044",
-    "text_id": "gw-at-044",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 6,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-045",
-    "text_id": "gw-at-045",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 7,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-046",
-    "text_id": "gw-at-046",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 8,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-047",
-    "text_id": "gw-at-047",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 9,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-048",
-    "text_id": "gw-at-048",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 10,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-049",
-    "text_id": "gw-at-049",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 11,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-050",
-    "text_id": "gw-at-050",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 12,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-051",
-    "text_id": "gw-at-051",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 13,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-052",
-    "text_id": "gw-at-052",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-005",
-    "sort": 14,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-053",
-    "text_id": "gw-at-053",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 1,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-054",
-    "text_id": "gw-at-054",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 2,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-055",
-    "text_id": "gw-at-055",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 3,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-056",
-    "text_id": "gw-at-056",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 4,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-057",
-    "text_id": "gw-at-057",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 5,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-058",
-    "text_id": "gw-at-058",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 6,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-059",
-    "text_id": "gw-at-059",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 7,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-060",
-    "text_id": "gw-at-060",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 8,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-061",
-    "text_id": "gw-at-061",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 9,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-062",
-    "text_id": "gw-at-062",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 10,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-063",
-    "text_id": "gw-at-063",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 11,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-064",
-    "text_id": "gw-at-064",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 12,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-065",
-    "text_id": "gw-at-065",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 13,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-066",
-    "text_id": "gw-at-066",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 14,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-067",
-    "text_id": "gw-at-067",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 15,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-068",
-    "text_id": "gw-at-068",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 16,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-069",
-    "text_id": "gw-at-069",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 17,
-    "enabled": true
-  },
-  {
-    "_id": "gw-str-070",
-    "text_id": "gw-at-070",
-    "category_id": "gw-sc-001",
-    "subcollection_id": "gw-ss-006",
-    "sort": 18,
+    "_id": "gw-str-119",
+    "text_id": "gw-at-20260302-119",
+    "subcollection_id": "sub_junior_g8_s2",
+    "sort": 21,
     "enabled": true
   }
 ]

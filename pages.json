@@ -21,7 +21,8 @@
 			"path": "pages/ancient/dictation",
 			"style": {
 				"navigationBarTitleText": "默写文章"
-			}
+			},
+			"needLogin": true
 		},
 		{
 			"path": "pages/ancient/read",
@@ -34,7 +35,7 @@
 			"style": {
 				"navigationBarTitleText": "背诵模式"
 			},
-			"needLogin": false
+			"needLogin": true
 		},
 		{
 			"path": "pages/ancient/recite2",

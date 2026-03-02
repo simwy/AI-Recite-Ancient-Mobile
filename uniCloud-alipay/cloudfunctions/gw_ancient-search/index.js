@@ -300,95 +300,53 @@ async function getTextsBySubcollection(data = {}) {
     return { code: -1, msg: '缺少子合集ID' }
   }
 
-  const legacySubcollectionCode = subcollectionId.replace(/^sub_/, '')
-
   const relationWhere = { enabled: true, subcollection_id: subcollectionId }
-
-  let relationCountRes = await relationCollection.where(relationWhere).count()
-  let relationRes = { data: [] }
-  if (relationCountRes.total > 0) {
-    relationRes = await relationCollection
-      .where(relationWhere)
-      .orderBy('sort', 'asc')
-      .skip(skip)
-      .limit(safePageSize)
-      .get()
-  } else {
-    // 兼容历史关系数据（使用 code 字段而不是 id 字段）
-    const legacyRelationWhere = {
-      enabled: true,
-      subcollection_code: legacySubcollectionCode
-    }
-    relationCountRes = await relationCollection.where(legacyRelationWhere).count()
-    if (relationCountRes.total > 0) {
-      relationRes = await relationCollection
-        .where(legacyRelationWhere)
-        .orderBy('sort', 'asc')
-        .skip(skip)
-        .limit(safePageSize)
-        .get()
-    }
-  }
-
-  if (relationCountRes.total > 0) {
-    const relationList = relationRes.data || []
-    const textIds = [...new Set(relationList.map(item => item.text_id).filter(Boolean))]
-
-    if (textIds.length === 0) {
-      return {
-        code: 0,
-        data: {
-          list: [],
-          total: relationCountRes.total || 0,
-          page: safePage,
-          pageSize: safePageSize
-        }
-      }
-    }
-
-    const textRes = await collection.where({ _id: command.in(textIds) }).get()
-    const textMap = {}
-    ;(textRes.data || []).forEach(item => {
-      textMap[item._id] = item
-    })
-
-    const orderedList = textIds.map(id => textMap[id]).filter(Boolean)
-    if (orderedList.length > 0) {
-      return {
-        code: 0,
-        data: {
-          list: orderedList,
-          total: relationCountRes.total || 0,
-          page: safePage,
-          pageSize: safePageSize
-        }
-      }
-    }
-
-    // 兼容 text_id 与 gw-ancient-texts._id 不一致场景，回退到旧字段查询
-    const legacyTextCountRes = await collection.where({ subcollection_code: legacySubcollectionCode }).count()
-    const legacyTextRes = await collection
-      .where({ subcollection_code: legacySubcollectionCode })
-      .orderBy('title', 'asc')
-      .skip(skip)
-      .limit(safePageSize)
-      .get()
+  const relationCountRes = await relationCollection.where(relationWhere).count()
+  if (relationCountRes.total === 0) {
     return {
       code: 0,
       data: {
-        list: legacyTextRes.data || [],
-        total: legacyTextCountRes.total || 0,
+        list: [],
+        total: 0,
         page: safePage,
         pageSize: safePageSize
       }
     }
   }
 
+  const relationRes = await relationCollection
+    .where(relationWhere)
+    .orderBy('sort', 'asc')
+    .skip(skip)
+    .limit(safePageSize)
+    .get()
+  const relationList = relationRes.data || []
+  const textIds = [...new Set(relationList.map(item => item.text_id).filter(Boolean))]
+
+  if (textIds.length === 0) {
+    return {
+      code: 0,
+      data: {
+        list: [],
+        total: relationCountRes.total || 0,
+        page: safePage,
+        pageSize: safePageSize
+      }
+    }
+  }
+
+  const textRes = await collection.where({ _id: command.in(textIds) }).get()
+  const textMap = {}
+  ;(textRes.data || []).forEach(item => {
+    textMap[item._id] = item
+  })
+  const orderedList = textIds.map(id => textMap[id]).filter(Boolean)
+
   return {
     code: 0,
     data: {
-      list: [],
-      total: 0,
+      list: orderedList,
+      total: relationCountRes.total || 0,
       page: safePage,
       pageSize: safePageSize
     }

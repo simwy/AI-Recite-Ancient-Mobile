@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(find /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile -name \"*check*\" -o -name \"*photo*\" 2>/dev/null | head -20)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(which pandoc 2>/dev/null; which wkhtmltopdf 2>/dev/null; which weasyprint 2>/dev/null; pip3 list 2>/dev/null | grep -i markdown; brew list 2>/dev/null | grep -i pandoc)",
+      "Bash(pandoc --version)",
+      "Bash(fc-list :lang=zh)",
+      "Bash(pip3 install markdown weasyprint 2>&1 | tail -5)",
+      "Bash(brew install pango 2>&1 | tail -5)",
+      "Bash(/opt/homebrew/bin/python3.13 -m pip install markdown weasyprint 2>&1 | tail -5)",
+      "Bash(/opt/homebrew/bin/python3.13 -m pip install --break-system-packages markdown weasyprint 2>&1 | tail -5)"
     ]
   }
 }

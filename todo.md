@@ -1,1 +1,24 @@
-@pages/ucenter/ucenter.vue 增加用户服务和隐私协议菜单，然后点击后让用户弹出页面，用户选择是用户服务和隐私协议，点击后跳转到对应的页面
+sub_hot_poems - 热门古诗
+sub_hot_prose - 热门古文
+sub_junior_g7_s1 - 初中七年级上册
+sub_junior_g7_s2 - 初中七年级下册
+sub_junior_g8_s1 - 初中八年级上册
+sub_junior_g8_s2 - 初中八年级下册
+sub_junior_g9_s1 - 初中九年级上册
+sub_junior_g9_s2 - 初中九年级下册
+sub_primary_g1_s1 - 小学一年级上册
+sub_primary_g1_s2 - 小学一年级下册
+sub_primary_g2_s1 - 小学二年级上册
+sub_primary_g2_s2 - 小学二年级下册
+sub_primary_g3_s1 - 小学三年级上册
+sub_primary_g3_s2 - 小学三年级下册
+sub_primary_g4_s1 - 小学四年级上册
+sub_primary_g4_s2 - 小学四年级下册
+sub_primary_g5_s1 - 小学五年级上册
+sub_primary_g5_s2 - 小学五年级下册
+sub_senior_g1_s1 - 高中一年级上册
+sub_senior_g1_s2 - 高中一年级下册
+sub_senior_g2_s1 - 高中二年级上册
+sub_senior_g2_s2 - 高中二年级下册
+sub_senior_g3_s1 - 高中三年级上册
+sub_senior_g3_s2 - 高中三年级下册
