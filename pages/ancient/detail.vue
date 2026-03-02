@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <view class="header">
-      <view class="npm install @fontsource/noto-sans-sc-top">
+      <view class="header-top">
         <view class="header-placeholder"></view>
         <view class="fav-icon-btn" @click="toggleFavorite">
           <uni-icons
@@ -17,8 +17,16 @@
     </view>
 
     <view class="content-box">
-      <text class="content">{{ detail.content }}</text>
+      <view class="content-inner" :class="{ collapsed: needExpand && !expanded }">
+        <text class="content">{{ detail.content }}</text>
+      </view>
+      <view v-if="needExpand" class="expand-wrap">
+        <text class="expand-btn" @click="expanded = !expanded">{{ expanded ? '收起' : '展开全文' }}</text>
+      </view>
     </view>
+
+    <!-- 底部预留区：后续可放背诵/学习记录等 -->
+    <view class="bottom-reserved"></view>
 
     <view class="action-bar">
       <view class="action-row">
@@ -50,7 +58,8 @@ export default {
       id: '',
       detail: {},
       isFavorited: false,
-      togglingFavorite: false
+      togglingFavorite: false,
+      expanded: false
     }
   },
   onLoad(options) {
@@ -64,6 +73,10 @@ export default {
   computed: {
     hasLogin() {
       return store.hasLogin
+    },
+    needExpand() {
+      const content = (this.detail && this.detail.content) || ''
+      return content.length > 80 // 约几行字就显示「展开全文」，与 1/5 屏高配合
     }
   },
   methods: {
@@ -216,11 +229,33 @@ export default {
   color: #b45309;
   line-height: 1.2;
 }
+.content-inner {
+  overflow: hidden;
+}
+.content-inner.collapsed {
+  max-height: 20vh; /* 约屏幕 1/5 */
+}
 .content {
   font-size: 34rpx;
   color: #333;
   line-height: 2;
   letter-spacing: 2rpx;
+}
+.expand-wrap {
+  margin-top: 24rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eee;
+  text-align: center;
+}
+.expand-btn {
+  font-size: 26rpx;
+  color: #4f46e5;
+  padding: 8rpx 24rpx;
+  background: #eef2ff;
+  border-radius: 24rpx;
+}
+.bottom-reserved {
+  min-height: 120rpx;
 }
 .action-bar {
   position: fixed;
