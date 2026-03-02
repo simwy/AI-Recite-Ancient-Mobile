@@ -15,7 +15,7 @@ export default {
     // "google",
     // "alipay",
     // "douyin",
-
+    'smsCode',
     // #ifdef APP
     'univerify',
     // #endif
@@ -26,7 +26,7 @@ export default {
     // #ifdef APP
     'apple',
     // #endif
-    'smsCode',
+
     // #ifdef APP-HARMONY || MP-HARMONY
     'huawei',
     'huaweiMobile'

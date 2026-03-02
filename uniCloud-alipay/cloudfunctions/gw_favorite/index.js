@@ -8,8 +8,13 @@ exports.main = async (event, context) => {
   const uniIdCommon = uniID.createInstance({ context })
 
   let uid = (context.auth && context.auth.uid) || ''
-  if (!uid && event.uniIdToken) {
-    const tokenRes = await uniIdCommon.checkToken(event.uniIdToken)
+  const token =
+    (event && event.uniIdToken) ||
+    (event && event.uni_id_token) ||
+    (event && event.data && (event.data.uniIdToken || event.data.uni_id_token)) ||
+    ''
+  if (!uid && token) {
+    const tokenRes = await uniIdCommon.checkToken(token)
     if (tokenRes && tokenRes.code === 0 && tokenRes.uid) {
       uid = tokenRes.uid
     }
@@ -19,18 +24,33 @@ exports.main = async (event, context) => {
     return { code: -1, msg: '请先登录' }
   }
 
-  if (!data.text_id) {
-    return { code: -1, msg: '缺少古文ID' }
-  }
-
   try {
     switch (action) {
+      case 'list': {
+        const page = Math.max(1, Number(data.page) || 1)
+        const pageSize = Math.min(100, Math.max(1, Number(data.pageSize) || 20))
+        const skip = (page - 1) * pageSize
+        const [countRes, listRes] = await Promise.all([
+          collection.where({ user_id: uid }).count(),
+          collection
+            .where({ user_id: uid })
+            .orderBy('created_at', 'desc')
+            .skip(skip)
+            .limit(pageSize)
+            .get()
+        ])
+        const total = (countRes && countRes.total) || 0
+        const list = (listRes && listRes.data) || []
+        return { code: 0, data: { list, total } }
+      }
       case 'check': {
+        if (!data.text_id) return { code: -1, msg: '缺少古文ID' }
         const res = await collection.where({ user_id: uid, text_id: data.text_id }).limit(1).get()
         const favorited = !!(res.data && res.data.length > 0)
         return { code: 0, data: { favorited } }
       }
       case 'toggle': {
+        if (!data.text_id) return { code: -1, msg: '缺少古文ID' }
         const queryRes = await collection.where({ user_id: uid, text_id: data.text_id }).limit(1).get()
         const favorite = queryRes.data && queryRes.data[0]
         if (favorite && favorite._id) {

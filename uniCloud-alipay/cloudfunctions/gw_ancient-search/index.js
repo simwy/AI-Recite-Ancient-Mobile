@@ -485,6 +485,29 @@ async function toggleSubcollectionFavorite(event, data = {}, context) {
   }
 }
 
+/** 分页查询当前用户收藏的专题合集列表，供复盘页使用 */
+async function listSubcollectionFavorites(event, data = {}, context) {
+  const uid = await getAuthUid(event, context)
+  if (!uid) {
+    return { code: -1, msg: '请先登录' }
+  }
+  const page = Math.max(1, Number(data.page) || 1)
+  const pageSize = Math.min(100, Math.max(1, Number(data.pageSize) || 20))
+  const skip = (page - 1) * pageSize
+  const [countRes, listRes] = await Promise.all([
+    subcollectionFavoriteCollection.where({ user_id: uid }).count(),
+    subcollectionFavoriteCollection
+      .where({ user_id: uid })
+      .orderBy('created_at', 'desc')
+      .skip(skip)
+      .limit(pageSize)
+      .get()
+  ])
+  const total = (countRes && countRes.total) || 0
+  const list = (listRes && listRes.data) || []
+  return { code: 0, data: { list, total } }
+}
+
 async function confirmAdd(event, data, context) {
   const uid = await getAuthUid(event, context)
   if (!uid) {
@@ -550,6 +573,8 @@ exports.main = async (event, context) => {
         return await getSubcollectionFavoriteStatus(event, data, context)
       case 'toggleSubcollectionFavorite':
         return await toggleSubcollectionFavorite(event, data, context)
+      case 'listSubcollectionFavorites':
+        return await listSubcollectionFavorites(event, data, context)
       case 'confirmAdd':
         return await confirmAdd(event, data, context)
       default:

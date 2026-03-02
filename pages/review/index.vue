@@ -59,8 +59,6 @@
 <script>
 import { store } from '@/uni_modules/uni-id-pages/common/store.js'
 
-const db = uniCloud.database()
-
 export default {
   data() {
     return {
@@ -118,6 +116,10 @@ export default {
     this.loadTab(tab, true)
   },
   methods: {
+    getUniIdToken() {
+      const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
+      return (currentUserInfo && currentUserInfo.token) ? currentUserInfo.token : ''
+    },
     async refreshCurrentTab() {
       if (!this.hasLogin) {
         this.resetTab(this.activeTab)
@@ -181,33 +183,41 @@ export default {
     },
     async loadArticleFavorites(append) {
       const page = this.pageMap.articleFavorites
-      const skip = (page - 1) * this.pageSize
-      const [countRes, listRes] = await Promise.all([
-        db.collection('gw-ancient-favorites').count(),
-        db.collection('gw-ancient-favorites')
-          .orderBy('created_at', 'desc')
-          .skip(skip)
-          .limit(this.pageSize)
-          .get()
-      ])
-      const total = (((countRes || {}).result || {}).total) || 0
-      const list = (((listRes || {}).result || {}).data) || []
+      const uniIdToken = this.getUniIdToken()
+      const res = await uniCloud.callFunction({
+        name: 'gw_favorite',
+        data: {
+          action: 'list',
+          data: { page, pageSize: this.pageSize },
+          uniIdToken
+        }
+      })
+      const result = (res && res.result) || {}
+      if (result.code !== 0 || !result.data) {
+        throw new Error(result.msg || '收藏文章加载失败')
+      }
+      const list = result.data.list || []
+      const total = Number(result.data.total) || 0
       this.lists.articleFavorites = append ? [...this.lists.articleFavorites, ...list] : list
       this.totalMap.articleFavorites = total
     },
     async loadCollectionFavorites(append) {
       const page = this.pageMap.collectionFavorites
-      const skip = (page - 1) * this.pageSize
-      const [countRes, listRes] = await Promise.all([
-        db.collection('gw-square-sub-favorites').count(),
-        db.collection('gw-square-sub-favorites')
-          .orderBy('created_at', 'desc')
-          .skip(skip)
-          .limit(this.pageSize)
-          .get()
-      ])
-      const total = (((countRes || {}).result || {}).total) || 0
-      const list = (((listRes || {}).result || {}).data) || []
+      const uniIdToken = this.getUniIdToken()
+      const res = await uniCloud.callFunction({
+        name: 'gw_ancient-search',
+        data: {
+          action: 'listSubcollectionFavorites',
+          data: { page, pageSize: this.pageSize },
+          uniIdToken
+        }
+      })
+      const result = (res && res.result) || {}
+      if (result.code !== 0 || !result.data) {
+        throw new Error(result.msg || '收藏合集加载失败')
+      }
+      const list = result.data.list || []
+      const total = Number(result.data.total) || 0
       this.lists.collectionFavorites = append ? [...this.lists.collectionFavorites, ...list] : list
       this.totalMap.collectionFavorites = total
     },

@@ -138,6 +138,49 @@ export default {
         uni.showToast({ title: '文章加载失败', icon: 'none' })
       }
     },
+    /** 真机录音前必须已授权麦克风，否则 RecorderManager.start 会报 operateRecorder:fail:start record fail */
+    ensureRecordPermission() {
+      return new Promise((resolve, reject) => {
+        // #ifdef H5
+        resolve()
+        return
+        // #endif
+        uni.authorize({
+          scope: 'scope.record',
+          success: () => resolve(),
+          fail: (err) => {
+            const errStr = String((err && (err.errMsg || err.message)) || '')
+            const isDenied = /auth deny|denied|拒绝|未授权|scope\.record/i.test(errStr)
+            if (!isDenied) {
+              reject(err || new Error('获取录音权限失败'))
+              return
+            }
+            uni.showModal({
+              title: '需要麦克风权限',
+              content: '用于实时语音识别与背诵评分，请允许使用麦克风。',
+              confirmText: '去设置',
+              cancelText: '取消',
+              success: (res) => {
+                if (!res.confirm) {
+                  reject(new Error('未授权录音权限'))
+                  return
+                }
+                uni.openSetting({
+                  success: (settingRes) => {
+                    if (settingRes.authSetting && settingRes.authSetting['scope.record']) {
+                      resolve()
+                    } else {
+                      reject(new Error('未授权录音权限'))
+                    }
+                  },
+                  fail: () => reject(new Error('未授权录音权限'))
+                })
+              }
+            })
+          }
+        })
+      })
+    },
     initRecorder() {
       // #ifdef H5
       this.useWebRecorder = true
@@ -171,9 +214,11 @@ export default {
       })
       this.recorderManager.onError((err) => {
         this.recording = false
+        this.started = false
         clearInterval(this.durationTimer)
         this.closeSocket()
-        uni.showToast({ title: '录音失败', icon: 'none' })
+        const msg = (err && err.errMsg) ? err.errMsg : '录音失败'
+        uni.showToast({ title: msg.indexOf('record') !== -1 ? '请允许麦克风权限后重试' : '录音失败', icon: 'none', duration: 3000 })
         console.error('录音错误:', err)
       })
     },
@@ -194,6 +239,7 @@ export default {
         return
         // #endif
 
+        await this.ensureRecordPermission()
         await this.loadAsrConfig()
         await this.openSocket()
 
@@ -216,6 +262,9 @@ export default {
           })
         }
       } catch (err) {
+        this.started = false
+        this.recording = false
+        clearInterval(this.durationTimer)
         this.closeSocket()
         // 微信等平台 onError 回调传入的是 err.errMsg，不是 err.message
         const msg = (err && (err.errMsg || err.message)) || '启动识别失败'
