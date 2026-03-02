@@ -317,9 +317,11 @@ async function handleCheck(uid, data) {
 }
 
 async function handleList(uid, data) {
-  const { page = 1, pageSize = 20, article_id } = data
+  const { page = 1, pageSize = 20, article_id: rawArticleId } = data
   const skip = (page - 1) * pageSize
   const where = { user_id: uid }
+  // 按当前古文筛选默写记录（详情页传入 article_id）
+  const article_id = rawArticleId != null ? String(rawArticleId).trim() : ''
   if (article_id) where.article_id = article_id
 
   const countRes = await checksCollection.where(where).count()
@@ -365,7 +367,9 @@ async function handleDetail(uid, data) {
 // ---- 主入口 ----
 
 exports.main = async (event, context) => {
-  const { action, data = {} } = event
+  // 兼容直接传 { action, data } 或通过 event.data 包装
+  const payload = event && event.data && typeof event.data === 'object' && event.data.action != null ? event.data : event
+  const { action, data = {} } = payload
 
   let uid = ''
   try {

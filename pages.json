@@ -27,13 +27,13 @@
 		{
 			"path": "pages/ancient/read",
 			"style": {
-				"navigationBarTitleText": "读文章"
+				"navigationBarTitleText": "跟读文章"
 			}
 		},
 		{
 			"path": "pages/ancient/recite",
 			"style": {
-				"navigationBarTitleText": "背诵模式"
+				"navigationBarTitleText": "文言文背诵"
 			},
 			"needLogin": true
 		},

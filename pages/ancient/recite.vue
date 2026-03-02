@@ -145,40 +145,58 @@ export default {
         resolve()
         return
         // #endif
-        uni.authorize({
-          scope: 'scope.record',
-          success: () => resolve(),
-          fail: (err) => {
-            const errStr = String((err && (err.errMsg || err.message)) || '')
-            const isDenied = /auth deny|denied|拒绝|未授权|scope\.record/i.test(errStr)
-            if (!isDenied) {
-              reject(err || new Error('获取录音权限失败'))
+        const doAuthorize = () => {
+          uni.authorize({
+            scope: 'scope.record',
+            success: () => resolve(),
+            fail: (err) => {
+              const errStr = String((err && (err.errMsg || err.message)) || '')
+              const isDenied = /auth deny|denied|拒绝|未授权|scope\.record/i.test(errStr)
+              if (!isDenied) {
+                reject(err || new Error('获取录音权限失败'))
+                return
+              }
+              uni.showModal({
+                title: '需要麦克风权限',
+                content: '用于实时语音识别与背诵评分，请允许使用麦克风。',
+                confirmText: '去设置',
+                cancelText: '取消',
+                success: (res) => {
+                  if (!res.confirm) {
+                    reject(new Error('未授权录音权限'))
+                    return
+                  }
+                  uni.openSetting({
+                    success: (settingRes) => {
+                      if (settingRes.authSetting && settingRes.authSetting['scope.record']) {
+                        resolve()
+                      } else {
+                        reject(new Error('未授权录音权限'))
+                      }
+                    },
+                    fail: () => reject(new Error('未授权录音权限'))
+                  })
+                }
+              })
+            }
+          })
+        }
+        // #ifdef MP-WEIXIN
+        // 先查是否已授权，避免重复弹窗；已授权时直接 resolve 可减少「授权后仍报请允许麦克风」的时序问题
+        uni.getSetting({
+          success: (settingRes) => {
+            if (settingRes.authSetting && settingRes.authSetting['scope.record'] === true) {
+              resolve()
               return
             }
-            uni.showModal({
-              title: '需要麦克风权限',
-              content: '用于实时语音识别与背诵评分，请允许使用麦克风。',
-              confirmText: '去设置',
-              cancelText: '取消',
-              success: (res) => {
-                if (!res.confirm) {
-                  reject(new Error('未授权录音权限'))
-                  return
-                }
-                uni.openSetting({
-                  success: (settingRes) => {
-                    if (settingRes.authSetting && settingRes.authSetting['scope.record']) {
-                      resolve()
-                    } else {
-                      reject(new Error('未授权录音权限'))
-                    }
-                  },
-                  fail: () => reject(new Error('未授权录音权限'))
-                })
-              }
-            })
-          }
+            doAuthorize()
+          },
+          fail: () => doAuthorize()
         })
+        // #endif
+        // #ifndef MP-WEIXIN
+        doAuthorize()
+        // #endif
       })
     },
     initRecorder() {
@@ -204,10 +222,17 @@ export default {
         return
       }
 
+      // #ifdef MP-WEIXIN
+      console.log('[recite] 使用 RecorderManager（微信原生录音），停止时会调用 stop() 释放麦克风')
+      // #endif
+
       this.recorderManager.onFrameRecorded((res) => {
         this.sendAudioFrame(res.frameBuffer)
       })
       this.recorderManager.onStop((res) => {
+        // #ifdef MP-WEIXIN
+        console.log('[recite] RecorderManager onStop 已触发，麦克风应已释放')
+        // #endif
         this.recording = false
         clearInterval(this.durationTimer)
         this.handleRecorderStop()
@@ -240,6 +265,10 @@ export default {
         // #endif
 
         await this.ensureRecordPermission()
+        // #ifdef MP-WEIXIN
+        // 授权后稍等再拉起录音，减少真机「请允许麦克风权限后再试」的时序问题
+        await new Promise(r => setTimeout(r, 200))
+        // #endif
         await this.loadAsrConfig()
         await this.openSocket()
 
@@ -310,6 +339,11 @@ export default {
         this.handleRecorderStop()
         this.stopWebRecorder()
       } else if (this.recorderManager) {
+        // #ifdef MP-WEIXIN
+        console.log('[recite] 调用 recorderManager.stop()，主动释放麦克风')
+        // #endif
+        this.recording = false
+        clearInterval(this.durationTimer)
         this.recorderManager.stop()
       }
     },
@@ -318,6 +352,13 @@ export default {
       uni.showLoading({ title: '正在结束识别...' })
       await this.finishTask()
       uni.hideLoading()
+      // #ifdef MP-WEIXIN
+      // 再次调用 stop 确保释放麦克风（部分机型 onStop 延迟或未触发时右上角麦克风图标仍会闪）
+      if (this.recorderManager) {
+        try { this.recorderManager.stop() } catch (e) {}
+      }
+      await new Promise(r => setTimeout(r, 300))
+      // #endif
       this.goResult(this.realtimeText)
     },
     async loadAsrConfig() {
