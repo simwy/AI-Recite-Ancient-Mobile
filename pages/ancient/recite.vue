@@ -217,8 +217,16 @@ export default {
         }
       } catch (err) {
         this.closeSocket()
-        uni.showToast({ title: err.message || '启动识别失败', icon: 'none', duration: 3000 })
+        // 微信等平台 onError 回调传入的是 err.errMsg，不是 err.message
+        const msg = (err && (err.errMsg || err.message)) || '启动识别失败'
+        uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         console.error('启动实时识别失败:', err)
+        // #ifdef MP-WEIXIN
+        // 真机常见原因：未在微信公众平台配置 socket 合法域名（如 dashscope.aliyuncs.com）
+        if (/domain|url|合法|request:fail/i.test(String(msg))) {
+          console.warn('微信小程序真机 WebSocket 失败时，请到 微信公众平台 → 开发 → 开发管理 → 开发设置 → 服务器域名 → socket合法域名 中添加 ASR 服务域名')
+        }
+        // #endif
       }
     },
     showHint() {

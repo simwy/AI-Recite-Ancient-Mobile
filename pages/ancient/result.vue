@@ -1,6 +1,7 @@
 <template>
   <view class="container">
     <view class="header">
+      <text class="link-tag" @click="goDetail">古文正文</text>
       <text class="title">{{ textData.title }}</text>
       <view class="stats">
         <view class="stat-item">
@@ -38,9 +39,6 @@
     <view class="action-area">
       <button type="primary" class="btn" @click="goReciteAgain">
         再背一次
-      </button>
-      <button class="btn btn-secondary" @click="goHistory">
-        查看历史
       </button>
     </view>
   </view>
@@ -166,9 +164,10 @@ export default {
         url: `/pages/ancient/recite?id=${this.id}`
       })
     },
-    goHistory() {
-      uni.switchTab({
-        url: '/pages/ancient/history'
+    goDetail() {
+      if (!this.id) return
+      uni.navigateTo({
+        url: `/pages/ancient/detail?id=${this.id}`
       })
     }
   }
@@ -182,8 +181,19 @@ export default {
   background: #f5f5f5;
 }
 .header {
+  position: relative;
   text-align: center;
   margin-bottom: 40rpx;
+}
+.link-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 24rpx;
+  color: #1890ff;
+  padding: 6rpx 16rpx;
+  border: 1rpx solid #1890ff;
+  border-radius: 8rpx;
 }
 .title {
   display: block;

@@ -25,8 +25,52 @@
       </view>
     </view>
 
-    <!-- 底部预留区：后续可放背诵/学习记录等 -->
-    <view class="bottom-reserved"></view>
+    <!-- 学习记录：背诵记录 + 默写记录 -->
+    <view class="learning-records" v-if="hasLogin">
+      <view class="records-section">
+        <view class="section-title">
+          <uni-icons type="mic" size="14" color="#0b57d0" />
+          <text>背诵记录</text>
+        </view>
+        <view v-if="reciteLoading" class="records-loading"><text>加载中...</text></view>
+        <view v-else-if="reciteList.length === 0" class="records-empty"><text>暂无背诵记录</text></view>
+        <view v-else class="records-list">
+          <view
+            v-for="item in reciteList"
+            :key="item._id"
+            class="record-item"
+            @click="goReciteResult(item._id)"
+          >
+            <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
+            <text class="record-meta">提示 {{ item.hint_count || 0 }} 次 · {{ formatDuration(item.duration_seconds) }}</text>
+            <text class="record-time">{{ formatTime(item.created_at) }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="records-section">
+        <view class="section-title">
+          <uni-icons type="compose" size="14" color="#2563eb" />
+          <text>默写记录</text>
+        </view>
+        <view v-if="dictationLoading" class="records-loading"><text>加载中...</text></view>
+        <view v-else-if="dictationList.length === 0" class="records-empty"><text>暂无默写记录</text></view>
+        <view v-else class="records-list">
+          <view
+            v-for="item in dictationList"
+            :key="item._id"
+            class="record-item"
+            @click="goDictationResult(item._id)"
+          >
+            <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
+            <text class="record-meta">{{ item.difficulty ? difficultyLabel(item.difficulty) : '默写' }}</text>
+            <text class="record-time">{{ formatTime(item.created_at) }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="learning-records login-tip" v-else>
+      <text>登录后可查看背诵与默写记录</text>
+    </view>
 
     <view class="action-bar">
       <view class="action-row">
@@ -59,7 +103,11 @@ export default {
       detail: {},
       isFavorited: false,
       togglingFavorite: false,
-      expanded: false
+      expanded: false,
+      reciteList: [],
+      dictationList: [],
+      reciteLoading: false,
+      dictationLoading: false
     }
   },
   onLoad(options) {
@@ -69,6 +117,13 @@ export default {
   },
   onShow() {
     this.checkFavorite()
+    if (this.id && this.hasLogin) {
+      this.loadReciteRecords()
+      this.loadDictationRecords()
+    } else {
+      this.reciteList = []
+      this.dictationList = []
+    }
   },
   computed: {
     hasLogin() {
@@ -111,6 +166,76 @@ export default {
       uni.navigateTo({
         url: `/pages/ancient/read?id=${this.id}`
       })
+    },
+    async loadReciteRecords() {
+      if (!this.id || !this.hasLogin) return
+      this.reciteLoading = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_recite-record',
+          data: {
+            action: 'list',
+            data: { page: 1, pageSize: 10, text_id: this.id }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0 && result.data && result.data.list) {
+          this.reciteList = result.data.list
+        } else {
+          this.reciteList = []
+        }
+      } catch (e) {
+        console.error('加载背诵记录失败', e)
+        this.reciteList = []
+      } finally {
+        this.reciteLoading = false
+      }
+    },
+    async loadDictationRecords() {
+      if (!this.id || !this.hasLogin) return
+      this.dictationLoading = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_dictation-check',
+          data: {
+            action: 'list',
+            data: { page: 1, pageSize: 10, article_id: this.id }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0 && result.data && result.data.list) {
+          this.dictationList = result.data.list
+        } else {
+          this.dictationList = []
+        }
+      } catch (e) {
+        console.error('加载默写记录失败', e)
+        this.dictationList = []
+      } finally {
+        this.dictationLoading = false
+      }
+    },
+    formatTime(ts) {
+      if (!ts) return ''
+      const d = new Date(ts)
+      const pad = (n) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    },
+    formatDuration(seconds) {
+      const s = Number(seconds) || 0
+      const min = Math.floor(s / 60)
+      const sec = s % 60
+      return min > 0 ? `${min}分${sec}秒` : `${sec}秒`
+    },
+    difficultyLabel(v) {
+      const map = { junior: '初级', middle: '中级', advanced: '高级' }
+      return map[v] || v || '默写'
+    },
+    goReciteResult(recordId) {
+      uni.navigateTo({ url: `/pages/ancient/result?recordId=${recordId}` })
+    },
+    goDictationResult(recordId) {
+      uni.navigateTo({ url: `/pages/ancient/dictation-result?recordId=${recordId}` })
     },
     async checkFavorite() {
       if (!this.id || !this.hasLogin) {
@@ -254,9 +379,71 @@ export default {
   background: #eef2ff;
   border-radius: 24rpx;
 }
-.bottom-reserved {
-  min-height: 120rpx;
+.learning-records {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx 40rpx;
+  margin-bottom: 40rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
+.learning-records.login-tip {
+  text-align: center;
+  color: #888;
+  font-size: 26rpx;
+}
+.records-section {
+  margin-bottom: 32rpx;
+}
+.records-section:last-child {
+  margin-bottom: 0;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+.records-loading,
+.records-empty {
+  font-size: 26rpx;
+  color: #888;
+  padding: 16rpx 0;
+}
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.record-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  border: 1rpx solid #eee;
+}
+.record-accuracy {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #0b57d0;
+  min-width: 56rpx;
+}
+.record-meta {
+  flex: 1;
+  font-size: 24rpx;
+  color: #666;
+}
+.record-time {
+  font-size: 22rpx;
+  color: #999;
+}
+.records-section:first-child .record-accuracy { color: #0b57d0; }
+.records-section:last-child .record-accuracy { color: #2563eb; }
 .action-bar {
   position: fixed;
   bottom: 0;

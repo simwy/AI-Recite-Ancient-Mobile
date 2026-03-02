@@ -60,8 +60,8 @@ module.exports = {
     defaultWatermark: 0,
     defaultImplicitWatermark: false,
     defaultEncoding: 'lame',
-    // 8kHz 兼容性最好，真机报 62 时优先用此；可改为 16000/24000 提升音质
-    defaultSampleRate: 8000,
+    // 文档推荐 24000，微信等真机对 24k MP3 兼容更好；8k MP3 易报 err 55 unknown format
+    defaultSampleRate: 24000,
     defaultChannels: 1,
     defaultBitDepth: 16,
     defaultFrameSize: 0,

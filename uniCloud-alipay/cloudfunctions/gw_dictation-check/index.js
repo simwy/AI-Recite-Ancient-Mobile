@@ -317,16 +317,19 @@ async function handleCheck(uid, data) {
 }
 
 async function handleList(uid, data) {
-  const { page = 1, pageSize = 20 } = data
+  const { page = 1, pageSize = 20, article_id } = data
   const skip = (page - 1) * pageSize
+  const where = { user_id: uid }
+  if (article_id) where.article_id = article_id
 
-  const countRes = await checksCollection.where({ user_id: uid }).count()
+  const countRes = await checksCollection.where(where).count()
   const listRes = await checksCollection
-    .where({ user_id: uid })
+    .where(where)
     .orderBy('created_at', 'desc')
     .skip(skip)
     .limit(pageSize)
     .field({
+      article_id: true,
       text_title: true,
       text_author: true,
       accuracy: true,

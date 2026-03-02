@@ -392,7 +392,7 @@ export default {
     maskContentByDifficulty(content, difficulty) {
       const segments = this.getPaperSegments(content, difficulty)
       return segments.map(s => (s.type === 'blank' ? '＿' : s.value)).join('')
-    }
+    },
   }
 }
 </script>
@@ -406,6 +406,7 @@ export default {
   box-sizing: border-box;
 }
 .section-top {
+  position: relative;
   background: #fff;
   border-radius: 16rpx;
   padding: 24rpx;

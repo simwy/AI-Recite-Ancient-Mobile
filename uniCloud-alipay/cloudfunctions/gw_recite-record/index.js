@@ -46,12 +46,14 @@ exports.main = async (event, context) => {
     }
 
     case 'list': {
-      const { page = 1, pageSize = 20 } = data
+      const { page = 1, pageSize = 20, text_id } = data
       const skip = (page - 1) * pageSize
+      const where = { user_id: uid }
+      if (text_id) where.text_id = text_id
 
-      const countRes = await collection.where({ user_id: uid }).count()
+      const countRes = await collection.where(where).count()
       const listRes = await collection
-        .where({ user_id: uid })
+        .where(where)
         .orderBy('created_at', 'desc')
         .skip(skip)
         .limit(pageSize)
