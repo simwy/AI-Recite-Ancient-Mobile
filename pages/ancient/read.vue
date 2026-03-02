@@ -9,7 +9,6 @@
       <view class="right-tools">
         <button v-if="!showStopButton" class="tool-btn" size="mini" @tap="onReadFromCurrent">朗读</button>
         <button v-if="showStopButton" class="tool-btn tool-btn-stop" size="mini" @tap="onStopPlay">停止</button>
-        <button class="tool-btn tool-btn-test" size="mini" @tap="testPlayKnownUrl">测试播放</button>
       </view>
     </view>
 
@@ -61,8 +60,6 @@ const MAX_LOCAL_CACHE_ITEMS = 80
 const SPLIT_VERSION = 'v1'
 const TTS_PENDING_RETRY_MAX = 6
 const TTS_PENDING_RETRY_DELAY = 800
-// 测试播放用：24k TTS 示例文件（云存储 fileID），用于验证真机播放
-const TTS_TEST_FILE_ID = 'cloud://env-00jy5xw5nv6i/tts/local/6c434c4979da45da50fab9a7a90bad6fc88fc628.mp3'
 
 // 小程序真机原生解码不支持 data URI，仅支持网络 URL，否则会报 errCode 62
 function isMiniProgram() {
@@ -149,19 +146,12 @@ export default {
         this.resolveAudioPlay('ended')
         this.handleUnitFinished()
       })
-      this.audioContext.onError((err) => {
+      this.audioContext.onError(() => {
         this.resolveAudioPlay('error')
         if (this.isFullReading) {
           this.playNextInQueue()
         }
-        const outerCode = err.errCode ?? err.code
-        const msg = err.errMsg ? String(err.errMsg) : ''
-        const inner62 = msg.match(/errCode:\s*62|err:\s*.*decode\s*so\s*fail/i)
-        const codeForShow = inner62 ? '62' : outerCode
-        const is62 = outerCode === 62 || inner62 || msg.includes('62')
-        const hint = is62 ? '可能为格式或 data URI' : '其它播放错误'
-        console.error('音频播放失败:', err, hint)
-        uni.showToast({ title: `播放错误 ${codeForShow} ${hint}`, icon: 'none', duration: 3000 })
+        uni.showToast({ title: '播放失败', icon: 'none' })
       })
     },
     rebuildPlayUnits() {
@@ -354,7 +344,6 @@ export default {
           }
         })
       } catch (e) {
-        console.error('分句快照同步失败:', e)
       } finally {
         this.snapshotSyncing = false
       }
@@ -429,41 +418,6 @@ export default {
       this.loadingUnitIndex = -1
       this.resolveAudioPlay('stopped')
     },
-    async testPlayKnownUrl() {
-      if (!this.audioContext) {
-        uni.showToast({ title: '当前环境不支持音频', icon: 'none' })
-        return
-      }
-      let testUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3'
-      let toastMsg = '正在播放测试 URL (公网 MP3)'
-      try {
-        const urlRes = await uniCloud.getTempFileURL({ fileList: [TTS_TEST_FILE_ID] })
-        const file = urlRes.fileList && urlRes.fileList[0]
-        if (file && file.tempFileURL) {
-          testUrl = file.tempFileURL
-          toastMsg = '正在播放 TTS 示例(24k)'
-        }
-      } catch (e) {
-        console.warn('测试播放取 TTS 示例 URL 失败，使用公网兜底:', e)
-      }
-      if (isMiniProgram() && (testUrl.startsWith('http://') || testUrl.startsWith('https://'))) {
-        try {
-          const res = await new Promise((resolve, reject) => {
-            uni.downloadFile({ url: testUrl, success: resolve, fail: reject })
-          })
-          if (res.statusCode === 200 && res.tempFilePath) {
-            testUrl = res.tempFilePath
-            toastMsg = toastMsg.replace('URL', '本地')
-          }
-        } catch (e) {
-          console.warn('测试播放下载失败:', e)
-        }
-      }
-      this.stopActiveAudio()
-      this.audioContext.src = testUrl
-      this.audioContext.play()
-      uni.showToast({ title: toastMsg, icon: 'none', duration: 2000 })
-    },
     startFullRead(startIndex) {
       if (!this.playUnits.length) return
       const start = Math.max(0, Math.min(startIndex, this.playUnits.length - 1))
@@ -497,7 +451,6 @@ export default {
       try {
         this.audioContext.stop()
       } catch (e) {
-        console.error('停止播放失败:', e)
       }
     },
     resolveAudioPlay(status) {
@@ -546,10 +499,6 @@ export default {
       try {
         const audioSrc = await this.ensureUnitAudio(unit)
         const playSrc = await this.resolvePlaySrc(unit, audioSrc)
-        const isLocal = playSrc !== audioSrc
-        const sourceType = isLocal ? '本地(已下载)' : (typeof audioSrc === 'string' && audioSrc.startsWith('data:') ? 'Data URI' : '网络 URL')
-        uni.showToast({ title: `播放源: ${sourceType}`, icon: 'none', duration: 2500 })
-        console.log('[朗读] 播放源:', sourceType, 'src 前80字符:', String(playSrc).slice(0, 80))
         this.stopActiveAudio()
         this.currentUnitIndex = index
         this.scrollToReadAnchor(index)
@@ -678,7 +627,6 @@ export default {
         this.trimCacheByLru()
         this.persistCacheIndex()
       } catch (e) {
-        console.error('写入本地语音缓存失败:', e)
       }
     },
     saveCachedAudioUrl(hash, url, format) {
@@ -758,11 +706,6 @@ export default {
   color: #b42318;
   background: #fff1f0;
   border-color: #fecdc9;
-}
-.tool-btn-test {
-  color: #667085;
-  background: #f0f0f0;
-  border-color: #d9d9d9;
 }
 .font-switch {
   display: flex;

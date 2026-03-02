@@ -47,6 +47,7 @@
 		store,
 		mutations
 	} from '@/uni_modules/uni-id-pages/common/store.js'
+	import uniIdPagesConfig from '@/uni_modules/uni-id-pages/config.js'
 	export default {
 		// #ifdef APP
 		onBackPress({from}) {
@@ -126,6 +127,10 @@
 						"title": this.$t('mine.feedback'),
 						"to": '/uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback',
 						"icon": "help"
+					}, {
+						"title": "用户服务和隐私协议",
+						"event": "showAgreementSheet",
+						"icon": "paperplane"
 					}, {
 						"title": this.$t('mine.settings'),
 						"to": '/pages/ucenter/settings/settings',
@@ -216,6 +221,25 @@
 			toUserInfo() {
 				uni.navigateTo({
 					url: '/uni_modules/uni-id-pages/pages/userinfo/userinfo'
+				})
+			},
+			/** 用户服务和隐私协议：弹出选择后跳转对应页面 */
+			showAgreementSheet() {
+				const agreements = uniIdPagesConfig.agreements
+				if (!agreements || !agreements.serviceUrl || !agreements.privacyUrl) {
+					uni.showToast({ title: '协议链接未配置', icon: 'none' })
+					return
+				}
+				uni.showActionSheet({
+					itemList: ['用户服务协议', '隐私政策'],
+					success: (res) => {
+						const tapIndex = res.tapIndex
+						const url = tapIndex === 0 ? agreements.serviceUrl : agreements.privacyUrl
+						const title = tapIndex === 0 ? '用户服务协议' : '隐私政策'
+						uni.navigateTo({
+							url: '/uni_modules/uni-id-pages/pages/common/webview/webview?url=' + encodeURIComponent(url) + '&title=' + title
+						})
+					}
 				})
 			},
 			tapGrid(index) {
