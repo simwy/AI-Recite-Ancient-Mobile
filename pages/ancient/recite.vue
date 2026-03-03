@@ -44,8 +44,9 @@
         v-if="!started"
         type="primary"
         class="btn"
+        :disabled="requestingPermission"
         @click="startRecite"
-      >开始背诵</button>
+      >{{ requestingPermission ? '授权中...' : '开始背诵' }}</button>
 
       <template v-if="recording">
         <!-- <button class="btn btn-hint" @click="showHint">
@@ -93,7 +94,9 @@ export default {
       webScriptProcessor: null,
       h5MediaRecorder: null,
       h5AudioChunks: [],
-      h5StopPromiseResolver: null
+      h5StopPromiseResolver: null,
+      /** 微信等：正在等待用户授权，未真正开始录音，按钮仍为「开始背诵」 */
+      requestingPermission: false
     }
   },
   onLoad(options) {
@@ -247,6 +250,7 @@ export default {
         console.error('录音错误:', err)
       })
     },
+    /** 点击「开始背诵」：先仅请求麦克风权限，用户点「允许」后才执行拉配置、建连、开录音，并变为「背诵结束」按钮 */
     async startRecite() {
       if (this.recording) return
       this.showArticleContent = false
@@ -264,47 +268,52 @@ export default {
         return
         // #endif
 
+        this.requestingPermission = true
         await this.ensureRecordPermission()
-        // #ifdef MP-WEIXIN
-        // 授权后稍等再拉起录音，减少真机「请允许麦克风权限后再试」的时序问题
-        await new Promise(r => setTimeout(r, 200))
-        // #endif
-        await this.loadAsrConfig()
-        await this.openSocket()
-
-        this.started = true
-        this.recording = true
-        this.stopping = false
-        this.duration = 0
-        this.durationTimer = setInterval(() => {
-          this.duration++
-        }, 1000)
-
-        if (this.useWebRecorder) {
-          await this.startWebRecorder()
-        } else {
-          this.recorderManager.start({
-            format: this.asrConfig.format || 'pcm',
-            sampleRate: this.asrConfig.sampleRate || 16000,
-            numberOfChannels: 1,
-            frameSize: 5
-          })
-        }
+        this.requestingPermission = false
+        // 用户同意授权后才真正开始：拉配置、建连、开录音，此时按钮会变为「背诵结束」
+        await this.doRealStartRecite()
       } catch (err) {
+        this.requestingPermission = false
         this.started = false
         this.recording = false
         clearInterval(this.durationTimer)
         this.closeSocket()
-        // 微信等平台 onError 回调传入的是 err.errMsg，不是 err.message
         const msg = (err && (err.errMsg || err.message)) || '启动识别失败'
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         console.error('启动实时识别失败:', err)
         // #ifdef MP-WEIXIN
-        // 真机常见原因：未在微信公众平台配置 socket 合法域名（如 dashscope.aliyuncs.com）
         if (/domain|url|合法|request:fail/i.test(String(msg))) {
           console.warn('微信小程序真机 WebSocket 失败时，请到 微信公众平台 → 开发 → 开发管理 → 开发设置 → 服务器域名 → socket合法域名 中添加 ASR 服务域名')
         }
         // #endif
+      }
+    },
+    /** 仅在用户已同意麦克风权限后调用：拉配置、建连、开录音，并置为录音中（按钮变为「背诵结束」） */
+    async doRealStartRecite() {
+      // #ifdef MP-WEIXIN
+      await new Promise(r => setTimeout(r, 200))
+      // #endif
+      await this.loadAsrConfig()
+      await this.openSocket()
+
+      this.started = true
+      this.recording = true
+      this.stopping = false
+      this.duration = 0
+      this.durationTimer = setInterval(() => {
+        this.duration++
+      }, 1000)
+
+      if (this.useWebRecorder) {
+        await this.startWebRecorder()
+      } else {
+        this.recorderManager.start({
+          format: this.asrConfig.format || 'pcm',
+          sampleRate: this.asrConfig.sampleRate || 16000,
+          numberOfChannels: 1,
+          frameSize: 5
+        })
       }
     },
     showHint() {
