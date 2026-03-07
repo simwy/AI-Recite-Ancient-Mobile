@@ -1064,6 +1064,7 @@ export default {
       }
     },
     async loadAsrConfig() {
+      if (this.asrConfig) return // 已有配置则跳过，避免重复网络请求
       const res = await uniCloud.callFunction({ name: 'gw_asr-config' })
       const result = res.result || {}
       if (result.code !== 0 || !result.data) {
@@ -1488,9 +1489,7 @@ export default {
           this._followRecordStartTime = Date.now()
           console.log('[跟读] H5录音已启动')
         } else {
-          // 原生: 使用实时 WebSocket ASR
-          await this.openSocket()
-          console.log('[跟读] WebSocket已连接')
+          // 原生: 先启动录音，再连 WebSocket（frameQueue 会缓存早期帧）
           this.recording = true
           this._followRecordStartTime = Date.now()
           this.recorderManager.start({
@@ -1501,7 +1500,9 @@ export default {
             format: 'PCM',
             frameSize: 4
           })
-          console.log('[跟读] 原生录音已启动')
+          console.log('[跟读] 原生录音已启动（WebSocket 连接中）')
+          await this.openSocket()
+          console.log('[跟读] WebSocket已连接，缓冲帧已刷新')
         }
         // 30秒自动停止
         this._followTimer = setTimeout(() => {
@@ -1518,6 +1519,7 @@ export default {
         }, 8000)
       } catch (e) {
         this.recording = false
+        try { this.recorderManager && this.recorderManager.stop() } catch (_) {}
         this.followStates = { ...this.followStates, [index]: { state: 'error' } }
         uni.showToast({ title: e.message || '录音启动失败', icon: 'none' })
       }
