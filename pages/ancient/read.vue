@@ -43,6 +43,12 @@
               }"
             >{{ ch.char }}</text>
             <text class="follow-accuracy">{{ getFollowAccuracy(index) }}%</text>
+            <view v-if="getFollowAccuracy(index) < 80" class="follow-retry-hint">
+              <text class="retry-hint-text">请重新朗读</text>
+              <view class="follow-retry-btn" @tap.stop="startFollowUnit(index)">
+                <text>重试</text>
+              </view>
+            </view>
           </view>
           <!-- 录音中 -->
           <view v-else-if="getFollowState(index) === 'recording'" class="sentence-text">
@@ -82,6 +88,10 @@
 
     <view class="bottom-bar">
       <view class="action-row">
+        <view v-if="showStopButton" class="stop-read-btn" @tap="onStopPlay">
+          <uni-icons type="pause" size="22" color="#fff"></uni-icons>
+          <text class="stop-read-text">停止朗读</text>
+        </view>
         <text class="debug-trigger" @tap="toggleDebugPanel">调试</text>
         <view class="clear-btn" @tap="onClearReadProgress">
           <uni-icons type="reload" size="24" color="#4f46e5"></uni-icons>
@@ -137,6 +147,7 @@
 <script>
 import { pinyin } from 'pinyin-pro'
 import { diffChars, calcAccuracy } from '@/common/diff.js'
+import { buildPlayUnits as buildPlayUnitsFromContent } from '@/common/playUnits.js'
 
 const db = uniCloud.database()
 const CACHE_INDEX_KEY = 'gw_tts_audio_cache_index_v1'
@@ -175,6 +186,7 @@ export default {
   data() {
     return {
       id: '',
+      pendingAutoStartIndex: -1,
       detail: {},
       fontSize: 'medium',
       playUnits: [],
@@ -235,6 +247,7 @@ export default {
   },
   onLoad(options) {
     this.id = options.id || ''
+    this.pendingAutoStartIndex = options.autoStart === '1' ? 0 : (options.startIndex != null && options.startIndex !== '' ? parseInt(options.startIndex, 10) : -1)
     this.localCacheIndex = this.loadCacheIndex()
     this.initAudioContext()
     this.initRecorder()
@@ -265,6 +278,7 @@ export default {
       if (currentText && currentText._id === this.id && currentText.content) {
         this.detail = currentText
         this.rebuildPlayUnits()
+        this.maybeAutoStartRead()
         return
       }
       if (!this.id) return
@@ -273,10 +287,19 @@ export default {
         if (res.result.data && res.result.data.length > 0) {
           this.detail = res.result.data[0]
           this.rebuildPlayUnits()
+          this.maybeAutoStartRead()
         }
       } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' })
       }
+    },
+    maybeAutoStartRead() {
+      if (this.pendingAutoStartIndex < 0 || !this.playUnits.length) return
+      const startIndex = Math.max(0, Math.min(this.pendingAutoStartIndex, this.playUnits.length - 1))
+      this.pendingAutoStartIndex = -1
+      this.$nextTick(() => {
+        this.startFullRead(startIndex)
+      })
     },
     initAudioContext() {
       if (typeof uni.createInnerAudioContext !== 'function') return
@@ -302,7 +325,7 @@ export default {
     },
     rebuildPlayUnits() {
       const rawContent = String((this.detail && this.detail.content) || '').replace(/\r\n/g, '\n')
-      const units = this.buildPlayUnits(rawContent)
+      const units = buildPlayUnitsFromContent(rawContent)
       this.playUnits = units.map((item, index) => ({
         unitId: `${this.id || 'text'}-${index}-${this.createStableHash(item.text)}`,
         text: item.text,
@@ -1075,8 +1098,15 @@ export default {
           complete: () => {}
         })
         this.socketTask.onOpen(() => {
+          this._openSocketResolver = resolve
+          this._openSocketTimer = setTimeout(() => {
+            if (this._openSocketResolver) {
+              console.warn('[ASR] task-started 超时，强制 resolve')
+              this._openSocketResolver()
+              this._openSocketResolver = null
+            }
+          }, 5000)
           this.sendRunTask()
-          resolve()
         })
         this.socketTask.onMessage(({ data }) => {
           this.handleSocketMessage(data)
@@ -1144,6 +1174,14 @@ export default {
       if (event === 'task-started') {
         this.taskStarted = true
         this.flushFrameQueue()
+        if (this._openSocketTimer) {
+          clearTimeout(this._openSocketTimer)
+          this._openSocketTimer = null
+        }
+        if (this._openSocketResolver) {
+          this._openSocketResolver()
+          this._openSocketResolver = null
+        }
         return
       }
       if (event === 'result-generated') {
@@ -1187,10 +1225,20 @@ export default {
       if (sentence.sentence_end) {
         this.finalSentences.push(text)
         this.partialSentence = ''
+        this.realtimeText = this.finalSentences.join('')
+        // 自动停止检查
+        this.checkAutoStopFollow()
       } else {
         this.partialSentence = text
+        this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
       }
-      this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
+    },
+    checkAutoStopFollow() {
+      if (!this.recording || this.followingUnitIndex < 0) return
+      // 最短录音时间保护：录音开始 1.5 秒内不自动停止
+      if (this._followRecordStartTime && (Date.now() - this._followRecordStartTime < 1500)) return
+      // sentence_end 时一律停止录音，由 processFollowResult 根据准确率决定后续行为
+      this.stopFollowRecording()
     },
     finishTask() {
       return new Promise((resolve) => {
@@ -1391,6 +1439,7 @@ export default {
       this.followMode = !this.followMode
       if (!this.followMode) {
         this.abortCurrentFollowRecording()
+        if (this._autoAdvanceTimer) { clearTimeout(this._autoAdvanceTimer); this._autoAdvanceTimer = null }
         this.followingUnitIndex = -1
       } else {
         // 进入跟读模式时停止朗读
@@ -1436,12 +1485,14 @@ export default {
           // H5: 使用文件录音方式
           await this.startH5PcmRecorder()
           this.recording = true
+          this._followRecordStartTime = Date.now()
           console.log('[跟读] H5录音已启动')
         } else {
           // 原生: 使用实时 WebSocket ASR
           await this.openSocket()
           console.log('[跟读] WebSocket已连接')
           this.recording = true
+          this._followRecordStartTime = Date.now()
           this.recorderManager.start({
             duration: 30000,
             sampleRate: this.asrConfig.sampleRate || 16000,
@@ -1480,7 +1531,17 @@ export default {
       }
     },
     abortCurrentFollowRecording() {
+      if (this._autoAdvanceTimer) { clearTimeout(this._autoAdvanceTimer); this._autoAdvanceTimer = null }
       if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
+      // 清除当前句子的 playing/recording 状态（避免切换句子后旧句子仍显示播放中）
+      const prevIdx = this.followingUnitIndex
+      if (prevIdx >= 0 && this.followStates[prevIdx]) {
+        const prevState = this.followStates[prevIdx].state
+        if (prevState === 'playing' || prevState === 'recording') {
+          const { [prevIdx]: _, ...rest } = this.followStates
+          this.followStates = rest
+        }
+      }
       if (this.recording) {
         this.stopping = false
         this.recording = false
@@ -1509,6 +1570,17 @@ export default {
       console.log('[跟读] 准确率:', accuracy)
       this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult, accuracy } }
       this.resetRealtimeState()
+      // 准确率 ≥ 80% 自动推进到下一句
+      if (accuracy >= 80 && this.followMode) {
+        const nextIndex = index + 1
+        if (nextIndex < this.playUnits.length) {
+          this._autoAdvanceTimer = setTimeout(() => {
+            if (this.followMode && !this.recording) {
+              this.startFollowUnit(nextIndex)
+            }
+          }, 800)
+        }
+      }
     },
     getFollowState(index) {
       return (this.followStates[index] && this.followStates[index].state) || ''
@@ -1665,7 +1737,26 @@ export default {
 }
 .action-row {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 20rpx;
+}
+.stop-read-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 14rpx 28rpx;
+  margin-right: auto;
+  background: #dc2626;
+  border-radius: 36rpx;
+  border: none;
+}
+.stop-read-btn:active {
+  opacity: 0.9;
+}
+.stop-read-text {
+  font-size: 26rpx;
+  color: #fff;
 }
 .clear-btn {
   width: 72rpx;
@@ -1796,6 +1887,23 @@ export default {
   font-size: 24rpx;
   color: #2f6fff;
   font-weight: 600;
+}
+.follow-retry-hint {
+  display: flex;
+  align-items: center;
+  margin-top: 10rpx;
+  gap: 16rpx;
+}
+.retry-hint-text {
+  font-size: 24rpx;
+  color: #f5222d;
+}
+.follow-retry-btn {
+  padding: 6rpx 20rpx;
+  background: #4f46e5;
+  border-radius: 24rpx;
+  color: #fff;
+  font-size: 24rpx;
 }
 .follow-recording-hint {
   display: flex;

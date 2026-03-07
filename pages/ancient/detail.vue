@@ -1,9 +1,9 @@
 <template>
   <view class="container">
-    <view class="header">
+    <view class="header" @click="goReadFromStart">
       <view class="header-top">
         <view class="header-placeholder"></view>
-        <view class="fav-icon-btn" @click="toggleFavorite">
+        <view class="fav-icon-btn" @click.stop="toggleFavorite">
           <uni-icons
             :type="isFavorited ? 'star-filled' : 'star'"
             size="16"
@@ -12,16 +12,34 @@
           <text class="fav-icon-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
         </view>
       </view>
-      <text class="title">{{ detail.title }}</text>
+      <view class="title-row">
+        <text class="title">{{ detail.title }}</text>
+        <view class="read-hint" @click.stop="goReadFromStart">
+          <uni-icons type="sound" size="18" color="#4f46e5" />
+          <text class="read-hint-text">点击朗读</text>
+        </view>
+      </view>
       <text class="meta">{{ detail.dynasty }} · {{ detail.author }}</text>
     </view>
 
     <view class="content-box">
       <view class="content-inner" :class="{ collapsed: needExpand && !expanded }">
-        <text class="content">{{ detail.content }}</text>
+        <view class="sentence-list">
+          <view
+            v-for="(unit, index) in sentenceUnits"
+            :key="index"
+            class="sentence-item"
+            @click="goReadFromSentence(index)"
+          >
+            <text class="sentence-text">{{ unit.text }}</text>
+          </view>
+        </view>
       </view>
       <view v-if="needExpand" class="expand-wrap">
         <text class="expand-btn" @click="expanded = !expanded">{{ expanded ? '收起' : '展开全文' }}</text>
+      </view>
+      <view class="content-tip">
+        <text class="tip-text">点击句子可从该句开始朗读</text>
       </view>
     </view>
 
@@ -93,6 +111,7 @@
 
 <script>
 import { store } from '@/uni_modules/uni-id-pages/common/store.js'
+import { buildPlayUnits } from '@/common/playUnits.js'
 
 const db = uniCloud.database()
 
@@ -131,7 +150,11 @@ export default {
     },
     needExpand() {
       const content = (this.detail && this.detail.content) || ''
-      return content.length > 80 // 约几行字就显示「展开全文」，与 1/5 屏高配合
+      return content.length > 80
+    },
+    sentenceUnits() {
+      const content = (this.detail && this.detail.content) || ''
+      return buildPlayUnits(content)
     }
   },
   methods: {
@@ -161,10 +184,27 @@ export default {
       })
     },
     goRead() {
+      this.goReadFromStart()
+    },
+    /** 从首句开始朗读：进入跟读页并自动从头播放 */
+    goReadFromStart() {
+      if (!this.detail || !this.detail.content) {
+        uni.showToast({ title: '暂无可朗读内容', icon: 'none' })
+        return
+      }
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.currentText = this.detail
       uni.navigateTo({
-        url: `/pages/ancient/read?id=${this.id}`
+        url: `/pages/ancient/read?id=${this.id}&autoStart=1`
+      })
+    },
+    /** 从指定句开始朗读：进入跟读页并从该句开始播放 */
+    goReadFromSentence(index) {
+      if (!this.detail || !this.detail.content) return
+      getApp().globalData = getApp().globalData || {}
+      getApp().globalData.currentText = this.detail
+      uni.navigateTo({
+        url: `/pages/ancient/read?id=${this.id}&startIndex=${index}`
       })
     },
     async loadReciteRecords() {
@@ -322,16 +362,63 @@ export default {
   width: 1rpx;
   height: 1rpx;
 }
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
 .title {
   display: block;
   font-size: 44rpx;
   font-weight: bold;
   color: #333;
-  margin-bottom: 16rpx;
+}
+.read-hint {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: #eef2ff;
+  border-radius: 24rpx;
+  border: 1rpx solid #c7d2fe;
+}
+.read-hint-text {
+  font-size: 22rpx;
+  color: #4f46e5;
 }
 .meta {
   font-size: 28rpx;
   color: #888;
+}
+.sentence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.sentence-item {
+  padding: 12rpx 0;
+  border-radius: 8rpx;
+}
+.sentence-item:active {
+  background: #f5f5f5;
+}
+.sentence-text {
+  font-size: 34rpx;
+  color: #333;
+  line-height: 2;
+  letter-spacing: 2rpx;
+}
+.content-tip {
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eee;
+}
+.tip-text {
+  font-size: 24rpx;
+  color: #999;
 }
 .content-box {
   background: #fff;
@@ -358,13 +445,7 @@ export default {
   overflow: hidden;
 }
 .content-inner.collapsed {
-  max-height: 20vh; /* 约屏幕 1/5 */
-}
-.content {
-  font-size: 34rpx;
-  color: #333;
-  line-height: 2;
-  letter-spacing: 2rpx;
+  max-height: 20vh;
 }
 .expand-wrap {
   margin-top: 24rpx;
