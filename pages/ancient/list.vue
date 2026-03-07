@@ -3,7 +3,7 @@
     <view class="search-bar">
       <uni-search-bar
         v-model="keyword"
-        placeholder="搜索古文标题、作者或出处、内容"
+        placeholder="搜索古文标题、作者或出处"
         @confirm="onSearch"
         @clear="onClear"
         @input="onInput"
