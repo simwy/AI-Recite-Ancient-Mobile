@@ -1509,6 +1509,13 @@ export default {
             this.stopFollowRecording()
           }
         }, 30000)
+        // 静音超时：8秒内无识别结果则自动停止
+        this._silenceTimer = setTimeout(() => {
+          if (this.recording && this.followingUnitIndex === index && !this.realtimeText) {
+            console.log('[跟读] 静音超时，自动停止录音')
+            this.stopFollowRecording()
+          }
+        }, 8000)
       } catch (e) {
         this.recording = false
         this.followStates = { ...this.followStates, [index]: { state: 'error' } }
@@ -1517,6 +1524,7 @@ export default {
     },
     async stopFollowRecording() {
       if (!this.recording) return
+      if (this._silenceTimer) { clearTimeout(this._silenceTimer); this._silenceTimer = null }
       if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
       this.stopping = true
       const idx = this.followingUnitIndex
@@ -1532,6 +1540,7 @@ export default {
     },
     abortCurrentFollowRecording() {
       if (this._autoAdvanceTimer) { clearTimeout(this._autoAdvanceTimer); this._autoAdvanceTimer = null }
+      if (this._silenceTimer) { clearTimeout(this._silenceTimer); this._silenceTimer = null }
       if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
       // 清除当前句子的 playing/recording 状态（避免切换句子后旧句子仍显示播放中）
       const prevIdx = this.followingUnitIndex
