@@ -248,6 +248,8 @@ export default {
   onLoad(options) {
     this.id = options.id || ''
     this.pendingAutoStartIndex = options.autoStart === '1' ? 0 : (options.startIndex != null && options.startIndex !== '' ? parseInt(options.startIndex, 10) : -1)
+    // autoStart=1 → 跟读模式；startIndex → 朗读模式
+    this.followMode = options.autoStart === '1'
     this.localCacheIndex = this.loadCacheIndex()
     this.initAudioContext()
     this.initRecorder()
