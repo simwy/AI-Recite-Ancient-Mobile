@@ -13,6 +13,10 @@
             },
             "provider" : "alipay",
             "type" : "uniCloud"
+        },
+        {
+            "openVueDevtools" : true,
+            "type" : "uni-app:h5"
         }
     ]
 }

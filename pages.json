@@ -36,14 +36,7 @@
 				"navigationBarTitleText": "文言文背诵"
 			},
 			"needLogin": true
-		},
-		{
-			"path": "pages/ancient/recite2",
-			"style": {
-				"navigationBarTitleText": "背诵模式"
-			},
-			"needLogin": false
-		},		
+		},	
 		{
 			"path": "pages/ancient/result",
 			"style": {
