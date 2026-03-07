@@ -1654,10 +1654,15 @@ export default {
       for (const [idx, s] of doneEntries) {
         const unit = this.playUnits[Number(idx)]
         allDiff.push(...(s.diffResult || []))
+        const wrongChars = (s.diffResult || [])
+          .filter(d => d.status === 'wrong' || d.status === 'missing')
+          .map(d => d.char)
         sentenceDetails.push({
           index: Number(idx),
           text: unit ? unit.text : '',
-          accuracy: s.accuracy || 0
+          accuracy: s.accuracy || 0,
+          diff_result: s.diffResult || [],
+          wrong_chars: wrongChars
         })
       }
       try {
