@@ -1,0 +1,60 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "article_id"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "article_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "gw-ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题"
+    },
+    "text_dynasty": {
+      "bsonType": "string",
+      "description": "朝代"
+    },
+    "text_author": {
+      "bsonType": "string",
+      "description": "作者"
+    },
+    "difficulty": {
+      "bsonType": "string",
+      "description": "难度等级（junior/middle/advanced）"
+    },
+    "difficulty_label": {
+      "bsonType": "string",
+      "description": "难度显示名（初级默写/中级默写/高级默写）"
+    },
+    "font_size": {
+      "bsonType": "string",
+      "description": "字号（large/medium/small）"
+    },
+    "file_name": {
+      "bsonType": "string",
+      "description": "生成的PDF文件名"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "打印时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

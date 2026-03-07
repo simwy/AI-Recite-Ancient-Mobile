@@ -9,7 +9,10 @@
       "Bash(pip3 install markdown weasyprint 2>&1 | tail -5)",
       "Bash(brew install pango 2>&1 | tail -5)",
       "Bash(/opt/homebrew/bin/python3.13 -m pip install markdown weasyprint 2>&1 | tail -5)",
-      "Bash(/opt/homebrew/bin/python3.13 -m pip install --break-system-packages markdown weasyprint 2>&1 | tail -5)"
+      "Bash(/opt/homebrew/bin/python3.13 -m pip install --break-system-packages markdown weasyprint 2>&1 | tail -5)",
+      "Bash(find /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile -type f -name \"*.js\" -path \"*/common/*\" -o -type f -name \"*.ts\" -path \"*/common/*\" 2>/dev/null | head -20)",
+      "Bash(grep -r \"export\" /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile/common/*.js 2>/dev/null | head -20)",
+      "Bash(ls -la /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile/uniCloud-alipay/cloudfunctions/gw_*)"
     ]
   }
 }

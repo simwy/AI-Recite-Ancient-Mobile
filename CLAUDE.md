@@ -21,9 +21,16 @@ Built on **uni-app (Vue 3)** targeting Android, iOS, WeChat Mini Program, H5, an
 ### Page Flow
 `pages/ancient/list` (search/browse) → `pages/ancient/detail` (text detail) → `pages/ancient/recite` (speech recognition) → `pages/ancient/result` (accuracy analysis)
 
-Additional modes: `pages/ancient/dictation` (dictation practice), `pages/ancient/read` (reading mode), `pages/ancient/history` (recitation history).
+Additional flows:
+- Dictation: `detail` → `pages/ancient/dictation` → `pages/ancient/dictation-result` (accuracy analysis)
+- Reading: `detail` → `pages/ancient/read` (TTS playback with pinyin display)
+- History: `pages/ancient/history` (recitation history)
+
+Note: `pages/ancient/recite2.vue` exists alongside `recite.vue` — it is a newer/alternative recitation page (check `pages.json` for which is currently routed).
 
 Tabbar has 4 tabs: 古文 (list), 广场 (square), 复盘 (review), 我的 (ucenter).
+- `pages/square/index` — category browsing (left panel categories, right panel subcollections); `pages/square/list` — subcollection text listing with search and favorites
+- `pages/review/index` — three sub-tabs: recitation records, favorite texts, favorite subcollections
 
 Auth is handled by `uni_modules/uni-id-pages` (lazy-loaded sub-package).
 
@@ -44,6 +51,11 @@ Cloud functions in `uniCloud-alipay/cloudfunctions/` (all prefixed `gw_`):
 - **gw_recite-record** — persists recitation history (save/list/detail/delete)
 - **gw_tts-synthesize** — text-to-speech via iFlytek WebSocket
 - **gw_dictation-print-pdf** — PDF generation for dictation practice
+- **gw_asr-file-recognize** — file-based ASR (Aliyun)
+- **gw_asr-file-recognize-iflytek** — file-based ASR (iFlytek)
+- **gw_dictation-check** — validates dictation submissions, returns accuracy
+- **gw_favorite** — manages user favorites (texts and subcollections)
+- **gw_learning-records** — tracks learning/practice history
 - **gw_sentence-snapshot** — sentence-level snapshots
 
 **Cloud function pattern:** All use action-based routing:
@@ -76,6 +88,10 @@ Uses uni-app's `// #ifdef PLATFORM` / `// #endif` directives throughout:
 - `H5` — web features (download bar via `common/openApp.js`, relay server for ASR)
 - `MP-WEIXIN` — WeChat Mini Program specifics
 - `VUE3` / `#ifndef VUE3` — Vue version splits in main.js and App.vue
+
+### Custom Components
+- `components/refreshBox/refreshBox.vue` — pull-to-refresh wrapper with state management
+- `components/uni-load-state/uni-load-state.vue` — load-more/pagination state with network error handling
 
 ### Key Config Files
 - `pages.json` — routes, tabbar, global styles, login-required pages (design width 375px)

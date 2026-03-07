@@ -52,6 +52,37 @@
       </view>
     </view>
 
+    <view class="print-record-section">
+      <view
+        class="print-record-header"
+        @tap="printRecordExpanded = !printRecordExpanded"
+      >
+        <text class="print-record-title">打印记录</text>
+        <text class="print-record-count" v-if="printRecordTotal > 0">共 {{ printRecordTotal }} 条</text>
+        <text class="print-record-arrow" :class="{ expanded: printRecordExpanded }">›</text>
+      </view>
+      <view v-if="printRecordExpanded" class="print-record-body">
+        <view v-if="printRecordLoading" class="print-record-loading">加载中...</view>
+        <view v-else-if="!printRecordList.length" class="print-record-empty">暂无打印记录</view>
+        <view v-else class="print-record-list">
+          <view
+            v-for="(item, idx) in printRecordList"
+            :key="item._id || idx"
+            class="print-record-item"
+          >
+            <view class="print-record-item-title">{{ item.text_title || '（未命名）' }}</view>
+            <view class="print-record-item-meta">
+              <text v-if="item.difficulty_label">{{ item.difficulty_label }}</text>
+              <text v-if="item.font_size" class="meta-dot">·</text>
+              <text v-if="item.font_size">字号{{ item.font_size === 'large' ? '大' : item.font_size === 'small' ? '小' : '中' }}</text>
+              <text class="meta-dot">·</text>
+              <text>{{ formatPrintTime(item.created_at) }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view class="action-bar">
       <view class="action-row">
         <button class="btn-print" @tap="printDictationPaper">打印默写纸</button>
@@ -80,7 +111,11 @@ export default {
         { label: '大', value: 'large' },
         { label: '中', value: 'medium' },
         { label: '小', value: 'small' }
-      ]
+      ],
+      printRecordList: [],
+      printRecordTotal: 0,
+      printRecordLoading: false,
+      printRecordExpanded: false
     }
   },
   computed: {
@@ -105,6 +140,9 @@ export default {
   onLoad(options) {
     this.id = options.id || ''
     this.initDetail()
+  },
+  onShow() {
+    this.loadPrintRecordList()
   },
   methods: {
     async initDetail() {
@@ -163,6 +201,16 @@ export default {
           uni.showToast({ title: '获取文件地址失败', icon: 'none' })
           return
         }
+        await this.savePrintRecord({
+          articleId: this.id || this.detail._id || '',
+          title: this.detail.title || '',
+          dynasty: this.detail.dynasty || '',
+          author: this.detail.author || '',
+          difficulty: this.selectedDifficulty,
+          difficultyLabel: diffLabel,
+          fontSize: this.selectedFontSize,
+          fileName
+        })
         // H5/Chrome：直接用临时链接在新标签页打开 PDF，避免 uni.downloadFile 跨域报错
         // #ifdef H5
         window.open(fileUrl, '_blank', 'noopener')
@@ -303,6 +351,57 @@ export default {
       if (!currentUserInfo.token) return ''
       if (currentUserInfo.tokenExpired && currentUserInfo.tokenExpired < Date.now()) return ''
       return currentUserInfo.token
+    },
+    async savePrintRecord(payload) {
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_dictation-print-record',
+          data: {
+            action: 'save',
+            uniIdToken: this.getUniIdToken(),
+            data: payload
+          }
+        })
+        const result = res.result || {}
+        if (result.code === 0 && !result.data?.skipped) {
+          this.loadPrintRecordList()
+        }
+      } catch (e) {
+        console.error('保存打印记录失败:', e)
+      }
+    },
+    async loadPrintRecordList() {
+      if (this.printRecordLoading) return
+      this.printRecordLoading = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_dictation-print-record',
+          data: {
+            action: 'list',
+            uniIdToken: this.getUniIdToken(),
+            data: { page: 1, pageSize: 20 }
+          }
+        })
+        const result = res.result || {}
+        if (result.code === 0 && result.data) {
+          this.printRecordList = result.data.list || []
+          this.printRecordTotal = result.data.total || 0
+        }
+      } catch (e) {
+        console.error('加载打印记录失败:', e)
+      } finally {
+        this.printRecordLoading = false
+      }
+    },
+    formatPrintTime(timestamp) {
+      if (!timestamp) return '—'
+      const d = new Date(timestamp)
+      const now = new Date()
+      const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      if (isToday) {
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      }
+      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     },
     async callCheckFunction(imageBase64) {
       try {
@@ -515,6 +614,72 @@ export default {
   border-bottom: 2rpx solid #1f2937;
   vertical-align: bottom;
   margin: 0 2rpx;
+}
+.print-record-section {
+  margin-top: 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  overflow: hidden;
+}
+.print-record-header {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  font-size: 28rpx;
+  color: #1f2937;
+}
+.print-record-title {
+  font-weight: 600;
+}
+.print-record-count {
+  margin-left: 12rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+.print-record-arrow {
+  margin-left: auto;
+  font-size: 36rpx;
+  color: #9ca3af;
+  transform: rotate(0deg);
+  transition: transform 0.2s;
+}
+.print-record-arrow.expanded {
+  transform: rotate(90deg);
+}
+.print-record-body {
+  padding-bottom: 24rpx;
+  border-top: 1rpx solid #f3f4f6;
+}
+.print-record-loading,
+.print-record-empty {
+  padding: 32rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+.print-record-list {
+  padding-top: 16rpx;
+}
+.print-record-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.print-record-item:last-child {
+  border-bottom: none;
+}
+.print-record-item-title {
+  font-size: 28rpx;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+.print-record-item-meta {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+.print-record-item-meta .meta-dot {
+  margin: 0 8rpx;
+  color: #d1d5db;
 }
 .action-bar {
   position: fixed;

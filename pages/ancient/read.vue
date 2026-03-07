@@ -7,8 +7,6 @@
         <text class="font-item" :class="{ active: fontSize === 'small' }" @tap="setFontSize('small')">小</text>
       </view>
       <view class="right-tools">
-        <button v-if="!showStopButton" class="tool-btn" size="mini" @tap="onReadFromCurrent">朗读</button>
-        <button v-if="showStopButton" class="tool-btn tool-btn-stop" size="mini" @tap="onStopPlay">停止</button>
       </view>
     </view>
 
@@ -26,13 +24,55 @@
           class="sentence-item"
           :class="{
             active: currentUnitIndex === index,
-            loading: loadingUnitIndex === index
+            loading: loadingUnitIndex === index,
+            recording: getFollowState(index) === 'recording',
+            'follow-done': getFollowState(index) === 'done'
           }"
           @tap="onTapSentence(index)"
         >
           <text v-if="unit.pinyinText" class="sentence-pinyin">{{ unit.pinyinText }}</text>
-          <view class="sentence-text">{{ unit.text }}</view>
+          <!-- 跟读完成：逐字着色 -->
+          <view v-if="getFollowState(index) === 'done'" class="sentence-text diff-text">
+            <text
+              v-for="(ch, ci) in getFollowDiffResult(index)"
+              :key="ci"
+              :class="{
+                'diff-correct': ch.status === 'correct' || ch.status === 'homophone',
+                'diff-wrong': ch.status === 'wrong' || ch.status === 'missing',
+                'diff-punctuation': ch.status === 'punctuation'
+              }"
+            >{{ ch.char }}</text>
+            <text class="follow-accuracy">{{ getFollowAccuracy(index) }}%</text>
+          </view>
+          <!-- 录音中 -->
+          <view v-else-if="getFollowState(index) === 'recording'" class="sentence-text">
+            {{ unit.text }}
+            <view class="follow-recording-hint">
+              <text class="recording-dot">●</text>
+              <text class="recording-label">录音中...</text>
+            </view>
+          </view>
+          <!-- 识别中 -->
+          <view v-else-if="getFollowState(index) === 'recognizing'" class="sentence-text">
+            {{ unit.text }}
+            <view class="follow-recording-hint">
+              <text class="recording-label">识别中...</text>
+            </view>
+          </view>
+          <!-- 播放TTS中 -->
+          <view v-else-if="getFollowState(index) === 'playing'" class="sentence-text">
+            {{ unit.text }}
+            <view class="follow-recording-hint">
+              <text class="recording-label">播放中...</text>
+            </view>
+          </view>
+          <!-- 默认 -->
+          <view v-else class="sentence-text">{{ unit.text }}</view>
           <text v-if="loadingUnitIndex === index" class="sentence-tip">正在合成语音...</text>
+          <!-- 跟读模式下录音中显示停止按钮 -->
+          <view v-if="followMode && getFollowState(index) === 'recording'" class="follow-stop-btn" @tap.stop="stopFollowRecording">
+            <text>跟读完成</text>
+          </view>
         </view>
         <view v-if="playUnits.length === 0" class="empty-tip">
           <text>暂无可朗读内容</text>
@@ -96,6 +136,7 @@
 
 <script>
 import { pinyin } from 'pinyin-pro'
+import { diffChars, calcAccuracy } from '@/common/diff.js'
 
 const db = uniCloud.database()
 const CACHE_INDEX_KEY = 'gw_tts_audio_cache_index_v1'
@@ -163,19 +204,55 @@ export default {
       lastPlaySrcType: '',
       lastPlaySrcPreview: '',
       lastAudioError: '',
-      lastDownloadTest: ''
+      lastDownloadTest: '',
+      // 跟读模式
+      followMode: true,
+      followingUnitIndex: -1,
+      followStates: {},
+      recording: false,
+      // 录音/ASR
+      recorderManager: null,
+      socketTask: null,
+      asrConfig: null,
+      taskId: '',
+      taskStarted: false,
+      taskFinished: false,
+      frameQueue: [],
+      finalSentences: [],
+      partialSentence: '',
+      realtimeText: '',
+      stopping: false,
+      waitTaskFinishedResolver: null,
+      useWebRecorder: false,
+      webAudioContext: null,
+      webMediaStream: null,
+      webScriptProcessor: null,
+      h5MediaRecorder: null,
+      h5AudioChunks: [],
+      h5StopPromiseResolver: null,
+      requestingPermission: false
     }
   },
   onLoad(options) {
     this.id = options.id || ''
     this.localCacheIndex = this.loadCacheIndex()
     this.initAudioContext()
+    this.initRecorder()
     this.loadDetail()
   },
   onUnload() {
     this.stopActiveAudio()
     this.audioPlayResolver = null
     this.downloadTempPathCache = {}
+    // 清理录音/ASR资源
+    this.closeSocket()
+    if (this.useWebRecorder) {
+      this.stopWebRecorder()
+      this.cleanupH5PcmRecorder()
+    }
+    if (this.recorderManager && this.recording) {
+      try { this.recorderManager.stop() } catch (e) {}
+    }
     if (this.audioContext) {
       this.audioContext.destroy()
       this.audioContext = null
@@ -432,6 +509,7 @@ export default {
     onClearReadProgress() {
       this.onStopPlay()
       this.resetReadProgressState()
+      this.followStates = {}
       uni.showToast({ title: '已清空朗读进度', icon: 'none' })
     },
     resetReadProgressState() {
@@ -449,6 +527,10 @@ export default {
     },
     async onTapSentence(index) {
       if (index < 0 || index >= this.playUnits.length) return
+      if (this.followMode) {
+        this.startFollowUnit(index)
+        return
+      }
       if (this.isFullReading) return
       this.isFullReading = false
       this.queueNextIndex = 0
@@ -839,6 +921,100 @@ export default {
       }
     },
 
+    // ========== 录音/ASR 方法（移植自 recite.vue） ==========
+    ensureRecordPermission() {
+      return new Promise((resolve, reject) => {
+        // #ifdef H5
+        resolve()
+        return
+        // #endif
+        const doAuthorize = () => {
+          uni.authorize({
+            scope: 'scope.record',
+            success: () => resolve(),
+            fail: (err) => {
+              const errStr = String((err && (err.errMsg || err.message)) || '')
+              const isDenied = /auth deny|denied|拒绝|未授权|scope\.record/i.test(errStr)
+              if (!isDenied) {
+                reject(err || new Error('获取录音权限失败'))
+                return
+              }
+              uni.showModal({
+                title: '需要麦克风权限',
+                content: '用于跟读语音识别，请允许使用麦克风。',
+                confirmText: '去设置',
+                cancelText: '取消',
+                success: (res) => {
+                  if (!res.confirm) {
+                    reject(new Error('未授权录音权限'))
+                    return
+                  }
+                  uni.openSetting({
+                    success: (settingRes) => {
+                      if (settingRes.authSetting && settingRes.authSetting['scope.record']) {
+                        resolve()
+                      } else {
+                        reject(new Error('未授权录音权限'))
+                      }
+                    },
+                    fail: () => reject(new Error('未授权录音权限'))
+                  })
+                }
+              })
+            }
+          })
+        }
+        // #ifdef MP-WEIXIN
+        uni.getSetting({
+          success: (settingRes) => {
+            if (settingRes.authSetting && settingRes.authSetting['scope.record'] === true) {
+              resolve()
+              return
+            }
+            doAuthorize()
+          },
+          fail: () => doAuthorize()
+        })
+        // #endif
+        // #ifndef MP-WEIXIN
+        doAuthorize()
+        // #endif
+      })
+    },
+    initRecorder() {
+      // #ifdef H5
+      this.useWebRecorder = true
+      return
+      // #endif
+      if (typeof uni.getRecorderManager !== 'function') {
+        this.useWebRecorder = true
+        return
+      }
+      try {
+        this.recorderManager = uni.getRecorderManager()
+      } catch (e) {
+        this.useWebRecorder = true
+        return
+      }
+      if (!this.recorderManager) {
+        this.useWebRecorder = true
+        return
+      }
+      this.recorderManager.onFrameRecorded((res) => {
+        this.sendAudioFrame(res.frameBuffer)
+      })
+      this.recorderManager.onStop(() => {
+        this.recording = false
+        this.handleFollowRecorderStop()
+      })
+      this.recorderManager.onError((err) => {
+        this.recording = false
+        this.closeSocket()
+        const msg = (err && err.errMsg) ? err.errMsg : '录音失败'
+        uni.showToast({ title: msg.indexOf('record') !== -1 ? '请允许麦克风权限后重试' : '录音失败', icon: 'none', duration: 3000 })
+      })
+    },
+
     /** 检测当前第一句：只跑 TTS + resolvePlaySrc，不播放，用于看返回类型和最终 src */
     async runTestCurrentUnit() {
       const unit = this.playUnits[0]
@@ -863,6 +1039,485 @@ export default {
         this.lastAudioError = (e && e.message) || String(e)
         uni.showToast({ title: '检测失败，见调试面板', icon: 'none', duration: 2500 })
       }
+    },
+    async loadAsrConfig() {
+      const res = await uniCloud.callFunction({ name: 'gw_asr-config' })
+      const result = res.result || {}
+      if (result.code !== 0 || !result.data) {
+        throw new Error(result.msg || '获取语音配置失败')
+      }
+      this.asrConfig = result.data
+    },
+    openSocket() {
+      return new Promise((resolve, reject) => {
+        let socketUrl = this.asrConfig.wsUrl
+        let socketHeader = {
+          Authorization: `${this.asrConfig.tokenType || 'bearer'} ${this.asrConfig.temporaryToken}`
+        }
+        // #ifdef H5
+        if (!window.isSecureContext) {
+          reject(new Error('H5 录音需要 HTTPS 或 localhost 安全上下文'))
+          return
+        }
+        const fallbackRelayWsUrl = this.buildDefaultRelayWsUrl()
+        const relayWsUrl = this.asrConfig.relayWsUrl || fallbackRelayWsUrl
+        if (!relayWsUrl) {
+          reject(new Error('H5 需要配置 relayWsUrl'))
+          return
+        }
+        socketUrl = relayWsUrl
+        socketHeader = {}
+        // #endif
+        this.taskId = this.createTaskId()
+        this.socketTask = uni.connectSocket({
+          url: socketUrl,
+          header: socketHeader,
+          complete: () => {}
+        })
+        this.socketTask.onOpen(() => {
+          this.sendRunTask()
+          resolve()
+        })
+        this.socketTask.onMessage(({ data }) => {
+          this.handleSocketMessage(data)
+        })
+        this.socketTask.onError((err) => {
+          // #ifdef H5
+          reject(new Error('H5 WebSocket 连接失败'))
+          // #endif
+          // #ifndef H5
+          reject(err)
+          // #endif
+        })
+        this.socketTask.onClose(() => {
+          this.socketTask = null
+        })
+      })
+    },
+    sendRunTask() {
+      if (!this.socketTask) return
+      const payload = {
+        header: {
+          action: 'run-task',
+          task_id: this.taskId,
+          streaming: 'duplex'
+        },
+        payload: {
+          task_group: 'audio',
+          task: 'asr',
+          function: 'recognition',
+          model: this.asrConfig.model || 'paraformer-realtime-v2',
+          parameters: {
+            format: this.asrConfig.format || 'pcm',
+            sample_rate: this.asrConfig.sampleRate || 16000,
+            language_hints: this.asrConfig.languageHints || ['zh'],
+            punctuation_prediction_enabled: this.asrConfig.punctuationPredictionEnabled !== false,
+            inverse_text_normalization_enabled: this.asrConfig.inverseTextNormalizationEnabled !== false
+          },
+          input: {}
+        }
+      }
+      this.socketTask.send({ data: JSON.stringify(payload) })
+    },
+    sendAudioFrame(frameBuffer) {
+      if (!frameBuffer || !this.socketTask) return
+      if (!this.taskStarted) {
+        this.frameQueue.push(frameBuffer)
+        return
+      }
+      this.socketTask.send({ data: frameBuffer })
+    },
+    flushFrameQueue() {
+      if (!this.socketTask || !this.taskStarted || this.frameQueue.length === 0) return
+      while (this.frameQueue.length > 0) {
+        const frame = this.frameQueue.shift()
+        this.socketTask.send({ data: frame })
+      }
+    },
+    handleSocketMessage(rawData) {
+      const decoded = this.decodeSocketData(rawData)
+      if (!decoded) return
+      let message = decoded
+      try { message = JSON.parse(decoded) } catch (e) { return }
+      const header = message.header || {}
+      const event = header.event
+      if (event === 'task-started') {
+        this.taskStarted = true
+        this.flushFrameQueue()
+        return
+      }
+      if (event === 'result-generated') {
+        this.handleRecognizedSentence(message.payload && message.payload.output && message.payload.output.sentence)
+        return
+      }
+      if (event === 'task-finished') {
+        this.taskFinished = true
+        if (this.waitTaskFinishedResolver) {
+          this.waitTaskFinishedResolver()
+          this.waitTaskFinishedResolver = null
+        }
+        this.closeSocket()
+        return
+      }
+      if (event === 'task-failed') {
+        if (this.waitTaskFinishedResolver) {
+          this.waitTaskFinishedResolver()
+          this.waitTaskFinishedResolver = null
+        }
+        this.closeSocket()
+      }
+    },
+    decodeSocketData(rawData) {
+      if (typeof rawData === 'string') return rawData
+      if (!(rawData instanceof ArrayBuffer)) return ''
+      if (typeof TextDecoder !== 'undefined') {
+        return new TextDecoder('utf-8').decode(rawData)
+      }
+      const bytes = new Uint8Array(rawData)
+      let result = ''
+      for (let i = 0; i < bytes.length; i++) {
+        result += String.fromCharCode(bytes[i])
+      }
+      return decodeURIComponent(escape(result))
+    },
+    handleRecognizedSentence(sentence) {
+      if (!sentence || sentence.heartbeat) return
+      const text = sentence.text || ''
+      if (!text) return
+      if (sentence.sentence_end) {
+        this.finalSentences.push(text)
+        this.partialSentence = ''
+      } else {
+        this.partialSentence = text
+      }
+      this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
+    },
+    finishTask() {
+      return new Promise((resolve) => {
+        if (!this.socketTask) { resolve(); return }
+        if (this.taskStarted && !this.taskFinished) {
+          this.socketTask.send({
+            data: JSON.stringify({
+              header: { action: 'finish-task', task_id: this.taskId, streaming: 'duplex' },
+              payload: { input: {} }
+            })
+          })
+        }
+        const timer = setTimeout(() => { this.closeSocket(); resolve() }, 5000)
+        this.waitTaskFinishedResolver = () => { clearTimeout(timer); resolve() }
+      })
+    },
+    closeSocket() {
+      if (!this.socketTask) return
+      try { this.socketTask.close() } catch (e) {}
+      this.socketTask = null
+    },
+    resetRealtimeState() {
+      this.taskId = ''
+      this.taskStarted = false
+      this.taskFinished = false
+      this.frameQueue = []
+      this.finalSentences = []
+      this.partialSentence = ''
+      this.realtimeText = ''
+      this.waitTaskFinishedResolver = null
+    },
+    createTaskId() {
+      return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+    },
+    buildDefaultRelayWsUrl() {
+      // #ifdef H5
+      if (!window.location || !window.location.host) return ''
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${wsProtocol}//${window.location.host}/asr-relay`
+      // #endif
+      // #ifndef H5
+      return ''
+      // #endif
+    },
+    async startWebRecorder() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('当前浏览器不支持录音')
+      }
+      const targetSampleRate = this.asrConfig.sampleRate || 16000
+      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.webAudioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const source = this.webAudioContext.createMediaStreamSource(this.webMediaStream)
+      this.webScriptProcessor = this.webAudioContext.createScriptProcessor(4096, 1, 1)
+      this.webScriptProcessor.onaudioprocess = (event) => {
+        if (!this.recording || !this.socketTask) return
+        const inputData = event.inputBuffer.getChannelData(0)
+        const pcmBuffer = this.convertFloat32To16kPcm(inputData, this.webAudioContext.sampleRate, targetSampleRate)
+        if (pcmBuffer && pcmBuffer.byteLength > 0) {
+          this.sendAudioFrame(pcmBuffer)
+        }
+      }
+      source.connect(this.webScriptProcessor)
+      this.webScriptProcessor.connect(this.webAudioContext.destination)
+    },
+    stopWebRecorder() {
+      if (this.webScriptProcessor) {
+        this.webScriptProcessor.disconnect()
+        this.webScriptProcessor.onaudioprocess = null
+      }
+      if (this.webMediaStream) {
+        this.webMediaStream.getTracks().forEach(track => track.stop())
+      }
+      if (this.webAudioContext) {
+        this.webAudioContext.close()
+      }
+      this.webScriptProcessor = null
+      this.webMediaStream = null
+      this.webAudioContext = null
+    },
+    convertFloat32To16kPcm(float32Array, inputSampleRate, outputSampleRate) {
+      if (!float32Array || float32Array.length === 0) return null
+      const ratio = inputSampleRate / outputSampleRate
+      const outputLength = Math.max(1, Math.floor(float32Array.length / ratio))
+      const result = new Int16Array(outputLength)
+      let offsetResult = 0
+      let offsetBuffer = 0
+      while (offsetResult < outputLength) {
+        const nextOffsetBuffer = Math.floor((offsetResult + 1) * ratio)
+        let accum = 0, count = 0
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i++) {
+          accum += float32Array[i]
+          count++
+        }
+        const sample = count > 0 ? accum / count : 0
+        const clamped = Math.max(-1, Math.min(1, sample))
+        result[offsetResult] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
+        offsetResult++
+        offsetBuffer = nextOffsetBuffer
+      }
+      return result.buffer
+    },
+    async startH5PcmRecorder() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('当前浏览器不支持录音')
+      }
+      if (typeof MediaRecorder === 'undefined') {
+        throw new Error('当前浏览器不支持 MediaRecorder')
+      }
+      this.h5AudioChunks = []
+      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.h5MediaRecorder = new MediaRecorder(this.webMediaStream, { mimeType: 'audio/webm' })
+      this.h5MediaRecorder.ondataavailable = (evt) => {
+        if (evt.data && evt.data.size > 0) {
+          this.h5AudioChunks.push(evt.data)
+        }
+      }
+      this.h5MediaRecorder.onstop = async () => {
+        if (!this.stopping) return
+        const idx = this.followingUnitIndex
+        try {
+          uni.showLoading({ title: '语音识别中...' })
+          const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
+          const audioBase64 = await this.blobToBase64(audioBlob)
+          const callRes = await uniCloud.callFunction({
+            name: 'gw_asr-file-recognize',
+            data: { audioBase64, format: 'webm' }
+          })
+          const result = callRes.result || {}
+          if (result.code !== 0) throw new Error(result.msg || '识别失败')
+          const recognizedText = (result.data && result.data.text) || ''
+          this.processFollowResult(idx, recognizedText)
+        } catch (error) {
+          uni.showToast({ title: error.message || '识别失败', icon: 'none' })
+          this.followStates = { ...this.followStates, [idx]: { state: 'error' } }
+        } finally {
+          uni.hideLoading()
+          this.cleanupH5PcmRecorder()
+          if (this.h5StopPromiseResolver) {
+            this.h5StopPromiseResolver()
+            this.h5StopPromiseResolver = null
+          }
+        }
+      }
+      this.h5MediaRecorder.start()
+    },
+    async stopH5PcmRecorder() {
+      if (!this.h5MediaRecorder || this.h5MediaRecorder.state === 'inactive') {
+        this.cleanupH5PcmRecorder()
+        return
+      }
+      await new Promise((resolve) => {
+        this.h5StopPromiseResolver = resolve
+        this.h5MediaRecorder.stop()
+      })
+    },
+    cleanupH5PcmRecorder() {
+      if (this.webMediaStream) {
+        this.webMediaStream.getTracks().forEach(track => track.stop())
+      }
+      this.webMediaStream = null
+      this.h5MediaRecorder = null
+      this.h5AudioChunks = []
+      this.h5StopPromiseResolver = null
+    },
+    blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = reader.result || ''
+          resolve(String(result).split(',')[1] || '')
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    },
+    handleFollowRecorderStop() {
+      if (!this.stopping) return
+      this.processFollowStopWithASR()
+    },
+    async processFollowStopWithASR() {
+      const idx = this.followingUnitIndex
+      try {
+        uni.showLoading({ title: '正在结束识别...' })
+        await this.finishTask()
+        uni.hideLoading()
+        this.processFollowResult(idx, this.realtimeText)
+      } catch (e) {
+        uni.hideLoading()
+        console.error('[跟读] processFollowStopWithASR error:', e)
+        this.followStates = { ...this.followStates, [idx]: { state: 'error' } }
+        uni.showToast({ title: '识别失败', icon: 'none' })
+      } finally {
+        this.stopping = false
+      }
+    },
+    // ========== 跟读流程方法 ==========
+    toggleFollowMode() {
+      this.followMode = !this.followMode
+      if (!this.followMode) {
+        this.abortCurrentFollowRecording()
+        this.followingUnitIndex = -1
+      } else {
+        // 进入跟读模式时停止朗读
+        this.onStopPlay()
+      }
+    },
+    async startFollowUnit(index) {
+      if (this.recording) {
+        // 正在录音中，先停止当前录音
+        await this.stopFollowRecording()
+        return
+      }
+      // 中断之前的跟读
+      this.abortCurrentFollowRecording()
+      this.followingUnitIndex = index
+      this.followStates = { ...this.followStates, [index]: { state: 'playing' } }
+      try {
+        // 先播放 TTS
+        await this.playUnit(index)
+        // TTS 播完后自动开始录音
+        if (this.followingUnitIndex !== index || !this.followMode) return
+        await new Promise(r => setTimeout(r, 500))
+        if (this.followingUnitIndex !== index || !this.followMode) return
+        await this.startFollowRecording(index)
+      } catch (e) {
+        console.error('startFollowUnit error:', e)
+        if (this.followingUnitIndex === index) {
+          this.followStates = { ...this.followStates, [index]: { state: 'error' } }
+          uni.showToast({ title: e.message || '跟读失败', icon: 'none' })
+        }
+      }
+    },
+    async startFollowRecording(index) {
+      console.log('[跟读] startFollowRecording, index:', index, 'useWebRecorder:', this.useWebRecorder)
+      this.followStates = { ...this.followStates, [index]: { state: 'recording' } }
+      this.resetRealtimeState()
+      try {
+        await this.ensureRecordPermission()
+        console.log('[跟读] 权限已获取')
+        await this.loadAsrConfig()
+        console.log('[跟读] ASR配置已加载', this.asrConfig ? 'ok' : 'null')
+        if (this.useWebRecorder) {
+          // H5: 使用文件录音方式
+          await this.startH5PcmRecorder()
+          this.recording = true
+          console.log('[跟读] H5录音已启动')
+        } else {
+          // 原生: 使用实时 WebSocket ASR
+          await this.openSocket()
+          console.log('[跟读] WebSocket已连接')
+          this.recording = true
+          this.recorderManager.start({
+            duration: 30000,
+            sampleRate: this.asrConfig.sampleRate || 16000,
+            numberOfChannels: 1,
+            encodeBitRate: 48000,
+            format: 'PCM',
+            frameSize: 4
+          })
+          console.log('[跟读] 原生录音已启动')
+        }
+        // 30秒自动停止
+        this._followTimer = setTimeout(() => {
+          if (this.recording && this.followingUnitIndex === index) {
+            this.stopFollowRecording()
+          }
+        }, 30000)
+      } catch (e) {
+        this.recording = false
+        this.followStates = { ...this.followStates, [index]: { state: 'error' } }
+        uni.showToast({ title: e.message || '录音启动失败', icon: 'none' })
+      }
+    },
+    async stopFollowRecording() {
+      if (!this.recording) return
+      if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
+      this.stopping = true
+      const idx = this.followingUnitIndex
+      this.followStates = { ...this.followStates, [idx]: { state: 'recognizing' } }
+      if (this.useWebRecorder) {
+        this.recording = false
+        await this.stopH5PcmRecorder()
+        this.stopping = false
+      } else {
+        // recorderManager.stop() 是异步的，onStop 回调里会处理后续流程
+        this.recorderManager.stop()
+      }
+    },
+    abortCurrentFollowRecording() {
+      if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
+      if (this.recording) {
+        this.stopping = false
+        this.recording = false
+        if (this.useWebRecorder) {
+          this.cleanupH5PcmRecorder()
+          this.stopWebRecorder()
+        } else if (this.recorderManager) {
+          try { this.recorderManager.stop() } catch (e) {}
+        }
+        this.closeSocket()
+        this.resetRealtimeState()
+      }
+    },
+    processFollowResult(index, recognizedText) {
+      if (index < 0 || index >= this.playUnits.length) return
+      const originalText = this.playUnits[index].text || ''
+      console.log('[跟读] 原文:', originalText)
+      console.log('[跟读] 识别结果:', recognizedText)
+      if (!recognizedText || !recognizedText.trim()) {
+        this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult: [], accuracy: 0 } }
+        return
+      }
+      const diffResult = diffChars(originalText, recognizedText)
+      const accuracy = calcAccuracy(diffResult)
+      console.log('[跟读] diff结果:', JSON.stringify(diffResult))
+      console.log('[跟读] 准确率:', accuracy)
+      this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult, accuracy } }
+      this.resetRealtimeState()
+    },
+    getFollowState(index) {
+      return (this.followStates[index] && this.followStates[index].state) || ''
+    },
+    getFollowDiffResult(index) {
+      return (this.followStates[index] && this.followStates[index].diffResult) || []
+    },
+    getFollowAccuracy(index) {
+      return (this.followStates[index] && this.followStates[index].accuracy) || 0
     }
   }
 }
@@ -1107,5 +1762,70 @@ export default {
   color: #667085;
   background: #f5f7fa;
   border-color: #e4e7ed;
+}
+/* ========== 跟读模式样式 ========== */
+.tool-btn-active {
+  background: #2f6fff !important;
+  color: #fff !important;
+  border-color: #2f6fff !important;
+}
+.sentence-item.recording {
+  border-left: 6rpx solid #fa8c16;
+  background: #fff7e6;
+}
+.sentence-item.follow-done {
+  border-left: 6rpx solid #52c41a;
+  background: #f6ffed;
+}
+.diff-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.diff-correct {
+  color: #52c41a;
+}
+.diff-wrong, .diff-missing {
+  color: #f5222d;
+}
+.diff-punctuation {
+  color: #666;
+}
+.follow-accuracy {
+  margin-left: 12rpx;
+  font-size: 24rpx;
+  color: #2f6fff;
+  font-weight: 600;
+}
+.follow-recording-hint {
+  display: flex;
+  align-items: center;
+  margin-top: 8rpx;
+}
+.recording-dot {
+  color: #f5222d;
+  font-size: 28rpx;
+  margin-right: 6rpx;
+  animation: blink 1s infinite;
+}
+.recording-label {
+  font-size: 24rpx;
+  color: #fa8c16;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.follow-stop-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12rpx;
+  padding: 8rpx 24rpx;
+  background: #ff4d4f;
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 26rpx;
+  width: fit-content;
 }
 </style>

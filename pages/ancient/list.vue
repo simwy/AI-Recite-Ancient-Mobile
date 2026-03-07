@@ -110,15 +110,19 @@ export default {
       manualAuthor: '',
       aiLoading: false,
       showAddPopup: false,
-      aiCandidates: []
+      aiCandidates: [],
+      // text_id -> 最近一次学习时间戳（读过/背诵过/默写过），用于列表优先排序
+      recentActivityMap: {}
     }
   },
   onLoad() {
-    this.loadData()
+    this.loadRecentActivity().then(() => this.loadData())
   },
   onPullDownRefresh() {
     this.page = 1
-    this.loadData().then(() => uni.stopPullDownRefresh())
+    this.loadRecentActivity()
+      .then(() => this.loadData())
+      .then(() => uni.stopPullDownRefresh())
   },
   onReachBottom() {
     if (this.list.length < this.total) {
@@ -149,6 +153,44 @@ export default {
       this.showAddPopup = false
       this.loadData()
     },
+    /** 拉取最近学习记录（读过/背诵过/默写过），构建 text_id -> 最近时间 映射 */
+    async loadRecentActivity() {
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_learning-records',
+          data: {
+            action: 'list',
+            data: { page: 1, pageSize: 150 }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0 || !result.data || !result.data.list) {
+          this.recentActivityMap = {}
+          return
+        }
+        const list = result.data.list || []
+        const map = {}
+        for (const item of list) {
+          const id = item.text_id
+          if (!id) continue
+          const t = item.created_at ? Number(item.created_at) : 0
+          if (t > (map[id] || 0)) map[id] = t
+        }
+        this.recentActivityMap = map
+      } catch (e) {
+        this.recentActivityMap = {}
+      }
+    },
+    /** 按最近学习时间倒序把列表里“读过/背过/默写过的”排到前面 */
+    applyRecentSort() {
+      if (!this.list.length) return
+      const map = this.recentActivityMap || {}
+      this.list.sort((a, b) => {
+        const ta = map[a._id] || 0
+        const tb = map[b._id] || 0
+        return tb - ta
+      })
+    },
     async loadData(append = false) {
       this.loading = true
       try {
@@ -164,6 +206,7 @@ export default {
         const { list, total } = res.result.data
         this.list = append ? [...this.list, ...list] : list
         this.total = total
+        if (!append) this.applyRecentSort()
       } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' })
       } finally {
