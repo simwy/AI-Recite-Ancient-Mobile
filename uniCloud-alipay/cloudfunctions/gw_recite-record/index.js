@@ -38,6 +38,7 @@ exports.main = async (event, context) => {
         sentence_text: data.sentence_text || '',
         sentence_accuracy: Number(data.sentence_accuracy) || 0,
         wrong_chars: Array.isArray(data.wrong_chars) ? data.wrong_chars : [],
+        sentence_details: Array.isArray(data.sentence_details) ? data.sentence_details : [],
         attempt_no: Number(data.attempt_no) || 0,
         created_at: Date.now()
       }

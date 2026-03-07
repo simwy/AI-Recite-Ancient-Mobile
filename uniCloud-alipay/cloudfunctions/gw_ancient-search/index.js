@@ -206,7 +206,7 @@ async function searchList(keyword, page, pageSize) {
     const terms = normalizedKeyword.split(/\s+/).filter(Boolean)
     const buildTermOrCondition = (term) => {
       const reg = new RegExp(term, 'i')
-      return command.or([{ title: reg }, { author: reg }, { content: reg }])
+      return command.or([{ title: reg }, { author: reg }])
     }
 
     if (terms.length === 1) {

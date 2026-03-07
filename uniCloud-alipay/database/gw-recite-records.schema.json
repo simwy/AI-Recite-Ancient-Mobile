@@ -78,6 +78,18 @@
         "bsonType": "string"
       }
     },
+    "sentence_details": {
+      "bsonType": "array",
+      "description": "跟读模式逐句结果",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "index": { "bsonType": "int", "description": "句子索引" },
+          "text": { "bsonType": "string", "description": "句子内容" },
+          "accuracy": { "bsonType": "double", "description": "句子准确率" }
+        }
+      }
+    },
     "attempt_no": {
       "bsonType": "int",
       "description": "第几遍"

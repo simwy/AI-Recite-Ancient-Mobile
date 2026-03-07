@@ -23,6 +23,18 @@
         </view>
         <view class="item-preview">{{ getPreview(item.content) }}</view>
       </view>
+      <!-- 有搜索词时，即使有结果也提供“添加文章”入口：结果可能只是包含关键词，不一定是用户想找的那篇 -->
+      <view class="empty-action-card add-below-list" v-if="keyword">
+        <text class="empty-tip">没找到想要的文章？</text>
+        <text class="empty-desc">你可以手动添加，系统会帮你智能匹配内容</text>
+        <button
+          class="add-entry-btn"
+          size="mini"
+          @click="openAddPopup"
+        >
+          添加文章
+        </button>
+      </view>
     </view>
 
     <view class="empty" v-else-if="!loading">
@@ -395,6 +407,9 @@ export default {
   padding: 26rpx 22rpx 24rpx;
   border-radius: 16rpx;
   background: #f7f8fa;
+}
+.empty-action-card.add-below-list {
+  margin: 32rpx auto 40rpx;
 }
 .empty-tip {
   display: block;

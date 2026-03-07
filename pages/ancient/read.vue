@@ -7,6 +7,10 @@
         <text class="font-item" :class="{ active: fontSize === 'small' }" @tap="setFontSize('small')">小</text>
       </view>
       <view class="right-tools">
+        <view v-if="followMode && followTotalScore > 0" class="follow-score-badge">
+          <text class="follow-score-num">{{ followTotalScore }}</text>
+          <text class="follow-score-label">分 {{ followProgress }}</text>
+        </view>
       </view>
     </view>
 
@@ -181,6 +185,17 @@ export default {
       if (!this.audioContext) return '未创建'
       const hasCreate = typeof uni.createInnerAudioContext === 'function'
       return hasCreate ? '已创建' : 'API 不可用'
+    },
+    followTotalScore() {
+      if (!this.playUnits.length) return 0
+      const doneEntries = Object.values(this.followStates).filter(s => s.state === 'done')
+      if (!doneEntries.length) return 0
+      const sum = doneEntries.reduce((acc, s) => acc + (s.accuracy || 0), 0)
+      return Math.round(sum / this.playUnits.length)
+    },
+    followProgress() {
+      const done = Object.values(this.followStates).filter(s => s.state === 'done').length
+      return `${done}/${this.playUnits.length}`
     }
   },
   data() {
@@ -242,7 +257,9 @@ export default {
       h5MediaRecorder: null,
       h5AudioChunks: [],
       h5StopPromiseResolver: null,
-      requestingPermission: false
+      requestingPermission: false,
+      followStartTime: 0,
+      followRecordSaved: false
     }
   },
   onLoad(options) {
@@ -272,6 +289,9 @@ export default {
       this.audioContext.destroy()
       this.audioContext = null
     }
+    if (this.followMode && !this.followRecordSaved) {
+      this.saveFollowRecord()
+    }
   },
   methods: {
     async loadDetail() {
@@ -300,7 +320,11 @@ export default {
       const startIndex = Math.max(0, Math.min(this.pendingAutoStartIndex, this.playUnits.length - 1))
       this.pendingAutoStartIndex = -1
       this.$nextTick(() => {
-        this.startFullRead(startIndex)
+        if (this.followMode) {
+          this.startFollowUnit(startIndex)
+        } else {
+          this.startFullRead(startIndex)
+        }
       })
     },
     initAudioContext() {
@@ -1450,6 +1474,9 @@ export default {
       }
     },
     async startFollowUnit(index) {
+      if (!this.followStartTime) {
+        this.followStartTime = Date.now()
+      }
       if (this.recording) {
         // 正在录音中，先停止当前录音
         await this.stopFollowRecording()
@@ -1594,6 +1621,11 @@ export default {
           }, 800)
         }
       }
+      // 所有句子完成后自动保存
+      const doneCount = Object.values(this.followStates).filter(s => s.state === 'done').length
+      if (doneCount === this.playUnits.length) {
+        this.saveFollowRecord()
+      }
     },
     getFollowState(index) {
       return (this.followStates[index] && this.followStates[index].state) || ''
@@ -1603,6 +1635,56 @@ export default {
     },
     getFollowAccuracy(index) {
       return (this.followStates[index] && this.followStates[index].accuracy) || 0
+    },
+    getUniIdToken() {
+      const info = uniCloud.getCurrentUserInfo() || {}
+      if (!info.token) return ''
+      if (info.tokenExpired && info.tokenExpired < Date.now()) return ''
+      return info.token
+    },
+    async saveFollowRecord() {
+      if (this.followRecordSaved) return
+      if (!this.id || !this.detail.title) return
+      const doneEntries = Object.entries(this.followStates).filter(([_, s]) => s.state === 'done')
+      if (!doneEntries.length) return
+      const totalScore = this.followTotalScore
+      const duration = Math.round((Date.now() - this.followStartTime) / 1000)
+      const allDiff = []
+      const sentenceDetails = []
+      for (const [idx, s] of doneEntries) {
+        const unit = this.playUnits[Number(idx)]
+        allDiff.push(...(s.diffResult || []))
+        sentenceDetails.push({
+          index: Number(idx),
+          text: unit ? unit.text : '',
+          accuracy: s.accuracy || 0
+        })
+      }
+      try {
+        const uniIdToken = this.getUniIdToken()
+        const res = await uniCloud.callFunction({
+          name: 'gw_recite-record',
+          data: {
+            action: 'save',
+            uniIdToken,
+            data: {
+              text_id: this.id,
+              text_title: this.detail.title,
+              practice_mode: 'follow',
+              duration_seconds: duration,
+              accuracy: totalScore,
+              diff_result: allDiff,
+              sentence_details: sentenceDetails
+            }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0) {
+          this.followRecordSaved = true
+        }
+      } catch (e) {
+        console.error('[跟读] 保存记录失败:', e)
+      }
     }
   }
 }
@@ -1637,6 +1719,23 @@ export default {
   display: flex;
   align-items: center;
   gap: 8rpx;
+}
+.follow-score-badge {
+  display: flex;
+  align-items: baseline;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20rpx;
+  padding: 6rpx 20rpx;
+}
+.follow-score-num {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+}
+.follow-score-label {
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.85);
+  margin-left: 6rpx;
 }
 .tool-btn {
   height: 48rpx;
