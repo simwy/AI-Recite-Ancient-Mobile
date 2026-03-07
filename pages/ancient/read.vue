@@ -1610,10 +1610,11 @@ export default {
       console.log('[跟读] 准确率:', accuracy)
       this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult, accuracy } }
       this.resetRealtimeState()
-      // 准确率 ≥ 80% 自动推进到下一句
+      // 准确率 ≥ 80% 自动推进到下一句（已读过的句子不自动播放）
       if (accuracy >= 80 && this.followMode) {
         const nextIndex = index + 1
-        if (nextIndex < this.playUnits.length) {
+        const nextState = this.followStates[nextIndex] && this.followStates[nextIndex].state
+        if (nextIndex < this.playUnits.length && nextState !== 'done') {
           this._autoAdvanceTimer = setTimeout(() => {
             if (this.followMode && !this.recording) {
               this.startFollowUnit(nextIndex)
