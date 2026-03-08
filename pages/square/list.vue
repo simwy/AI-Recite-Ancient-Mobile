@@ -1,5 +1,17 @@
 <template>
   <view class="container">
+    <view v-if="hasIntro" class="top-tabs">
+      <view
+        :class="['tab-item', currentTab === 'list' ? 'active' : '']"
+        @click="currentTab = 'list'"
+      >列表</view>
+      <view
+        :class="['tab-item', currentTab === 'intro' ? 'active' : '']"
+        @click="currentTab = 'intro'"
+      >介绍</view>
+    </view>
+
+    <view v-show="currentTab === 'list'">
     <view class="search-bar">
       <uni-search-bar
         v-model="keyword"
@@ -47,6 +59,13 @@
     <view class="loading" v-if="loading">
       <text>加载中...</text>
     </view>
+    </view>
+
+    <view v-show="currentTab === 'intro'" v-if="hasIntro" class="intro-panel">
+      <scroll-view scroll-y class="intro-content">
+        <text class="intro-text">{{ subcollectionIntro }}</text>
+      </scroll-view>
+    </view>
 
     <view class="action-bar">
       <view class="favorite-action" @click="toggleSubcollectionFavorite">
@@ -72,6 +91,8 @@ export default {
       subcollectionId: '',
       categoryName: '',
       subcollectionName: '',
+      subcollectionIntro: '',
+      currentTab: 'list',
       groups: [],
       ungrouped: [],
       subcollectionFavorited: false,
@@ -80,6 +101,9 @@ export default {
     }
   },
   computed: {
+    hasIntro() {
+      return !!(this.subcollectionIntro && this.subcollectionIntro.trim())
+    },
     filterByKeyword(list) {
       const k = (this.keyword || '').trim()
       if (!k) return list
@@ -165,6 +189,7 @@ export default {
         }
         this.groups = result.data.groups || []
         this.ungrouped = result.data.ungrouped || []
+        this.subcollectionIntro = result.data.intro || ''
       } catch (e) {
         uni.showToast({
           title: e.message || '加载失败',
@@ -264,6 +289,40 @@ export default {
   background: #f5f5f5;
 }
 
+.top-tabs {
+  display: flex;
+  margin-bottom: 24rpx;
+  border-bottom: 2rpx solid #eee;
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 30rpx;
+  color: #999;
+}
+.tab-item.active {
+  color: #333;
+  font-weight: 600;
+  border-bottom: 4rpx solid #1d4ed8;
+  margin-bottom: -2rpx;
+}
+.intro-panel {
+  min-height: 60vh;
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+}
+.intro-content {
+  max-height: 70vh;
+}
+.intro-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .search-bar {
   margin-bottom: 20rpx;
 }

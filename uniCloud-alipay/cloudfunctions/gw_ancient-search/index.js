@@ -365,6 +365,10 @@ async function getTextsBySubcollectionGrouped(data = {}) {
     return { code: -1, msg: '缺少子合集ID' }
   }
 
+  const subcollectionRes = await subcollectionCollection.doc(subcollectionId).get()
+  const subcollectionDoc = subcollectionRes.data && subcollectionRes.data[0]
+  const intro = (subcollectionDoc && subcollectionDoc.intro) ? String(subcollectionDoc.intro).trim() : ''
+
   const [groupsRes, relationRes] = await Promise.all([
     subcollectionGroupCollection
       .where({ subcollection_id: subcollectionId, enabled: true })
@@ -402,7 +406,8 @@ async function getTextsBySubcollectionGrouped(data = {}) {
       code: 0,
       data: {
         groups: groups.map((g) => ({ _id: g._id, name: g.name, sort: g.sort, list: [] })),
-        ungrouped: []
+        ungrouped: [],
+        intro
       }
     }
   }
@@ -428,7 +433,8 @@ async function getTextsBySubcollectionGrouped(data = {}) {
     code: 0,
     data: {
       groups: resultGroups,
-      ungrouped: resultUngrouped
+      ungrouped: resultUngrouped,
+      intro
     }
   }
 }
@@ -590,6 +596,176 @@ async function confirmAdd(event, data, context) {
   }
 }
 
+/**
+ * 批量初始化古文：只插入库中尚未存在的条目，缺失正文时通过百炼拉取。
+ * 入参 data.list: [{ title, author }, ...]，data.source: 可选，默认 "100天背诵计划"
+ */
+async function batchInitPoems(event, data = {}, context) {
+  const list = Array.isArray(data.list) ? data.list : []
+  const source = normalizeText(data.source) || '100天背诵计划'
+  const inserted = []
+  const skipped = []
+  const failed = []
+
+  for (let i = 0; i < list.length; i++) {
+    const title = normalizeText(list[i].title)
+    const author = normalizeText(list[i].author) || ''
+    if (!title) {
+      failed.push({ index: i + 1, title: list[i].title, author, error: '标题为空' })
+      continue
+    }
+
+    const existed = await findExactInDB(title, author || undefined)
+    if (existed) {
+      skipped.push({ title, author })
+      continue
+    }
+
+    let candidates = []
+    try {
+      candidates = await requestPoemsFromBailian(title, author)
+      await sleep(400)
+    } catch (e) {
+      failed.push({
+        index: i + 1,
+        title,
+        author,
+        error: (e && e.message) || String(e)
+      })
+      continue
+    }
+
+    const candidate = candidates && candidates[0]
+    if (!candidate || !normalizeText(candidate.content)) {
+      failed.push({
+        index: i + 1,
+        title,
+        author,
+        error: '百炼未返回可用正文'
+      })
+      continue
+    }
+
+    try {
+      const addRes = await collection.add({
+        title: candidate.title,
+        author: candidate.author || author,
+        dynasty: candidate.dynasty || '',
+        content: candidate.content,
+        created_at: new Date(),
+        source
+      })
+      inserted.push({
+        title: candidate.title,
+        author: candidate.author || author,
+        id: addRes.id
+      })
+    } catch (e) {
+      failed.push({
+        index: i + 1,
+        title,
+        author,
+        error: (e && e.message) || String(e)
+      })
+    }
+  }
+
+  return {
+    code: 0,
+    data: {
+      inserted: inserted.length,
+      skipped: skipped.length,
+      failed: failed.length,
+      detail: { inserted, skipped, failed }
+    }
+  }
+}
+
+/**
+ * 返回「数据库中尚未存在」的古文列表，格式为 init_data 可导入的数组，供写入 gw-ancient-texts.init_data.json 后自行上传。
+ * 入参 data.list: [{ title, author }, ...]，data.source: 可选，默认 "100天背诵计划"
+ * 返回 data.initData: 仅包含未在库中的条目（含百炼拉取的 content），data.skipped / data.failed 为数量与明细。
+ */
+async function getMissingInitData(event, data = {}, context) {
+  const list = Array.isArray(data.list) ? data.list : []
+  const source = normalizeText(data.source) || '100天背诵计划'
+  const initData = []
+  const skipped = []
+  const failed = []
+  let missingIndex = 0
+
+  for (let i = 0; i < list.length; i++) {
+    const title = normalizeText(list[i].title)
+    const author = normalizeText(list[i].author) || ''
+    if (!title) {
+      failed.push({ index: i + 1, title: list[i].title, author, error: '标题为空' })
+      continue
+    }
+
+    const existed = await findExactInDB(title, author || undefined)
+    if (existed) {
+      skipped.push({ title, author })
+      continue
+    }
+
+    let candidates = []
+    try {
+      candidates = await requestPoemsFromBailian(title, author)
+      await sleep(400)
+    } catch (e) {
+      failed.push({
+        index: i + 1,
+        title,
+        author,
+        error: (e && e.message) || String(e)
+      })
+      continue
+    }
+
+    const candidate = candidates && candidates[0]
+    if (!candidate || !normalizeText(candidate.content)) {
+      failed.push({
+        index: i + 1,
+        title,
+        author,
+        error: '百炼未返回可用正文'
+      })
+      continue
+    }
+
+    missingIndex += 1
+    const idSuffix = String(missingIndex).padStart(3, '0')
+    initData.push({
+      _id: `gw-at-100day-${idSuffix}`,
+      title: candidate.title,
+      author: candidate.author || author,
+      dynasty: candidate.dynasty || '',
+      content: candidate.content,
+      source
+    })
+  }
+
+  return {
+    code: 0,
+    data: {
+      initData,
+      skipped: skipped.length,
+      failed: failed.length,
+      detail: { skipped, failed }
+    }
+  }
+}
+
+/** 返回表 gw-ancient-texts 中已有条目的 title+author 列表，用于本地从 init_data 中剔除已存在项 */
+async function listExistingTitleAuthor() {
+  const res = await collection.field({ title: true, author: true }).limit(5000).get()
+  const list = (res.data || []).map((doc) => ({
+    title: normalizeText(doc.title),
+    author: normalizeText(doc.author) || ''
+  }))
+  return { code: 0, data: { list } }
+}
+
 /** 批量获取当前用户对指定古文的最新跟读/背诵/默写分数（用于列表展示） */
 async function getUserTextSummaries(event, context) {
   const uid = await getAuthUid(event, context)
@@ -648,6 +824,12 @@ exports.main = async (event, context) => {
         return await listSubcollectionFavorites(event, data, context)
       case 'confirmAdd':
         return await confirmAdd(event, data, context)
+      case 'batchInitPoems':
+        return await batchInitPoems(event, data, context)
+      case 'getMissingInitData':
+        return await getMissingInitData(event, data, context)
+      case 'listExistingTitleAuthor':
+        return await listExistingTitleAuthor()
       case 'getUserTextSummaries':
         return await getUserTextSummaries(event, context)
       default:

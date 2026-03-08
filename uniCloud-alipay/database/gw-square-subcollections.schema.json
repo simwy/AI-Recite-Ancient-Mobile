@@ -20,6 +20,11 @@
       "description": "子合集名称",
       "trim": "both"
     },
+    "intro": {
+      "bsonType": "string",
+      "description": "子合集介绍，有值时列表页顶部显示「介绍」与「列表」tab",
+      "trim": "both"
+    },
     "sort": {
       "bsonType": "int",
       "description": "排序",
