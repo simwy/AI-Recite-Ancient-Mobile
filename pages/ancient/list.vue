@@ -128,6 +128,8 @@
 </template>
 
 <script>
+import { runDictationCheck } from '@/common/dictationCheck.js'
+
 export default {
   data() {
     return {
@@ -168,9 +170,7 @@ export default {
   },
   methods: {
     onPhotoCheck() {
-      // 拍照检查：可跳转拍照检查页或打开相机
-      uni.showToast({ title: '拍照检查', icon: 'none' })
-      // 后续可改为： uni.navigateTo({ url: '/pages/xxx/photo-check' })
+      runDictationCheck({ difficulty: 'middle' })
     },
     onInput(e) {
       clearTimeout(this.timer)

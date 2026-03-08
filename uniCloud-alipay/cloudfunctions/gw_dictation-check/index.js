@@ -258,16 +258,16 @@ async function callVisionModel(imageBase64) {
 // ---- action 处理 ----
 
 async function handleCheck(uid, data) {
-  const { imageBase64, difficulty } = data
+  const { imageBase64, difficulty, articleId: passedArticleId } = data
   if (!imageBase64) {
     return { code: -1, msg: '缺少图片数据' }
   }
 
-  // 1. 调用视觉模型识别
+  // 1. 调用视觉模型识别（手写内容；若未传 articleId 则同时从照片识别文章ID）
   const recognition = await callVisionModel(imageBase64)
 
-  // 2. 查询原文
-  const articleId = recognition.articleId
+  // 2. 查询原文：优先使用调用方传入的 articleId（默写页用当前页ID），否则用照片识别的
+  const articleId = (passedArticleId && String(passedArticleId).trim()) || recognition.articleId
   let textDoc = null
   try {
     const res = await textsCollection.doc(articleId).get()
