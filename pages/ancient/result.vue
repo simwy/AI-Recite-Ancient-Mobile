@@ -17,7 +17,18 @@
 
     <view class="diff-area">
       <view class="diff-label">对比结果：</view>
-      <view class="diff-content">
+      <view class="diff-content" v-if="diffGroups.length">
+        <view v-for="(group, gIdx) in diffGroups" :key="gIdx"
+          :id="`play-unit-${gIdx}`"
+          class="sentence-block"
+          :class="{ active: currentUnitIndex === gIdx, loading: loadingUnitIndex === gIdx }"
+          @tap="onTapSentence(gIdx)">
+          <text v-for="(item, idx) in group" :key="idx"
+            :class="['diff-char', 'diff-' + item.status]">{{ item.char }}</text>
+          <text v-if="loadingUnitIndex === gIdx" class="sentence-tip">合成中...</text>
+        </view>
+      </view>
+      <view class="diff-content" v-else>
         <text
           v-for="(item, idx) in diffResult"
           :key="idx"
@@ -46,8 +57,11 @@
 
 <script>
 import { diffChars, calcAccuracy } from '@/common/diff.js'
+import readBaseMixin from '@/common/readBaseMixin.js'
+import { buildPlayUnits } from '@/common/playUnits.js'
 
 export default {
+  mixins: [readBaseMixin],
   data() {
     return {
       id: '',
@@ -57,10 +71,12 @@ export default {
       duration: 0,
       diffResult: [],
       accuracy: 0,
-      saved: false
+      saved: false,
+      diffGroups: []
     }
   },
   onLoad(options) {
+    this.initAudioContext()
     if (options.recordId) {
       this.loadRecordDetail(options.recordId)
       return
@@ -75,7 +91,15 @@ export default {
       this.duration = Number(result.duration) || 0
     }
     this.doDiff()
+    this.rebuildPlayUnitsForResult()
     this.saveRecord()
+  },
+  onUnload() {
+    this.stopActiveAudio()
+    if (this.audioContext) {
+      try { this.audioContext.destroy() } catch (e) {}
+      this.audioContext = null
+    }
   },
   methods: {
     async loadRecordDetail(recordId) {
@@ -102,10 +126,54 @@ export default {
         this.duration = Number(r.duration_seconds) || 0
         this.diffResult = Array.isArray(r.diff_result) ? r.diff_result : []
         this.accuracy = Number(r.accuracy) || 0
+        // 从 diffResult 重建 content 用于拆句
+        const content = this.diffResult
+          .filter(d => d.status !== 'extra')
+          .map(d => d.char).join('')
+        if (content) {
+          this.textData.content = content
+        }
+        this.rebuildPlayUnitsForResult()
       } catch (e) {
         uni.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })
         setTimeout(() => uni.navigateBack(), 1500)
       }
+    },
+    rebuildPlayUnitsForResult() {
+      const content = String((this.textData && this.textData.content) || '').replace(/\r\n/g, '\n')
+      if (!content) { this.diffGroups = []; return }
+      const units = buildPlayUnits(content)
+      this.playUnits = units.map((item, index) => ({
+        unitId: `${this.id || 'text'}-${index}-${this.createStableHash(item.text)}`,
+        text: item.text,
+        mainIndex: item.mainIndex,
+        subIndex: item.subIndex,
+        hash: this.buildUnitHash(item.text)
+      }))
+      this.buildDiffGroups(content)
+    },
+    buildDiffGroups(content) {
+      if (!this.playUnits.length || !this.diffResult.length) {
+        this.diffGroups = []
+        return
+      }
+      // 只保留原文字符（排除 extra）的 diff 项
+      const originalDiffs = this.diffResult.filter(d => d.status !== 'extra')
+      const groups = []
+      let charPos = 0
+      for (const unit of this.playUnits) {
+        const unitStart = content.indexOf(unit.text, charPos)
+        if (unitStart < 0) { groups.push([]); continue }
+        const unitEnd = unitStart + unit.text.length
+        groups.push(originalDiffs.slice(unitStart, unitEnd))
+        charPos = unitEnd
+      }
+      this.diffGroups = groups
+    },
+    onTapSentence(index) {
+      this.stopActiveAudio()
+      this.resolveAudioPlay('stopped')
+      this.playUnit(index)
     },
     doDiff() {
       if (!this.textData.content) return
@@ -285,5 +353,22 @@ export default {
   background: #fff;
   color: #333;
   border: 1rpx solid #ddd;
+}
+.sentence-block {
+  display: inline;
+  padding: 4rpx 0;
+  border-radius: 8rpx;
+  transition: background-color 0.2s;
+}
+.sentence-block.active {
+  background-color: rgba(24, 144, 255, 0.1);
+}
+.sentence-block.loading {
+  background-color: rgba(24, 144, 255, 0.05);
+}
+.sentence-tip {
+  font-size: 22rpx;
+  color: #1890ff;
+  margin-left: 8rpx;
 }
 </style>

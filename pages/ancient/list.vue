@@ -449,7 +449,12 @@ export default {
   color: #333333;
 }
 .nav-left {
-  text-align: left;
+  text-align: center;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #2f6fff;
+  border-radius: 24rpx;
+  color: #2f6fff;
+  box-sizing: border-box;
 }
 .nav-right {
   text-align: right;
