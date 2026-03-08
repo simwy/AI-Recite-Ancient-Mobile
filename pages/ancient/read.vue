@@ -34,7 +34,6 @@
           }"
           @tap="onTapSentence(index)"
         >
-          <text v-if="unit.pinyinText" class="sentence-pinyin">{{ unit.pinyinText }}</text>
           <!-- 跟读完成：逐字着色 -->
           <view v-if="getFollowState(index) === 'done'" class="sentence-text diff-text">
             <text
@@ -149,7 +148,6 @@
 </template>
 
 <script>
-import { pinyin } from 'pinyin-pro'
 import { diffChars, calcAccuracy } from '@/common/diff.js'
 import { buildPlayUnits as buildPlayUnitsFromContent } from '@/common/playUnits.js'
 
@@ -355,7 +353,6 @@ export default {
       this.playUnits = units.map((item, index) => ({
         unitId: `${this.id || 'text'}-${index}-${this.createStableHash(item.text)}`,
         text: item.text,
-        pinyinText: this.buildUnitPinyin(item.text),
         mainIndex: item.mainIndex,
         subIndex: item.subIndex,
         hash: this.buildUnitHash(item.text)
@@ -464,25 +461,6 @@ export default {
         hash = Math.imul(hash, 16777619)
       }
       return (hash >>> 0).toString(16)
-    },
-    buildUnitPinyin(text) {
-      const chars = String(text || '').split('')
-      if (!chars.length) return ''
-      const tokens = chars.map((char) => {
-        if (/[\u4e00-\u9fff]/.test(char)) {
-          const py = pinyin(char, {
-            toneType: 'symbol',
-            type: 'array'
-          })
-          return Array.isArray(py) && py.length ? py[0] : char
-        }
-        return char
-      })
-      return tokens
-        .join(' ')
-        .replace(/\s+([，。！？；、,.!?;:])/g, '$1')
-        .replace(/\s+/g, ' ')
-        .trim()
     },
     createSha1Hash(text) {
       return this.createStableHash(String(text || ''))
@@ -1809,13 +1787,6 @@ export default {
 }
 .sentence-item.loading {
   border-color: #f2c94c;
-}
-.sentence-pinyin {
-  display: block;
-  margin-bottom: 8rpx;
-  color: #6b7280;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .sentence-text {
   color: #111827;

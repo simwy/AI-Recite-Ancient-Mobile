@@ -1,7 +1,43 @@
 'use strict';
 const db = uniCloud.database()
 const collection = db.collection('gw-recite-records')
+const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
+
+/** 背诵/跟读保存后更新用户古文汇总表 */
+async function updateSummaryAfterRecite(uid, textId, textTitle, practiceMode, recordId, accuracy, createdAt) {
+  const isRead = practiceMode === 'read'
+  const prefix = isRead ? 'read' : 'recite'
+  const lastFields = {
+    [`${prefix}_last_at`]: createdAt,
+    [`${prefix}_last_score`]: accuracy,
+    [`${prefix}_last_record_id`]: recordId
+  }
+  const existRes = await summaryCollection.where({ user_id: uid, text_id: textId }).limit(1).get()
+  const existing = (existRes.data && existRes.data[0]) || null
+  const bestScore = existing ? (Number(existing[`${prefix}_best_score`]) || -1) : -1
+  const updates = {
+    ...lastFields,
+    text_title: textTitle || (existing && existing.text_title) || '',
+    updated_at: createdAt
+  }
+  if (accuracy >= bestScore) {
+    updates[`${prefix}_best_at`] = createdAt
+    updates[`${prefix}_best_score`] = accuracy
+    updates[`${prefix}_best_record_id`] = recordId
+  }
+  if (existing && existing._id) {
+    await summaryCollection.doc(existing._id).update(updates)
+  } else {
+    await summaryCollection.add({
+      user_id: uid,
+      text_id: textId,
+      text_title: textTitle || '',
+      print_count: 0,
+      ...updates
+    })
+  }
+}
 
 exports.main = async (event, context) => {
   const { action, data = {} } = event
@@ -43,6 +79,19 @@ exports.main = async (event, context) => {
         created_at: Date.now()
       }
       const res = await collection.add(record)
+      try {
+        await updateSummaryAfterRecite(
+          uid,
+          record.text_id,
+          record.text_title,
+          record.practice_mode,
+          res.id,
+          record.accuracy,
+          record.created_at
+        )
+      } catch (e) {
+        console.error('gw_recite-record updateSummaryAfterRecite error:', e)
+      }
       return { code: 0, data: { id: res.id } }
     }
 

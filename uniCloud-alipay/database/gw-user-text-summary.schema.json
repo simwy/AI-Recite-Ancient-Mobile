@@ -1,0 +1,110 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "text_id"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": "doc.user_id == auth.uid",
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "text_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "gw-ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题（冗余）"
+    },
+    "read_last_at": {
+      "bsonType": "timestamp",
+      "description": "跟读最后一次时间"
+    },
+    "read_last_score": {
+      "bsonType": "double",
+      "description": "跟读最后一次分数"
+    },
+    "read_last_record_id": {
+      "bsonType": "string",
+      "description": "跟读最后一次记录ID"
+    },
+    "read_best_at": {
+      "bsonType": "timestamp",
+      "description": "跟读最高分时间"
+    },
+    "read_best_score": {
+      "bsonType": "double",
+      "description": "跟读最高分"
+    },
+    "read_best_record_id": {
+      "bsonType": "string",
+      "description": "跟读最高分记录ID"
+    },
+    "recite_last_at": {
+      "bsonType": "timestamp",
+      "description": "背诵最后一次时间"
+    },
+    "recite_last_score": {
+      "bsonType": "double",
+      "description": "背诵最后一次分数"
+    },
+    "recite_last_record_id": {
+      "bsonType": "string",
+      "description": "背诵最后一次记录ID"
+    },
+    "recite_best_at": {
+      "bsonType": "timestamp",
+      "description": "背诵最高分时间"
+    },
+    "recite_best_score": {
+      "bsonType": "double",
+      "description": "背诵最高分"
+    },
+    "recite_best_record_id": {
+      "bsonType": "string",
+      "description": "背诵最高分记录ID"
+    },
+    "dictation_last_at": {
+      "bsonType": "timestamp",
+      "description": "拍照默写最后一次时间"
+    },
+    "dictation_last_score": {
+      "bsonType": "double",
+      "description": "拍照默写最后一次分数"
+    },
+    "dictation_last_record_id": {
+      "bsonType": "string",
+      "description": "拍照默写最后一次记录ID"
+    },
+    "dictation_best_at": {
+      "bsonType": "timestamp",
+      "description": "拍照默写最高分时间"
+    },
+    "dictation_best_score": {
+      "bsonType": "double",
+      "description": "拍照默写最高分"
+    },
+    "dictation_best_record_id": {
+      "bsonType": "string",
+      "description": "拍照默写最高分记录ID"
+    },
+    "print_count": {
+      "bsonType": "int",
+      "description": "打印次数",
+      "defaultValue": 0
+    },
+    "updated_at": {
+      "bsonType": "timestamp",
+      "description": "汇总更新时间"
+    }
+  }
+}

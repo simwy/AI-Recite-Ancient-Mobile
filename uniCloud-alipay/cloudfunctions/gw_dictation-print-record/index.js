@@ -1,7 +1,30 @@
 'use strict'
 const db = uniCloud.database()
 const collection = db.collection('gw-dictation-print-records')
+const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
+
+/** 打印记录保存后更新用户古文汇总表（打印次数+1） */
+async function updateSummaryAfterPrint(uid, textId, textTitle) {
+  const now = Date.now()
+  const existRes = await summaryCollection.where({ user_id: uid, text_id: textId }).limit(1).get()
+  const existing = (existRes.data && existRes.data[0]) || null
+  if (existing && existing._id) {
+    await summaryCollection.doc(existing._id).update({
+      text_title: textTitle || existing.text_title || '',
+      print_count: (existing.print_count || 0) + 1,
+      updated_at: now
+    })
+  } else {
+    await summaryCollection.add({
+      user_id: uid,
+      text_id: textId,
+      text_title: textTitle || '',
+      print_count: 1,
+      updated_at: now
+    })
+  }
+}
 
 exports.main = async (event, context) => {
   const { action, data = {} } = event
@@ -34,6 +57,13 @@ exports.main = async (event, context) => {
         created_at: Date.now()
       }
       const res = await collection.add(record)
+      if (record.article_id) {
+        try {
+          await updateSummaryAfterPrint(uid, record.article_id, record.text_title)
+        } catch (e) {
+          console.error('gw_dictation-print-record updateSummaryAfterPrint error:', e)
+        }
+      }
       return { code: 0, data: { id: res.id } }
     }
 

@@ -2,8 +2,42 @@
 const db = uniCloud.database()
 const textsCollection = db.collection('gw-ancient-texts')
 const checksCollection = db.collection('gw-dictation-checks')
+const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
 const { bailianVision } = require('config')
+
+/** 拍照默写保存后更新用户古文汇总表 */
+async function updateSummaryAfterDictation(uid, textId, textTitle, recordId, accuracy, createdAt) {
+  const lastFields = {
+    dictation_last_at: createdAt,
+    dictation_last_score: accuracy,
+    dictation_last_record_id: recordId
+  }
+  const existRes = await summaryCollection.where({ user_id: uid, text_id: textId }).limit(1).get()
+  const existing = (existRes.data && existRes.data[0]) || null
+  const bestScore = existing ? (Number(existing.dictation_best_score) || -1) : -1
+  const updates = {
+    ...lastFields,
+    text_title: textTitle || (existing && existing.text_title) || '',
+    updated_at: createdAt
+  }
+  if (accuracy >= bestScore) {
+    updates.dictation_best_at = createdAt
+    updates.dictation_best_score = accuracy
+    updates.dictation_best_record_id = recordId
+  }
+  if (existing && existing._id) {
+    await summaryCollection.doc(existing._id).update(updates)
+  } else {
+    await summaryCollection.add({
+      user_id: uid,
+      text_id: textId,
+      text_title: textTitle || '',
+      print_count: 0,
+      ...updates
+    })
+  }
+}
 
 // ---- 工具函数 ----
 
@@ -297,6 +331,18 @@ async function handleCheck(uid, data) {
     created_at: Date.now()
   }
   const addRes = await checksCollection.add(record)
+  try {
+    await updateSummaryAfterDictation(
+      uid,
+      articleId,
+      record.text_title,
+      addRes.id,
+      accuracy,
+      record.created_at
+    )
+  } catch (e) {
+    console.error('gw_dictation-check updateSummaryAfterDictation error:', e)
+  }
 
   return {
     code: 0,
