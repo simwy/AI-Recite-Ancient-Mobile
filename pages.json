@@ -293,7 +293,7 @@
 			"pagePath": "pages/review/index",
 			"iconPath": "static/tabbar/tabbar-3.png",
 			"selectedIconPath": "static/tabbar/tabbar-3-a.png",
-			"text": "复盘"
+			"text": "学习"
 		}, {
 			"pagePath": "pages/ucenter/ucenter",
 			"iconPath": "static/tabbar/tabbar-4.png",

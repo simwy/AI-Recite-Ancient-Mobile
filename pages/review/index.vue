@@ -14,7 +14,7 @@
 
     <view v-if="!hasLogin" class="login-empty">
       <text class="login-empty-title">登录后可查看复盘内容</text>
-      <text class="login-empty-desc">包含学习记录、收藏文章和收藏合集</text>
+      <text class="login-empty-desc">包含我的活动、我的古文和学习日志</text>
       <button class="login-btn" @tap="goLogin">去登录</button>
     </view>
 
@@ -63,11 +63,11 @@ export default {
   data() {
     return {
       topTabs: [
-        { key: 'records', label: '学习记录' },
-        { key: 'articleFavorites', label: '收藏文章' },
-        { key: 'collectionFavorites', label: '收藏合集' }
+        { key: 'collectionFavorites', label: '我的活动' },
+        { key: 'articleFavorites', label: '我的古文' },
+        { key: 'records', label: '学习日志' }
       ],
-      activeTab: 'records',
+      activeTab: 'collectionFavorites',
       pageSize: 20,
       lists: {
         records: [],
@@ -267,12 +267,12 @@ export default {
     },
     getEmptyText() {
       if (this.activeTab === 'records') {
-        return '暂无学习记录'
+        return '暂无学习日志'
       }
       if (this.activeTab === 'articleFavorites') {
-        return '暂无收藏文章'
+        return '暂无我的古文'
       }
-      return '暂无收藏合集'
+      return '暂无我的活动'
     },
     onTapItem(item) {
       if (!item) return

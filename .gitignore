@@ -5,3 +5,4 @@ uniCloud-alipay/cloudfunctions/gw_dictation-print-pdf/fonts
 .claude/
 skills-lock.json
 data/
+uniCloud-alipay/database/*.init_data.json

@@ -358,7 +358,8 @@ async function getTextsBySubcollection(data = {}) {
 /** 按分组返回子合集下的古文列表，用于广场列表页分组展示 */
 async function getTextsBySubcollectionGrouped(data = {}) {
   const command = db.command
-  const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
+  const inner = data.data || data
+  const subcollectionId = normalizeText(inner.subcollectionId || inner.subcollection_id || data.subcollectionId || data.subcollection_id)
   const maxRelations = Math.min(Number(data.limit) || 500, 500)
 
   if (!subcollectionId) {
@@ -419,14 +420,12 @@ async function getTextsBySubcollectionGrouped(data = {}) {
   })
 
   const pickOrdered = (rels) => rels.map((r) => textMap[r.text_id]).filter(Boolean)
-  const resultGroups = groups
-    .filter((g) => groupMap[g._id].list.length > 0)
-    .map((g) => ({
-      _id: g._id,
-      name: g.name,
-      sort: g.sort,
-      list: pickOrdered(groupMap[g._id].list)
-    }))
+  const resultGroups = groups.map((g) => ({
+    _id: g._id,
+    name: g.name,
+    sort: g.sort,
+    list: pickOrdered(groupMap[g._id].list)
+  }))
   const resultUngrouped = pickOrdered(ungroupedRels)
 
   return {
@@ -526,7 +525,9 @@ async function toggleSubcollectionFavorite(event, data = {}, context) {
   }
 }
 
-/** 分页查询当前用户收藏的专题合集列表，供复盘页使用 */
+const RECITE_PASS_SCORE = 90
+
+/** 分页查询当前用户收藏的专题合集列表，供复盘页使用；每条附带加入时间、最近背诵时间、背诵通过篇数/总篇数 */
 async function listSubcollectionFavorites(event, data = {}, context) {
   const uid = await getAuthUid(event, context)
   if (!uid) {
@@ -545,7 +546,76 @@ async function listSubcollectionFavorites(event, data = {}, context) {
       .get()
   ])
   const total = (countRes && countRes.total) || 0
-  const list = (listRes && listRes.data) || []
+  let list = (listRes && listRes.data) || []
+
+  const subcollectionIds = list.map((x) => x.subcollection_id).filter(Boolean)
+  if (subcollectionIds.length > 0) {
+    const relationRes = await relationCollection
+      .where({ subcollection_id: db.command.in(subcollectionIds), enabled: true })
+      .field({ subcollection_id: true, text_id: true })
+      .get()
+    const relations = relationRes.data || []
+    const subToTextIds = {}
+    const allTextIds = new Set()
+    relations.forEach((r) => {
+      if (!r.subcollection_id || !r.text_id) return
+      if (!subToTextIds[r.subcollection_id]) subToTextIds[r.subcollection_id] = []
+      subToTextIds[r.subcollection_id].push(r.text_id)
+      allTextIds.add(r.text_id)
+    })
+    const textIdArr = [...allTextIds]
+    let summaryList = []
+    if (textIdArr.length > 0) {
+      const summaryRes = await summaryCollection
+        .where({ user_id: uid, text_id: db.command.in(textIdArr) })
+        .field({ text_id: true, recite_last_at: true, recite_best_score: true })
+        .limit(500)
+        .get()
+      summaryList = summaryRes.data || []
+    }
+    const summaryByTextId = {}
+    summaryList.forEach((s) => {
+      if (s && s.text_id) summaryByTextId[s.text_id] = s
+    })
+    const toMs = (v) => {
+      if (v == null) return 0
+      if (typeof v === 'number') return v < 1e12 ? v * 1000 : v
+      if (v instanceof Date) return v.getTime()
+      const d = new Date(v)
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime()
+    }
+    list = list.map((item) => {
+      const textIds = subToTextIds[item.subcollection_id] || []
+      const totalCount = textIds.length
+      const summaries = textIds.map((id) => summaryByTextId[id]).filter(Boolean)
+      let lastReciteAt = null
+      let maxMs = 0
+      summaries.forEach((s) => {
+        const ms = toMs(s.recite_last_at)
+        if (ms > maxMs) {
+          maxMs = ms
+          lastReciteAt = s.recite_last_at
+        }
+      })
+      const passedCount = summaries.filter(
+        (s) => typeof s.recite_best_score === 'number' && !Number.isNaN(s.recite_best_score) && s.recite_best_score >= RECITE_PASS_SCORE
+      ).length
+      return {
+        ...item,
+        last_recite_at: lastReciteAt,
+        recite_passed_count: passedCount,
+        recite_total_count: totalCount
+      }
+    })
+  } else {
+    list = list.map((item) => ({
+      ...item,
+      last_recite_at: null,
+      recite_passed_count: 0,
+      recite_total_count: 0
+    }))
+  }
+
   return { code: 0, data: { list, total } }
 }
 
@@ -787,6 +857,8 @@ async function getUserTextSummaries(event, context) {
       text_id: true,
       follow_last_score: true,
       recite_last_score: true,
+      recite_best_score: true,
+      recite_best_at: true,
       dictation_last_score: true
     })
     .limit(100)
@@ -795,13 +867,20 @@ async function getUserTextSummaries(event, context) {
     text_id: doc.text_id,
     follow_last_score: doc.follow_last_score,
     recite_last_score: doc.recite_last_score,
+    recite_best_score: doc.recite_best_score,
+    recite_best_at: doc.recite_best_at,
     dictation_last_score: doc.dictation_last_score
   }))
   return { code: 0, data: { list } }
 }
 
 exports.main = async (event, context) => {
-  const { action = 'search', keyword = '', page = 1, pageSize = 20, data = {} } = event || {}
+  const raw = event || {}
+  const action = raw.action || (raw.data && raw.data.action) || 'search'
+  const data = (raw.data && raw.data.data !== undefined) ? raw.data.data : (raw.data || {})
+  const keyword = raw.keyword || ''
+  const page = raw.page || 1
+  const pageSize = raw.pageSize || 20
   try {
     switch (action) {
       case 'search':

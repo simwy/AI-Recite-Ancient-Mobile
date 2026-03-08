@@ -9,7 +9,7 @@
             size="16"
             :color="isFavorited ? '#d97706' : '#b45309'"
           />
-          <text class="fav-icon-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+          <text class="fav-icon-text">{{ isFavorited ? '已在学习列表中' : '加入学习列表' }}</text>
         </view>
       </view>
       <view class="title-row">
@@ -375,7 +375,7 @@ export default {
           this.isFavorited = !!(result.data && result.data.favorited)
         }
       } catch (e) {
-        console.error('检查收藏状态失败', e)
+        console.error('检查学习列表状态失败', e)
       }
     },
     preloadTts() {
@@ -414,7 +414,7 @@ export default {
         }
         this.isFavorited = !!(result.data && result.data.favorited)
         uni.showToast({
-          title: this.isFavorited ? '已收藏' : '已取消收藏',
+          title: this.isFavorited ? '已加入学习列表' : '已移出学习列表',
           icon: 'none'
         })
       } catch (e) {
