@@ -4,6 +4,7 @@ const collection = db.collection('gw-ancient-texts')
 const categoryCollection = db.collection('gw-square-categories')
 const subcollectionCollection = db.collection('gw-square-subcollections')
 const relationCollection = db.collection('gw-square-text-relations')
+const subcollectionGroupCollection = db.collection('gw-square-subcollections-group')
 const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
@@ -354,6 +355,84 @@ async function getTextsBySubcollection(data = {}) {
   }
 }
 
+/** 按分组返回子合集下的古文列表，用于广场列表页分组展示 */
+async function getTextsBySubcollectionGrouped(data = {}) {
+  const command = db.command
+  const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
+  const maxRelations = Math.min(Number(data.limit) || 500, 500)
+
+  if (!subcollectionId) {
+    return { code: -1, msg: '缺少子合集ID' }
+  }
+
+  const [groupsRes, relationRes] = await Promise.all([
+    subcollectionGroupCollection
+      .where({ subcollection_id: subcollectionId, enabled: true })
+      .orderBy('sort', 'asc')
+      .get(),
+    relationCollection
+      .where({ subcollection_id: subcollectionId, enabled: true })
+      .orderBy('sort', 'asc')
+      .limit(maxRelations)
+      .get()
+  ])
+
+  const groups = groupsRes.data || []
+  const relationList = relationRes.data || []
+
+  const groupMap = {}
+  groups.forEach((g) => {
+    groupMap[g._id] = { _id: g._id, name: g.name, sort: g.sort, list: [] }
+  })
+  const ungroupedRels = []
+
+  const textIds = new Set()
+  relationList.forEach((rel) => {
+    if (rel.group_id && groupMap[rel.group_id]) {
+      groupMap[rel.group_id].list.push(rel)
+    } else {
+      ungroupedRels.push(rel)
+    }
+    if (rel.text_id) textIds.add(rel.text_id)
+  })
+
+  const textIdArr = [...textIds]
+  if (textIdArr.length === 0) {
+    return {
+      code: 0,
+      data: {
+        groups: groups.map((g) => ({ _id: g._id, name: g.name, sort: g.sort, list: [] })),
+        ungrouped: []
+      }
+    }
+  }
+
+  const textRes = await collection.where({ _id: command.in(textIdArr) }).get()
+  const textMap = {}
+  ;(textRes.data || []).forEach((item) => {
+    textMap[item._id] = item
+  })
+
+  const pickOrdered = (rels) => rels.map((r) => textMap[r.text_id]).filter(Boolean)
+  const resultGroups = groups
+    .filter((g) => groupMap[g._id].list.length > 0)
+    .map((g) => ({
+      _id: g._id,
+      name: g.name,
+      sort: g.sort,
+      list: pickOrdered(groupMap[g._id].list)
+    }))
+  const resultUngrouped = pickOrdered(ungroupedRels)
+
+  return {
+    code: 0,
+    data: {
+      groups: resultGroups,
+      ungrouped: resultUngrouped
+    }
+  }
+}
+
 async function getSubcollectionFavoriteStatus(event, data = {}, context) {
   const uid = await getAuthUid(event, context)
   const subcollectionId = normalizeText(data.subcollectionId || data.subcollection_id)
@@ -559,6 +638,8 @@ exports.main = async (event, context) => {
         return await getSubcollectionsByCategory(data)
       case 'getTextsBySubcollection':
         return await getTextsBySubcollection(data)
+      case 'getTextsBySubcollectionGrouped':
+        return await getTextsBySubcollectionGrouped(data)
       case 'getSubcollectionFavoriteStatus':
         return await getSubcollectionFavoriteStatus(event, data, context)
       case 'toggleSubcollectionFavorite':

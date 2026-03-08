@@ -1,6 +1,6 @@
 {
   "bsonType": "object",
-  "required": ["text_id", "subcollection_id"],
+  "required": ["subcollection_id", "name"],
   "permission": {
     "read": true,
     "create": false,
@@ -11,19 +11,15 @@
     "_id": {
       "description": "ID"
     },
-    "text_id": {
-      "bsonType": "string",
-      "description": "古文ID",
-      "trim": "both"
-    },
     "subcollection_id": {
       "bsonType": "string",
-      "description": "子合集ID",
-      "trim": "both"
+      "description": "子合集ID，参考gw-square-subcollections._id",
+      "trim": "both",
+      "foreignKey": "gw-square-subcollections._id"
     },
-    "group_id": {
+    "name": {
       "bsonType": "string",
-      "description": "分组ID，参考gw-square-subcollections-group._id，为空表示未分组",
+      "description": "分组名称",
       "trim": "both"
     },
     "sort": {

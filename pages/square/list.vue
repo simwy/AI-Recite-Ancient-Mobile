@@ -9,16 +9,34 @@
       />
     </view>
 
-    <view class="list" v-if="filteredList.length > 0">
-      <view class="list-item" v-for="item in filteredList" :key="item._id" @click="goDetail(item)">
-        <view class="item-header">
-          <view class="item-title">{{ item.title }}</view>
-          <text class="item-status">{{ getReciteStatus(item) }}</text>
+    <view class="list" v-if="hasFilteredContent">
+      <template v-for="group in filteredGroups" :key="group._id">
+        <view v-if="group.list.length > 0" class="group-section">
+          <view class="group-title">{{ group.name }}</view>
+          <view class="list-item" v-for="item in group.list" :key="item._id" @click="goDetail(item)">
+            <view class="item-header">
+              <view class="item-title">{{ item.title }}</view>
+              <text class="item-status">{{ getReciteStatus(item) }}</text>
+            </view>
+            <view class="item-meta">
+              <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
+            </view>
+            <view class="item-preview">{{ item.intro || getPreview(item.content, 40) }}</view>
+          </view>
         </view>
-        <view class="item-meta">
-          <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
+      </template>
+      <view v-if="filteredUngrouped.length > 0" class="group-section">
+        <view class="group-title" v-if="filteredGroups.some(g => g.list.length)">未分组</view>
+        <view class="list-item" v-for="item in filteredUngrouped" :key="item._id" @click="goDetail(item)">
+          <view class="item-header">
+            <view class="item-title">{{ item.title }}</view>
+            <text class="item-status">{{ getReciteStatus(item) }}</text>
+          </view>
+          <view class="item-meta">
+            <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
+          </view>
+          <view class="item-preview">{{ item.intro || getPreview(item.content, 40) }}</view>
         </view>
-        <view class="item-preview">{{ item.intro || getPreview(item.content, 40) }}</view>
       </view>
     </view>
 
@@ -54,21 +72,19 @@ export default {
       subcollectionId: '',
       categoryName: '',
       subcollectionName: '',
-      list: [],
+      groups: [],
+      ungrouped: [],
       subcollectionFavorited: false,
       favoriteLoading: false,
-      loading: false,
-      page: 1,
-      pageSize: 20,
-      total: 0
+      loading: false
     }
   },
   computed: {
-    filteredList() {
+    filterByKeyword(list) {
       const k = (this.keyword || '').trim()
-      if (!k) return this.list
+      if (!k) return list
       const lower = k.toLowerCase()
-      return this.list.filter((item) => {
+      return list.filter((item) => {
         const title = (item.title || '').toLowerCase()
         const author = (item.author || '').toLowerCase()
         const dynasty = (item.dynasty || '').toLowerCase()
@@ -82,6 +98,18 @@ export default {
           intro.includes(lower)
         )
       })
+    },
+    filteredGroups() {
+      return this.groups.map((g) => ({
+        ...g,
+        list: this.filterByKeyword(g.list)
+      }))
+    },
+    filteredUngrouped() {
+      return this.filterByKeyword(this.ungrouped)
+    },
+    hasFilteredContent() {
+      return this.filteredGroups.some((g) => g.list.length > 0) || this.filteredUngrouped.length > 0
     }
   },
   onLoad(options) {
@@ -102,14 +130,7 @@ export default {
     this.loadSubcollectionFavoriteStatus()
   },
   onPullDownRefresh() {
-    this.page = 1
     this.loadData().then(() => uni.stopPullDownRefresh())
-  },
-  onReachBottom() {
-    if (this.list.length < this.total) {
-      this.page += 1
-      this.loadData(true)
-    }
   },
   methods: {
     onSearch() {
@@ -126,18 +147,15 @@ export default {
       }
       return currentUserInfo.token
     },
-    async loadData(append = false) {
+    async loadData() {
       this.loading = true
       try {
         const res = await uniCloud.callFunction({
           name: 'gw_ancient-search',
           data: {
-            action: 'getTextsBySubcollection',
+            action: 'getTextsBySubcollectionGrouped',
             data: {
-              categoryId: this.categoryId,
-              subcollectionId: this.subcollectionId,
-              page: this.page,
-              pageSize: this.pageSize
+              subcollectionId: this.subcollectionId
             }
           }
         })
@@ -145,9 +163,8 @@ export default {
         if (result.code !== 0 || !result.data) {
           throw new Error(result.msg || '加载失败')
         }
-        const dataList = result.data.list || []
-        this.list = append ? [...this.list, ...dataList] : dataList
-        this.total = result.data.total || 0
+        this.groups = result.data.groups || []
+        this.ungrouped = result.data.ungrouped || []
       } catch (e) {
         uni.showToast({
           title: e.message || '加载失败',
@@ -249,6 +266,17 @@ export default {
 
 .search-bar {
   margin-bottom: 20rpx;
+}
+
+.group-section {
+  margin-bottom: 32rpx;
+}
+
+.group-title {
+  font-size: 28rpx;
+  color: #666;
+  padding: 16rpx 0 12rpx;
+  font-weight: 600;
 }
 
 .list-item {
