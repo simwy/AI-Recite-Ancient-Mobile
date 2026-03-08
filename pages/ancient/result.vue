@@ -65,6 +65,7 @@ export default {
   data() {
     return {
       id: '',
+      recordType: '',
       textData: {},
       recognizedText: '',
       hintCount: 0,
@@ -78,6 +79,7 @@ export default {
   onLoad(options) {
     this.initAudioContext()
     if (options.recordId) {
+      this.recordType = options.type || 'recite'
       this.loadRecordDetail(options.recordId)
       return
     }
@@ -104,8 +106,9 @@ export default {
   methods: {
     async loadRecordDetail(recordId) {
       try {
+        const cfName = this.recordType === 'follow' ? 'gw_follow-record' : 'gw_recite-record'
         const res = await uniCloud.callFunction({
-          name: 'gw_recite-record',
+          name: cfName,
           data: { action: 'detail', data: { id: recordId } }
         })
         const result = (res && res.result) || {}

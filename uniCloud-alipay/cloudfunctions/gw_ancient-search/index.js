@@ -511,7 +511,7 @@ async function confirmAdd(event, data, context) {
   }
 }
 
-/** 批量获取当前用户对指定古文的最新朗读/背诵/默写分数（用于列表展示） */
+/** 批量获取当前用户对指定古文的最新跟读/背诵/默写分数（用于列表展示） */
 async function getUserTextSummaries(event, context) {
   const uid = await getAuthUid(event, context)
   if (!uid) {
@@ -530,7 +530,7 @@ async function getUserTextSummaries(event, context) {
     })
     .field({
       text_id: true,
-      read_last_score: true,
+      follow_last_score: true,
       recite_last_score: true,
       dictation_last_score: true
     })
@@ -538,7 +538,7 @@ async function getUserTextSummaries(event, context) {
     .get()
   const list = (res.data || []).map((doc) => ({
     text_id: doc.text_id,
-    read_last_score: doc.read_last_score,
+    follow_last_score: doc.follow_last_score,
     recite_last_score: doc.recite_last_score,
     dictation_last_score: doc.dictation_last_score
   }))

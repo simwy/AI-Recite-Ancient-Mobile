@@ -1,0 +1,95 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "text_id", "text_title"],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "text_id": {
+      "bsonType": "string",
+      "description": "古文ID",
+      "foreignKey": "gw-ancient-texts._id"
+    },
+    "text_title": {
+      "bsonType": "string",
+      "description": "古文标题"
+    },
+    "duration_seconds": {
+      "bsonType": "int",
+      "description": "跟读时长（秒）",
+      "defaultValue": 0
+    },
+    "diff_result": {
+      "bsonType": "array",
+      "description": "逐字对比结果",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "char": { "bsonType": "string" },
+          "status": { "bsonType": "string" }
+        }
+      }
+    },
+    "accuracy": {
+      "bsonType": "double",
+      "description": "正确率"
+    },
+    "wrong_chars": {
+      "bsonType": "array",
+      "description": "读错的字",
+      "items": {
+        "bsonType": "string"
+      }
+    },
+    "sentence_details": {
+      "bsonType": "array",
+      "description": "跟读模式逐句结果",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "index": { "bsonType": "int", "description": "句子索引" },
+          "text": { "bsonType": "string", "description": "句子内容" },
+          "accuracy": { "bsonType": "double", "description": "句子准确率" },
+          "diff_result": {
+            "bsonType": "array",
+            "description": "该句逐字对比结果",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "char": { "bsonType": "string" },
+                "status": { "bsonType": "string" }
+              }
+            }
+          },
+          "wrong_chars": {
+            "bsonType": "array",
+            "description": "该句读错的字",
+            "items": { "bsonType": "string" }
+          }
+        }
+      }
+    },
+    "attempt_no": {
+      "bsonType": "int",
+      "description": "第几遍"
+    },
+    "created_at": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

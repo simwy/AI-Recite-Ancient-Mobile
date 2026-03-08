@@ -43,45 +43,80 @@
       </view>
     </view>
 
-    <!-- 学习记录：背诵记录 + 默写记录 -->
+    <!-- 学习记录：跟读记录、背诵记录、默写记录（可折叠，默认收缩，右侧显示最近一次得分） -->
     <view class="learning-records" v-if="hasLogin">
       <view class="records-section">
-        <view class="section-title">
-          <uni-icons type="mic" size="14" color="#0b57d0" />
-          <text>背诵记录</text>
+        <view class="section-title section-title--clickable" @click="followExpanded = !followExpanded">
+          <uni-icons type="eye" size="14" color="#4f46e5" />
+          <text>跟读记录</text>
+          <text v-if="followList.length > 0" class="section-count">({{ followList.length }})</text>
+          <text v-if="followList.length > 0" class="section-latest">最近 {{ followList[0].accuracy || 0 }}%</text>
+          <uni-icons :type="followExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
         </view>
-        <view v-if="reciteLoading" class="records-loading"><text>加载中...</text></view>
-        <view v-else-if="reciteList.length === 0" class="records-empty"><text>暂无背诵记录</text></view>
-        <view v-else class="records-list">
-          <view
-            v-for="item in reciteList"
-            :key="item._id"
-            class="record-item"
-            @click="goReciteResult(item._id)"
-          >
-            <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
-            <text class="record-meta">提示 {{ item.hint_count || 0 }} 次 · {{ formatDuration(item.duration_seconds) }}</text>
-            <text class="record-time">{{ formatTime(item.created_at) }}</text>
+        <view v-show="followExpanded" class="section-body">
+          <view v-if="followLoading" class="records-loading"><text>加载中...</text></view>
+          <view v-else-if="followList.length === 0" class="records-empty"><text>暂无跟读记录</text></view>
+          <view v-else class="records-list">
+            <view
+              v-for="item in followList"
+              :key="item._id"
+              class="record-item"
+              @click="goFollowResult(item._id)"
+            >
+              <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
+              <text class="record-meta">跟读 · {{ formatDuration(item.duration_seconds) }}</text>
+              <text class="record-time">{{ formatTime(item.created_at) }}</text>
+            </view>
           </view>
         </view>
       </view>
       <view class="records-section">
-        <view class="section-title">
+        <view class="section-title section-title--clickable" @click="reciteExpanded = !reciteExpanded">
+          <uni-icons type="mic" size="14" color="#0b57d0" />
+          <text>背诵记录</text>
+          <text v-if="reciteList.length > 0" class="section-count">({{ reciteList.length }})</text>
+          <text v-if="reciteList.length > 0" class="section-latest">最近 {{ reciteList[0].accuracy || 0 }}%</text>
+          <uni-icons :type="reciteExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+        </view>
+        <view v-show="reciteExpanded" class="section-body">
+          <view v-if="reciteLoading" class="records-loading"><text>加载中...</text></view>
+          <view v-else-if="reciteList.length === 0" class="records-empty"><text>暂无背诵记录</text></view>
+          <view v-else class="records-list">
+            <view
+              v-for="item in reciteList"
+              :key="item._id"
+              class="record-item"
+              @click="goReciteResult(item._id)"
+            >
+              <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
+              <text class="record-meta">提示 {{ item.hint_count || 0 }} 次 · {{ formatDuration(item.duration_seconds) }}</text>
+              <text class="record-time">{{ formatTime(item.created_at) }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="records-section">
+        <view class="section-title section-title--clickable" @click="dictationExpanded = !dictationExpanded">
           <uni-icons type="compose" size="14" color="#2563eb" />
           <text>默写记录</text>
+          <text v-if="dictationList.length > 0" class="section-count">({{ dictationList.length }})</text>
+          <text v-if="dictationList.length > 0" class="section-latest">最近 {{ dictationList[0].accuracy || 0 }}%</text>
+          <uni-icons :type="dictationExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
         </view>
-        <view v-if="dictationLoading" class="records-loading"><text>加载中...</text></view>
-        <view v-else-if="dictationList.length === 0" class="records-empty"><text>暂无默写记录</text></view>
-        <view v-else class="records-list">
-          <view
-            v-for="item in dictationList"
-            :key="item._id"
-            class="record-item"
-            @click="goDictationResult(item._id)"
-          >
-            <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
-            <text class="record-meta">{{ item.difficulty ? difficultyLabel(item.difficulty) : '默写' }}</text>
-            <text class="record-time">{{ formatTime(item.created_at) }}</text>
+        <view v-show="dictationExpanded" class="section-body">
+          <view v-if="dictationLoading" class="records-loading"><text>加载中...</text></view>
+          <view v-else-if="dictationList.length === 0" class="records-empty"><text>暂无默写记录</text></view>
+          <view v-else class="records-list">
+            <view
+              v-for="item in dictationList"
+              :key="item._id"
+              class="record-item"
+              @click="goDictationResult(item._id)"
+            >
+              <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
+              <text class="record-meta">{{ item.difficulty ? difficultyLabel(item.difficulty) : '默写' }}</text>
+              <text class="record-time">{{ formatTime(item.created_at) }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -125,9 +160,15 @@ export default {
       togglingFavorite: false,
       expanded: false,
       reciteList: [],
+      followList: [],
       dictationList: [],
       reciteLoading: false,
-      dictationLoading: false
+      followLoading: false,
+      dictationLoading: false,
+      // 三个记录区块默认收缩
+      reciteExpanded: false,
+      followExpanded: false,
+      dictationExpanded: false
     }
   },
   onLoad(options) {
@@ -139,9 +180,11 @@ export default {
     this.checkFavorite()
     if (this.id && this.hasLogin) {
       this.loadReciteRecords()
+      this.loadFollowRecords()
       this.loadDictationRecords()
     } else {
       this.reciteList = []
+      this.followList = []
       this.dictationList = []
     }
   },
@@ -241,6 +284,30 @@ export default {
         this.reciteLoading = false
       }
     },
+    async loadFollowRecords() {
+      if (!this.id || !this.hasLogin) return
+      this.followLoading = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_follow-record',
+          data: {
+            action: 'list',
+            data: { page: 1, pageSize: 10, text_id: this.id }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0 && result.data && result.data.list) {
+          this.followList = result.data.list
+        } else {
+          this.followList = []
+        }
+      } catch (e) {
+        console.error('加载跟读记录失败', e)
+        this.followList = []
+      } finally {
+        this.followLoading = false
+      }
+    },
     async loadDictationRecords() {
       if (!this.id || !this.hasLogin) return
       this.dictationLoading = true
@@ -283,6 +350,9 @@ export default {
     },
     goReciteResult(recordId) {
       uni.navigateTo({ url: `/pages/ancient/result?recordId=${recordId}` })
+    },
+    goFollowResult(recordId) {
+      uni.navigateTo({ url: `/pages/ancient/result?recordId=${recordId}&type=follow` })
     },
     goDictationResult(recordId) {
       uni.navigateTo({ url: `/pages/ancient/dictation-result?recordId=${recordId}` })
@@ -507,6 +577,38 @@ export default {
   color: #333;
   margin-bottom: 16rpx;
 }
+.section-title--clickable {
+  cursor: pointer;
+  padding: 8rpx 0;
+  margin-bottom: 0;
+  user-select: none;
+}
+.section-title--clickable:active {
+  opacity: 0.8;
+}
+.section-count {
+  font-size: 24rpx;
+  font-weight: normal;
+  color: #999;
+}
+.section-latest {
+  margin-left: auto;
+  margin-right: 12rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #0b57d0;
+}
+.records-section:nth-child(1) .section-latest { color: #4f46e5; }
+.records-section:nth-child(2) .section-latest { color: #0b57d0; }
+.records-section:nth-child(3) .section-latest { color: #2563eb; }
+.section-arrow {
+  flex-shrink: 0;
+}
+.section-body {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #eee;
+}
 .records-loading,
 .records-empty {
   font-size: 26rpx;
@@ -543,8 +645,9 @@ export default {
   font-size: 22rpx;
   color: #999;
 }
-.records-section:first-child .record-accuracy { color: #0b57d0; }
-.records-section:last-child .record-accuracy { color: #2563eb; }
+.records-section:nth-child(1) .record-accuracy { color: #4f46e5; }
+.records-section:nth-child(2) .record-accuracy { color: #0b57d0; }
+.records-section:nth-child(3) .record-accuracy { color: #2563eb; }
 .action-bar {
   position: fixed;
   bottom: 0;

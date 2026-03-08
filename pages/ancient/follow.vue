@@ -680,8 +680,8 @@ export default {
       try {
         const uniIdToken = this.getUniIdToken()
         const res = await uniCloud.callFunction({
-          name: 'gw_recite-record',
-          data: { action: 'save', uniIdToken, data: { text_id: this.id, text_title: this.detail.title, practice_mode: 'follow', duration_seconds: duration, accuracy: totalScore, diff_result: allDiff, sentence_details: sentenceDetails } }
+          name: 'gw_follow-record',
+          data: { action: 'save', uniIdToken, data: { text_id: this.id, text_title: this.detail.title, duration_seconds: duration, accuracy: totalScore, diff_result: allDiff, sentence_details: sentenceDetails } }
         })
         const result = (res && res.result) || {}
         if (result.code === 0) this.followRecordSaved = true

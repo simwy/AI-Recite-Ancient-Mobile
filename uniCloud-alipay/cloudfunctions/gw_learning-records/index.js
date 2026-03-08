@@ -1,6 +1,7 @@
 'use strict'
 const db = uniCloud.database()
 const reciteCollection = db.collection('gw-recite-records')
+const followCollection = db.collection('gw-follow-records')
 const dictationCollection = db.collection('gw-dictation-checks')
 const uniID = require('uni-id-common')
 
@@ -27,11 +28,12 @@ exports.main = async (event, context) => {
   const { page = 1, pageSize = 20 } = data
   const need = page * pageSize
 
-  const [reciteCountRes, dictationCountRes, reciteListRes, dictationListRes] = await Promise.all([
-    reciteCollection.where({ user_id: uid }).count(),
+  const [reciteCountRes, followCountRes, dictationCountRes, reciteListRes, followListRes, dictationListRes] = await Promise.all([
+    reciteCollection.where({ user_id: uid, practice_mode: db.command.neq('follow') }).count(),
+    followCollection.where({ user_id: uid }).count(),
     dictationCollection.where({ user_id: uid }).count(),
     reciteCollection
-      .where({ user_id: uid })
+      .where({ user_id: uid, practice_mode: db.command.neq('follow') })
       .orderBy('created_at', 'desc')
       .limit(need)
       .field({
@@ -45,6 +47,19 @@ exports.main = async (event, context) => {
         hint_count: true,
         duration_seconds: true,
         recognized_text: true,
+        created_at: true
+      })
+      .get(),
+    followCollection
+      .where({ user_id: uid })
+      .orderBy('created_at', 'desc')
+      .limit(need)
+      .field({
+        _id: true,
+        text_id: true,
+        text_title: true,
+        accuracy: true,
+        duration_seconds: true,
         created_at: true
       })
       .get(),
@@ -67,10 +82,12 @@ exports.main = async (event, context) => {
   ])
 
   const reciteTotal = (reciteCountRes && reciteCountRes.total) || 0
+  const followTotal = (followCountRes && followCountRes.total) || 0
   const dictationTotal = (dictationCountRes && dictationCountRes.total) || 0
-  const total = reciteTotal + dictationTotal
+  const total = reciteTotal + followTotal + dictationTotal
 
   const reciteList = (reciteListRes && reciteListRes.data) || []
+  const followList = (followListRes && followListRes.data) || []
   const dictationList = (dictationListRes && dictationListRes.data) || []
 
   const snippet = (str, maxLen = 36) => {
@@ -113,7 +130,18 @@ exports.main = async (event, context) => {
     }
   })
 
-  const merged = [...reciteItems, ...dictationItems].sort(
+  const followItems = followList.map((f) => ({
+    _id: f._id,
+    record_type: 'follow',
+    text_id: f.text_id,
+    text_title: f.text_title,
+    practice_mode: 'follow',
+    accuracy: f.accuracy,
+    duration_seconds: Number(f.duration_seconds) || 0,
+    created_at: f.created_at
+  }))
+
+  const merged = [...reciteItems, ...followItems, ...dictationItems].sort(
     (a, b) => (b.created_at || 0) - (a.created_at || 0)
   )
 

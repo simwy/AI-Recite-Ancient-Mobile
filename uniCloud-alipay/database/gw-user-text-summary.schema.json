@@ -25,27 +25,27 @@
       "bsonType": "string",
       "description": "古文标题（冗余）"
     },
-    "read_last_at": {
+    "follow_last_at": {
       "bsonType": "timestamp",
       "description": "跟读最后一次时间"
     },
-    "read_last_score": {
+    "follow_last_score": {
       "bsonType": "double",
       "description": "跟读最后一次分数"
     },
-    "read_last_record_id": {
+    "follow_last_record_id": {
       "bsonType": "string",
       "description": "跟读最后一次记录ID"
     },
-    "read_best_at": {
+    "follow_best_at": {
       "bsonType": "timestamp",
       "description": "跟读最高分时间"
     },
-    "read_best_score": {
+    "follow_best_score": {
       "bsonType": "double",
       "description": "跟读最高分"
     },
-    "read_best_record_id": {
+    "follow_best_record_id": {
       "bsonType": "string",
       "description": "跟读最高分记录ID"
     },

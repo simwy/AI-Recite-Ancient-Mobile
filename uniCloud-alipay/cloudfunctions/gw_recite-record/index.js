@@ -4,27 +4,25 @@ const collection = db.collection('gw-recite-records')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
 
-/** 背诵/跟读保存后更新用户古文汇总表 */
-async function updateSummaryAfterRecite(uid, textId, textTitle, practiceMode, recordId, accuracy, createdAt) {
-  const isRead = practiceMode === 'read'
-  const prefix = isRead ? 'read' : 'recite'
+/** 背诵保存后更新用户古文汇总表 */
+async function updateSummaryAfterRecite(uid, textId, textTitle, recordId, accuracy, createdAt) {
   const lastFields = {
-    [`${prefix}_last_at`]: createdAt,
-    [`${prefix}_last_score`]: accuracy,
-    [`${prefix}_last_record_id`]: recordId
+    recite_last_at: createdAt,
+    recite_last_score: accuracy,
+    recite_last_record_id: recordId
   }
   const existRes = await summaryCollection.where({ user_id: uid, text_id: textId }).limit(1).get()
   const existing = (existRes.data && existRes.data[0]) || null
-  const bestScore = existing ? (Number(existing[`${prefix}_best_score`]) || -1) : -1
+  const bestScore = existing ? (Number(existing.recite_best_score) || -1) : -1
   const updates = {
     ...lastFields,
     text_title: textTitle || (existing && existing.text_title) || '',
     updated_at: createdAt
   }
   if (accuracy >= bestScore) {
-    updates[`${prefix}_best_at`] = createdAt
-    updates[`${prefix}_best_score`] = accuracy
-    updates[`${prefix}_best_record_id`] = recordId
+    updates.recite_best_at = createdAt
+    updates.recite_best_score = accuracy
+    updates.recite_best_record_id = recordId
   }
   if (existing && existing._id) {
     await summaryCollection.doc(existing._id).update(updates)
@@ -64,7 +62,6 @@ exports.main = async (event, context) => {
         user_id: uid,
         text_id: data.text_id,
         text_title: data.text_title,
-        practice_mode: data.practice_mode || 'recite',
         hint_count: data.hint_count || 0,
         duration_seconds: Number(data.duration_seconds) || 0,
         recognized_text: data.recognized_text || '',
@@ -84,7 +81,6 @@ exports.main = async (event, context) => {
           uid,
           record.text_id,
           record.text_title,
-          record.practice_mode,
           res.id,
           record.accuracy,
           record.created_at
@@ -98,7 +94,7 @@ exports.main = async (event, context) => {
     case 'list': {
       const { page = 1, pageSize = 20, text_id } = data
       const skip = (page - 1) * pageSize
-      const where = { user_id: uid }
+      const where = { user_id: uid, practice_mode: db.command.neq('follow') }
       if (text_id) where.text_id = text_id
 
       const countRes = await collection.where(where).count()

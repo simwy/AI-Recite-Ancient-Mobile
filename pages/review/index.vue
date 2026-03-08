@@ -222,6 +222,7 @@ export default {
       this.totalMap.collectionFavorites = total
     },
     getModeText(mode) {
+      if (mode === 'follow') return '跟读'
       if (mode === 'read') return '朗读'
       if (mode === 'dictation') return '默写'
       return '背诵'
@@ -231,6 +232,13 @@ export default {
       if (item.record_type === 'dictation') {
         const n = Number(item.wrong_count) || 0
         return `准确率 ${acc}%${n > 0 ? ` · 错 ${n} 字` : ''}`
+      }
+      if (item.record_type === 'follow') {
+        const sec = Number(item.duration_seconds) || 0
+        const min = Math.floor(sec / 60)
+        const s = sec % 60
+        const timeStr = min > 0 ? `${min}分${s}秒` : `${s}秒`
+        return `准确率 ${acc}% · ${timeStr}`
       }
       const hint = Number(item.hint_count) || 0
       const sec = Number(item.duration_seconds) || 0
@@ -285,6 +293,12 @@ export default {
         if (item.record_type === 'recite') {
           uni.navigateTo({
             url: `/pages/ancient/result?recordId=${item._id}`
+          })
+          return
+        }
+        if (item.record_type === 'follow') {
+          uni.navigateTo({
+            url: `/pages/ancient/result?recordId=${item._id}&type=follow`
           })
           return
         }

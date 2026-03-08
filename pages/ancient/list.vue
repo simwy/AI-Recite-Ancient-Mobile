@@ -35,11 +35,15 @@
           <view class="item-preview">{{ getPreview(item.content) }}</view>
         </view>
         <view class="item-scores" v-if="getItemScores(item).length">
-          <text
+          <view
             class="score-tag"
+            :class="'score-tag--' + s.type"
             v-for="s in getItemScores(item)"
             :key="s.label"
-          >{{ s.label }} {{ s.score }}</text>
+          >
+            <text class="score-label">{{ s.label }}</text>
+            <text class="score-value">{{ s.score }}分</text>
+          </view>
         </view>
       </view>
       <!-- 有搜索词时，即使有结果也提供“添加文章”入口：结果可能只是包含关键词，不一定是用户想找的那篇 -->
@@ -278,17 +282,17 @@ export default {
         // 静默失败，列表照常展示
       }
     },
-    /** 返回该项要展示的分数数组 [{ label, score }]，无分数则空 */
+    /** 返回该项要展示的分数数组 [{ label, score, type }]，无分数则空。跟读/背诵/默写最近一次分数。 */
     getItemScores(item) {
       const s = this.summaryMap[item._id]
       if (!s) return []
       const out = []
-      const add = (label, val) => {
-        if (typeof val === 'number' && !Number.isNaN(val)) out.push({ label, score: Math.round(val) })
+      const add = (label, val, type) => {
+        if (typeof val === 'number' && !Number.isNaN(val)) out.push({ label, score: Math.round(val), type })
       }
-      add('朗读', s.read_last_score)
-      add('背诵', s.recite_last_score)
-      add('默写', s.dictation_last_score)
+      add('跟读', s.follow_last_score, 'follow')
+      add('背诵', s.recite_last_score, 'recite')
+      add('默写', s.dictation_last_score, 'dictation')
       return out
     },
     getPreview(content, len = 30) {
@@ -499,12 +503,35 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 .score-tag {
-  font-size: 22rpx;
-  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
   white-space: nowrap;
+  font-weight: 600;
+}
+.score-tag--follow {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  color: #2e7d32;
+}
+.score-tag--recite {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #1565c0;
+}
+.score-tag--dictation {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #e65100;
+}
+.score-label {
+  font-size: 24rpx;
+}
+.score-value {
+  font-size: 26rpx;
+  font-weight: 700;
 }
 .item-title {
   font-size: 34rpx;
