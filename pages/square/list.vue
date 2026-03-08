@@ -6,9 +6,6 @@
         @click="currentTab = 'list'"
       >
         <text>列表</text>
-        <text v-if="totalReciteCount > 0" class="tab-recite-badge" :class="{ 'tab-recite-badge--all': totalRecitePassed === totalReciteCount }">
-          背诵 {{ totalRecitePassed }}/{{ totalReciteCount }}
-        </text>
       </view>
       <view
         :class="['tab-item', currentTab === 'intro' ? 'active' : '']"
@@ -33,7 +30,7 @@
           <text class="section-recite-badge" :class="{ 'section-recite-badge--all': getGroupRecitePassed(group.list) === group.list.length && group.list.length > 0 }">
             背诵 {{ getGroupRecitePassed(group.list) }}/{{ group.list.length }}
           </text>
-          <uni-icons :type="isGroupExpanded(group._id) ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+          <uni-icons :type="isGroupExpanded(group._id) ? 'arrowup' : 'arrowright'" size="16" :color="isGroupExpanded(group._id) ? '#1d4ed8' : '#999'" class="section-arrow" />
         </view>
         <view v-show="isGroupExpanded(group._id)" class="section-body">
           <view v-if="group.list.length === 0" class="group-empty"><text>暂无古文</text></view>
@@ -60,7 +57,7 @@
           <text class="section-recite-badge" :class="{ 'section-recite-badge--all': getGroupRecitePassed(filteredUngrouped) === filteredUngrouped.length && filteredUngrouped.length > 0 }">
             背诵 {{ getGroupRecitePassed(filteredUngrouped) }}/{{ filteredUngrouped.length }}
           </text>
-          <uni-icons :type="ungroupedExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+          <uni-icons :type="ungroupedExpanded ? 'arrowup' : 'arrowright'" size="16" :color="ungroupedExpanded ? '#1d4ed8' : '#999'" class="section-arrow" />
         </view>
         <view v-show="ungroupedExpanded" class="section-body">
           <view v-if="filteredUngrouped.length === 0" class="group-empty"><text>暂无古文</text></view>
@@ -99,15 +96,72 @@
     </view>
 
     <view class="action-bar">
-      <view class="favorite-action" @click="toggleSubcollectionFavorite">
+      <view class="favorite-icon" @click="toggleSubcollectionFavorite">
         <uni-icons
           :type="subcollectionFavorited ? 'star-filled' : 'star'"
-          size="20"
+          size="22"
           :color="subcollectionFavorited ? '#f59e0b' : '#86909c'"
         />
-        <text :class="['favorite-text', subcollectionFavorited ? 'active' : '']">
-          {{ subcollectionFavorited ? '已参加活动' : '参加活动' }}
-        </text>
+      </view>
+      <view class="calendar-btn" @click="openCalendar">
+        <text class="calendar-btn-text">背诵打开日历（{{ totalRecitePassed }}/{{ totalReciteCount }}）</text>
+      </view>
+    </view>
+
+    <!-- 背诵完成日历弹层 -->
+    <view v-if="calendarVisible" class="calendar-mask" @click="closeCalendar">
+      <view class="calendar-popup" @click.stop>
+        <view class="calendar-popup-header">
+          <text class="calendar-popup-title">背诵完成日历</text>
+          <view class="calendar-popup-close" @click="closeCalendar">
+            <uni-icons type="closeempty" size="20" color="#666" />
+          </view>
+        </view>
+        <view class="calendar-month-bar">
+          <view class="calendar-month-btn" @click="calendarPrevMonth">
+            <uni-icons type="back" size="16" color="#333" />
+          </view>
+          <text class="calendar-month-text">{{ calendarYear }}年{{ calendarMonth }}月</text>
+          <view class="calendar-month-btn" @click="calendarNextMonth">
+            <uni-icons type="right" size="16" color="#333" />
+          </view>
+        </view>
+        <view class="calendar-weekdays">
+          <text class="calendar-weekday">日</text>
+          <text class="calendar-weekday">一</text>
+          <text class="calendar-weekday">二</text>
+          <text class="calendar-weekday">三</text>
+          <text class="calendar-weekday">四</text>
+          <text class="calendar-weekday">五</text>
+          <text class="calendar-weekday">六</text>
+        </view>
+        <view class="calendar-days">
+          <view
+            v-for="(cell, idx) in calendarDays"
+            :key="idx"
+            :class="['calendar-day-cell', { 'calendar-day--other': cell.other, 'calendar-day--has': cell.hasPass }]"
+            @click="cell.hasPass ? onCalendarDayClick(cell.dateKey) : null"
+          >
+            <text class="calendar-day-num">{{ cell.day }}</text>
+            <view v-if="cell.hasPass" class="calendar-day-dot"></view>
+          </view>
+        </view>
+        <view v-if="calendarLoading" class="calendar-loading">加载中...</view>
+      </view>
+    </view>
+
+    <!-- 某日背诵通过的古文标题浮层 -->
+    <view v-if="selectedDayTitles.length > 0" class="day-titles-mask" @click="selectedDayTitles = []">
+      <view class="day-titles-popup" @click.stop>
+        <view class="day-titles-header">
+          <text class="day-titles-title">{{ selectedDayDateLabel }} 背诵通过</text>
+          <view @click="selectedDayTitles = []">
+            <uni-icons type="closeempty" size="18" color="#666" />
+          </view>
+        </view>
+        <scroll-view scroll-y class="day-titles-list">
+          <view v-for="(t, i) in selectedDayTitles" :key="i" class="day-titles-item">{{ t }}</view>
+        </scroll-view>
       </view>
     </view>
   </view>
@@ -135,7 +189,14 @@ export default {
       ungroupedExpanded: true,
       subcollectionFavorited: false,
       favoriteLoading: false,
-      loading: false
+      loading: false,
+      calendarVisible: false,
+      calendarYear: 0,
+      calendarMonth: 0,
+      calendarLoading: false,
+      firstPassList: [],
+      selectedDayTitles: [],
+      selectedDayDateLabel: ''
     }
   },
   computed: {
@@ -176,6 +237,61 @@ export default {
       ;(this.groups || []).forEach((g) => { n += (g.list && g.list.length) || 0 })
       n += (this.ungrouped && this.ungrouped.length) || 0
       return n
+    },
+    /** 完成日 -> 该日背诵通过的古文标题列表。完成日 = 该古文第一次得分≥90 的次日 */
+    completionMap() {
+      const map = {}
+      for (const item of this.firstPassList) {
+        const t = item.first_pass_at
+        const ts = typeof t === 'number' ? (t < 1e12 ? t * 1000 : t) : (t && t.getTime ? t.getTime() : 0)
+        if (!ts) continue
+        const d = new Date(ts)
+        const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+        const key = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+        if (!map[key]) map[key] = []
+        map[key].push(item.text_title || '')
+      }
+      return map
+    },
+    /** 当前日历月对应的格子（含上月/下月占位），每格 { day, other, dateKey, hasPass } */
+    calendarDays() {
+      const y = this.calendarYear
+      const m = this.calendarMonth
+      if (!y || !m) return []
+      const first = new Date(y, m - 1, 1)
+      const last = new Date(y, m, 0)
+      const firstWeekday = first.getDay()
+      const totalDays = last.getDate()
+      const cells = []
+      for (let i = 0; i < firstWeekday; i++) {
+        const d = new Date(y, m - 1, -firstWeekday + i + 1)
+        cells.push({
+          day: d.getDate(),
+          other: true,
+          dateKey: this.dateToKey(d),
+          hasPass: !!this.completionMap[this.dateToKey(d)]
+        })
+      }
+      for (let d = 1; d <= totalDays; d++) {
+        const dateKey = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        cells.push({
+          day: d,
+          other: false,
+          dateKey,
+          hasPass: !!this.completionMap[dateKey]
+        })
+      }
+      const rest = 42 - cells.length
+      for (let i = 1; i <= rest; i++) {
+        const d = new Date(y, m, i)
+        cells.push({
+          day: d.getDate(),
+          other: true,
+          dateKey: this.dateToKey(d),
+          hasPass: !!this.completionMap[this.dateToKey(d)]
+        })
+      }
+      return cells
     }
   },
   onLoad(options) {
@@ -469,6 +585,77 @@ export default {
       uni.navigateTo({
         url: `/pages/ancient/detail?id=${item._id}&title=${encodeURIComponent(item.title || '')}`
       })
+    },
+    dateToKey(d) {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    },
+    openCalendar() {
+      const now = new Date()
+      this.calendarYear = now.getFullYear()
+      this.calendarMonth = now.getMonth() + 1
+      this.calendarVisible = true
+      this.loadFirstPassForCalendar()
+    },
+    closeCalendar() {
+      this.calendarVisible = false
+      this.selectedDayTitles = []
+    },
+    async loadFirstPassForCalendar() {
+      const allIds = []
+      ;(this.groups || []).forEach((g) => g.list.forEach((t) => t._id && allIds.push(t._id)))
+      ;(this.ungrouped || []).forEach((t) => t._id && allIds.push(t._id))
+      const uniqueIds = [...new Set(allIds)]
+      if (uniqueIds.length === 0) {
+        this.calendarLoading = false
+        return
+      }
+      this.calendarLoading = true
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_recite-record',
+          data: {
+            action: 'getFirstPassByTextIds',
+            data: { text_ids: uniqueIds }
+          },
+          uniIdToken: this.getUniIdToken()
+        })
+        const result = (res && res.result) || {}
+        if (result.code === 0 && result.data && result.data.list) {
+          this.firstPassList = result.data.list
+        } else {
+          this.firstPassList = []
+        }
+      } catch (e) {
+        this.firstPassList = []
+      } finally {
+        this.calendarLoading = false
+      }
+    },
+    calendarPrevMonth() {
+      if (this.calendarMonth <= 1) {
+        this.calendarYear--
+        this.calendarMonth = 12
+      } else {
+        this.calendarMonth--
+      }
+    },
+    calendarNextMonth() {
+      if (this.calendarMonth >= 12) {
+        this.calendarYear++
+        this.calendarMonth = 1
+      } else {
+        this.calendarMonth++
+      }
+    },
+    onCalendarDayClick(dateKey) {
+      const titles = this.completionMap[dateKey] || []
+      if (titles.length === 0) return
+      const [y, m, d] = dateKey.split('-')
+      this.selectedDayDateLabel = `${parseInt(m, 10)}月${parseInt(d, 10)}日`
+      this.selectedDayTitles = titles
     }
   }
 }
@@ -484,7 +671,7 @@ export default {
 
 .top-tabs {
   display: flex;
-  margin-bottom: 24rpx;
+  margin-bottom: 12rpx;
   border-bottom: 2rpx solid #eee;
 }
 .tab-item {
@@ -493,7 +680,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  padding: 20rpx 0;
+  padding: 14rpx 0;
   font-size: 30rpx;
   color: #999;
 }
@@ -502,18 +689,6 @@ export default {
   font-weight: 600;
   border-bottom: 4rpx solid #1d4ed8;
   margin-bottom: -2rpx;
-}
-.tab-recite-badge {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: #1d4ed8;
-  padding: 4rpx 10rpx;
-  background: #eff6ff;
-  border-radius: 999rpx;
-}
-.tab-recite-badge--all {
-  color: #059669;
-  background: #ecfdf5;
 }
 .intro-panel {
   min-height: 60vh;
@@ -533,7 +708,7 @@ export default {
 }
 
 .search-bar {
-  margin-bottom: 20rpx;
+  margin-bottom: 10rpx;
 }
 
 .group-section {
@@ -571,6 +746,7 @@ export default {
 
 .section-arrow {
   flex-shrink: 0;
+  margin-left: 4rpx;
 }
 
 .section-body {
@@ -648,25 +824,35 @@ export default {
   line-height: 1.6;
 }
 
-.favorite-action {
+.favorite-icon {
+  flex-shrink: 0;
+  padding: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10rpx;
-  padding: 18rpx 0;
+}
+.favorite-icon:active {
+  opacity: 0.7;
+}
+
+.calendar-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18rpx 24rpx;
+  margin-left: 12rpx;
   border-radius: 12rpx;
   background: #fff7e6;
   border: 2rpx solid #ffe6b0;
 }
-
-.favorite-text {
-  font-size: 24rpx;
-  color: #86909c;
+.calendar-btn:active {
+  opacity: 0.9;
 }
-
-.favorite-text.active {
-  color: #f59e0b;
-  font-weight: 600;
+.calendar-btn-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
 }
 
 .action-bar {
@@ -678,6 +864,166 @@ export default {
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+}
+
+.calendar-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+}
+
+.calendar-popup {
+  width: 100%;
+  max-width: 640rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  max-height: 85vh;
+}
+
+.calendar-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+.calendar-popup-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+.calendar-popup-close {
+  padding: 8rpx;
+}
+
+.calendar-month-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+.calendar-month-btn {
+  padding: 12rpx;
+}
+.calendar-month-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.calendar-weekdays {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 12rpx;
+}
+.calendar-weekday {
+  flex: 1;
+  text-align: center;
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.calendar-days {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+}
+.calendar-day-cell {
+  width: 14.28%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 26rpx;
+  color: #333;
+}
+.calendar-day-cell:active {
+  opacity: 0.8;
+}
+.calendar-day--other {
+  color: #c9cdd4;
+}
+.calendar-day--has {
+  color: #059669;
+  font-weight: 600;
+}
+.calendar-day-dot {
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #059669;
+}
+
+.calendar-loading {
+  text-align: center;
+  padding: 24rpx;
+  font-size: 26rpx;
+  color: #86909c;
+}
+
+.day-titles-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.day-titles-popup {
+  width: 100%;
+  max-width: 560rpx;
+  max-height: 60vh;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.day-titles-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #eee;
+}
+.day-titles-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.day-titles-list {
+  max-height: 400rpx;
+  padding: 16rpx;
+}
+.day-titles-item {
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: #333;
+  border-bottom: 1rpx solid #f2f3f5;
+}
+.day-titles-item:last-child {
+  border-bottom: none;
 }
 
 .empty,

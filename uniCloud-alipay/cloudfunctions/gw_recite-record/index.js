@@ -138,6 +138,40 @@ exports.main = async (event, context) => {
       return { code: 0 }
     }
 
+    /** 批量查询各古文第一次背诵通过的记录（accuracy>=90），用于日历展示完成日（完成日=首次通过日+1天） */
+    case 'getFirstPassByTextIds': {
+      const textIds = data.text_ids
+      if (!Array.isArray(textIds) || textIds.length === 0) {
+        return { code: 0, data: { list: [] } }
+      }
+      const limit = Math.min(textIds.length * 50, 2000) // 每篇最多约 50 条记录
+      const where = {
+        user_id: uid,
+        text_id: db.command.in(textIds),
+        accuracy: db.command.gte(90)
+      }
+      // 与 list 一致：排除跟读
+      where.practice_mode = db.command.neq('follow')
+      const listRes = await collection
+        .where(where)
+        .orderBy('created_at', 'asc')
+        .limit(limit)
+        .get()
+      const firstByText = {}
+      for (const r of (listRes.data || [])) {
+        const tid = r.text_id
+        if (tid && firstByText[tid] == null) {
+          firstByText[tid] = {
+            text_id: tid,
+            text_title: r.text_title || '',
+            first_pass_at: r.created_at
+          }
+        }
+      }
+      const list = Object.values(firstByText)
+      return { code: 0, data: { list } }
+    }
+
     default:
       return { code: -1, msg: '未知操作' }
   }

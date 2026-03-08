@@ -34,12 +34,25 @@
             <text class="item-brief-line">{{ getRecordBriefLine(item) }}</text>
             <text v-if="item.recognized_snippet" class="item-snippet">{{ item.recognized_snippet }}</text>
           </view>
-          <view v-else-if="activeTab !== 'records'" class="item-meta">
+          <view v-if="activeTab === 'collectionFavorites'" class="item-activity-stats">
+            <view class="item-activity-row">
+              <text class="item-activity-label">加入时间</text>
+              <text class="item-activity-value">{{ formatTime(item.created_at) || '—' }}</text>
+            </view>
+            <view class="item-activity-row">
+              <text class="item-activity-label">最近背诵</text>
+              <text class="item-activity-value">{{ item.last_recite_at ? formatTime(item.last_recite_at) : '暂无' }}</text>
+            </view>
+            <view class="item-activity-row">
+              <text class="item-activity-label">背诵进度</text>
+              <text class="item-activity-value item-activity-recite">{{ (item.recite_passed_count ?? 0) }}/{{ item.recite_total_count ?? 0 }}</text>
+            </view>
+          </view>
+          <view v-else-if="activeTab === 'articleFavorites'" class="item-meta">
             <text>{{ getItemMeta(item) }}</text>
             <text>{{ formatTime(item.created_at) }}</text>
           </view>
-          <view class="item-meta">
-            <text v-if="activeTab !== 'records'">{{ getItemMeta(item) }}</text>
+          <view v-else-if="activeTab === 'records'" class="item-meta">
             <text>{{ formatTime(item.created_at) }}</text>
           </view>
         </view>
@@ -327,8 +340,10 @@ export default {
       })
     },
     formatTime(ts) {
-      if (!ts) return ''
-      const d = new Date(ts)
+      if (ts == null) return ''
+      const t = typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts
+      const d = new Date(t)
+      if (Number.isNaN(d.getTime())) return ''
       const pad = (n) => String(n).padStart(2, '0')
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
     }
@@ -426,6 +441,33 @@ export default {
   justify-content: space-between;
   font-size: 24rpx;
   color: #86909c;
+}
+
+.item-activity-stats {
+  margin-top: 8rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+.item-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 24rpx;
+  color: #86909c;
+  margin-bottom: 6rpx;
+}
+.item-activity-row:last-child {
+  margin-bottom: 0;
+}
+.item-activity-label {
+  color: #86909c;
+}
+.item-activity-value {
+  color: #1f2329;
+}
+.item-activity-recite {
+  font-weight: 600;
+  color: #1677ff;
 }
 
 .empty,

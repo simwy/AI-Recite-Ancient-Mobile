@@ -255,7 +255,7 @@ export default {
         const ids = this.list.map((i) => i._id)
         if (ids.length) this.loadSummaries(ids, append)
       } catch (e) {
-        uni.showToast({ title: '加载失败', icon: 'none' })
+        this.showTipModal('加载失败', e.message || '请稍后重试')
       } finally {
         this.loading = false
       }
@@ -321,11 +321,32 @@ export default {
       this.aiLoading = false
       this.aiCandidates = []
     },
+    /** 可手动关闭的提示框（仅“确定”按钮，不自动消失） */
+    showTipModal(title, content) {
+      uni.showModal({
+        title: title || '提示',
+        content: content || '',
+        showCancel: false,
+        confirmText: '确定'
+      })
+    },
+    /** 未找到匹配时的详细建议（标题/作者填写技巧 + 示例） */
+    showNoMatchSuggestions() {
+      const content =
+        '【标题】请用完整、常见的篇名，避免错别字。\n' +
+        '· 示例：岳阳楼记、桃花源记、出师表、陋室铭、爱莲说\n' +
+        '· 可带书名号《》或不带，尽量与教材/常见称呼一致\n\n' +
+        '【作者或出处】选填，有助于区分同名篇目。\n' +
+        '· 作者示例：范仲淹、陶渊明、诸葛亮、刘禹锡、周敦颐\n' +
+        '· 无作者时可填出处，如：古文观止、论语、孟子\n\n' +
+        '若仍搜不到，可能是库中暂无该篇，可换一篇试试。'
+      this.showTipModal('未找到匹配的古文', content)
+    },
     async searchByAI() {
       const title = (this.manualTitle || '').trim()
       const author = (this.manualAuthor || '').trim()
       if (!title) {
-        uni.showToast({ title: '请先填写古文名称', icon: 'none' })
+        this.showTipModal('提示', '请先填写古文名称')
         return
       }
 
@@ -359,13 +380,13 @@ export default {
         }
 
         if (!data.candidates || data.candidates.length === 0) {
-          uni.showToast({ title: '未找到匹配的古文', icon: 'none' })
+          this.showNoMatchSuggestions()
           return
         }
 
         this.aiCandidates = data.candidates
       } catch (e) {
-        uni.showToast({ title: e.message || 'AI 检索失败', icon: 'none' })
+        this.showTipModal('提示', e.message || 'AI 检索失败')
       } finally {
         this.aiLoading = false
       }
@@ -408,19 +429,19 @@ export default {
 
         const info = result.data || {}
         if (info.existed && info.text) {
-          uni.showToast({ title: '古文已存在', icon: 'none' })
+          this.showTipModal('提示', '该古文已在库中')
           this.goDetail(info.text._id)
           return
         }
 
-        uni.showToast({ title: '添加成功', icon: 'success' })
+        this.showTipModal('添加成功', '古文已加入，可前往详情查看')
         this.keyword = item.title
         this.page = 1
         this.aiCandidates = []
         this.showAddPopup = false
         await this.loadData()
       } catch (e) {
-        uni.showToast({ title: e.message || '添加失败', icon: 'none' })
+        this.showTipModal('提示', e.message || '添加失败')
       } finally {
         uni.hideLoading()
       }

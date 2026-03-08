@@ -7,6 +7,7 @@ const relationCollection = db.collection('gw-square-text-relations')
 const subcollectionGroupCollection = db.collection('gw-square-subcollections-group')
 const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
 const summaryCollection = db.collection('gw-user-text-summary')
+const reciteCollection = db.collection('gw-recite-records')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -564,14 +565,35 @@ async function listSubcollectionFavorites(event, data = {}, context) {
       allTextIds.add(r.text_id)
     })
     const textIdArr = [...allTextIds]
+    const textToSubIds = {}
+    Object.keys(subToTextIds).forEach((subId) => {
+      (subToTextIds[subId] || []).forEach((tid) => {
+        if (!textToSubIds[tid]) textToSubIds[tid] = []
+        textToSubIds[tid].push(subId)
+      })
+    })
     let summaryList = []
+    let reciteList = []
     if (textIdArr.length > 0) {
-      const summaryRes = await summaryCollection
-        .where({ user_id: uid, text_id: db.command.in(textIdArr) })
-        .field({ text_id: true, recite_last_at: true, recite_best_score: true })
-        .limit(500)
-        .get()
-      summaryList = summaryRes.data || []
+      const [summaryRes, reciteRes] = await Promise.all([
+        summaryCollection
+          .where({ user_id: uid, text_id: db.command.in(textIdArr) })
+          .field({ text_id: true, recite_last_at: true, recite_best_score: true })
+          .limit(500)
+          .get(),
+        reciteCollection
+          .where({
+            user_id: uid,
+            text_id: db.command.in(textIdArr),
+            accuracy: db.command.gte(RECITE_PASS_SCORE),
+            practice_mode: db.command.neq('follow')
+          })
+          .field({ text_id: true, created_at: true })
+          .limit(3000)
+          .get()
+      ])
+      summaryList = (summaryRes && summaryRes.data) || []
+      reciteList = (reciteRes && reciteRes.data) || []
     }
     const summaryByTextId = {}
     summaryList.forEach((s) => {
@@ -584,6 +606,18 @@ async function listSubcollectionFavorites(event, data = {}, context) {
       const d = new Date(v)
       return Number.isNaN(d.getTime()) ? 0 : d.getTime()
     }
+    const reciteDaysBySub = {}
+    reciteList.forEach((rec) => {
+      const subIds = textToSubIds[rec.text_id]
+      if (!subIds || subIds.length === 0) return
+      const ms = toMs(rec.created_at)
+      if (!ms) return
+      const dateStr = new Date(ms).toISOString().slice(0, 10)
+      subIds.forEach((subId) => {
+        if (!reciteDaysBySub[subId]) reciteDaysBySub[subId] = new Set()
+        reciteDaysBySub[subId].add(dateStr)
+      })
+    })
     list = list.map((item) => {
       const textIds = subToTextIds[item.subcollection_id] || []
       const totalCount = textIds.length
@@ -600,11 +634,13 @@ async function listSubcollectionFavorites(event, data = {}, context) {
       const passedCount = summaries.filter(
         (s) => typeof s.recite_best_score === 'number' && !Number.isNaN(s.recite_best_score) && s.recite_best_score >= RECITE_PASS_SCORE
       ).length
+      const reciteDaysCount = (reciteDaysBySub[item.subcollection_id] && reciteDaysBySub[item.subcollection_id].size) || 0
       return {
         ...item,
         last_recite_at: lastReciteAt,
         recite_passed_count: passedCount,
-        recite_total_count: totalCount
+        recite_total_count: totalCount,
+        recite_days_count: reciteDaysCount
       }
     })
   } else {
@@ -612,7 +648,8 @@ async function listSubcollectionFavorites(event, data = {}, context) {
       ...item,
       last_recite_at: null,
       recite_passed_count: 0,
-      recite_total_count: 0
+      recite_total_count: 0,
+      recite_days_count: 0
     }))
   }
 
