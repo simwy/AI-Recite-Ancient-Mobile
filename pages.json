@@ -1,8 +1,9 @@
 {
-	"pages": [{
+	"pages": [		{
 			"path": "pages/ancient/list",
 			"style": {
-				"navigationBarTitleText": "文言文背诵 AI小助手"
+				"navigationBarTitleText": "文言文背诵 AI小助手",
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -26,6 +27,12 @@
 		},
 		{
 			"path": "pages/ancient/read",
+			"style": {
+				"navigationBarTitleText": "朗读文章"
+			}
+		},
+		{
+			"path": "pages/ancient/follow",
 			"style": {
 				"navigationBarTitleText": "跟读文章"
 			}

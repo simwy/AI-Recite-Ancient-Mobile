@@ -186,9 +186,17 @@ export default {
       })
     },
     goRead() {
-      this.goReadFromStart()
+      if (!this.detail || !this.detail.content) {
+        uni.showToast({ title: '暂无可跟读内容', icon: 'none' })
+        return
+      }
+      getApp().globalData = getApp().globalData || {}
+      getApp().globalData.currentText = this.detail
+      uni.navigateTo({
+        url: `/pages/ancient/follow?id=${this.id}`
+      })
     },
-    /** 从首句开始朗读：进入跟读页并自动从头播放 */
+    /** 从首句开始朗读：进入朗读页并自动从头播放 */
     goReadFromStart() {
       if (!this.detail || !this.detail.content) {
         uni.showToast({ title: '暂无可朗读内容', icon: 'none' })
@@ -197,10 +205,10 @@ export default {
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.currentText = this.detail
       uni.navigateTo({
-        url: `/pages/ancient/read?id=${this.id}&autoStart=1`
+        url: `/pages/ancient/read?id=${this.id}&startIndex=0`
       })
     },
-    /** 从指定句开始朗读：进入跟读页并从该句开始播放 */
+    /** 从指定句开始朗读：进入朗读页并从该句开始播放 */
     goReadFromSentence(index) {
       if (!this.detail || !this.detail.content) return
       getApp().globalData = getApp().globalData || {}

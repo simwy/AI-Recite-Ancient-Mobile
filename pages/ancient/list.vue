@@ -1,5 +1,15 @@
 <template>
   <view class="container">
+    <!-- 自定义导航栏：状态栏占位 + 标题栏 + 左侧拍照检查 -->
+    <view class="custom-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-bar">
+        <view class="nav-left" @click="onPhotoCheck">拍照检查</view>
+        <text class="nav-title">文言文背诵 AI小助手</text>
+        <view class="nav-right"></view>
+      </view>
+    </view>
+    <view class="nav-placeholder" :style="{ height: (statusBarHeight + 44) + 'px' }"></view>
+
     <view class="search-bar">
       <uni-search-bar
         v-model="keyword"
@@ -121,6 +131,7 @@
 export default {
   data() {
     return {
+      statusBarHeight: 0,
       keyword: '',
       list: [],
       loading: false,
@@ -139,6 +150,8 @@ export default {
     }
   },
   onLoad() {
+    const sys = uni.getSystemInfoSync()
+    this.statusBarHeight = sys.statusBarHeight || 0
     this.loadRecentActivity().then(() => this.loadData())
   },
   onPullDownRefresh() {
@@ -154,6 +167,11 @@ export default {
     }
   },
   methods: {
+    onPhotoCheck() {
+      // 拍照检查：可跳转拍照检查页或打开相机
+      uni.showToast({ title: '拍照检查', icon: 'none' })
+      // 后续可改为： uni.navigateTo({ url: '/pages/xxx/photo-check' })
+    },
     onInput(e) {
       clearTimeout(this.timer)
       this.timer = setTimeout(() => {
@@ -408,6 +426,45 @@ export default {
 </script>
 
 <style scoped>
+.custom-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  z-index: 999;
+  box-shadow: 0 1rpx 0 rgba(0, 0, 0, 0.05);
+}
+.nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16rpx;
+}
+.nav-left,
+.nav-right {
+  width: 120rpx;
+  font-size: 28rpx;
+  color: #333333;
+}
+.nav-left {
+  text-align: left;
+}
+.nav-right {
+  text-align: right;
+}
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #000000;
+}
+.nav-placeholder {
+  width: 100%;
+  flex-shrink: 0;
+}
 .container {
   padding: 20rpx;
 }
