@@ -444,17 +444,19 @@ export default {
 }
 .nav-left,
 .nav-right {
-  width: 120rpx;
+  width: 160rpx;
   font-size: 28rpx;
   color: #333333;
+  text-align: center;
 }
 .nav-left {
   text-align: center;
   padding: 8rpx 20rpx;
-  border: 1rpx solid #2f6fff;
+  border: 1rpx solid #c8c8c8;
   border-radius: 24rpx;
-  color: #2f6fff;
+  color: #333;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 .nav-right {
   text-align: right;
