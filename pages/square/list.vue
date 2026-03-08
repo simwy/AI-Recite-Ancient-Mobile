@@ -51,7 +51,7 @@
           </template>
         </view>
       </view>
-      <view class="group-section">
+      <view v-if="filteredUngrouped.length > 0" class="group-section">
         <view class="section-title" @click="toggleUngrouped">
           <text>未分组</text>
           <text class="section-recite-badge" :class="{ 'section-recite-badge--all': getGroupRecitePassed(filteredUngrouped) === filteredUngrouped.length && filteredUngrouped.length > 0 }">

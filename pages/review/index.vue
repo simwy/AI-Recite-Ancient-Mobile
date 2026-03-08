@@ -30,6 +30,10 @@
             <text class="item-title">{{ getItemTitle(item) }}</text>
             <text v-if="activeTab === 'records'" class="item-badge">{{ getModeText(item.practice_mode) }}</text>
           </view>
+          <view v-if="activeTab === 'collectionFavorites'" class="item-days-row">
+            <text class="item-days-text">{{ joinDaysText(item) }}</text>
+            <text class="item-progress-tag">{{ (item.recite_passed_count ?? 0) }}/{{ item.recite_total_count ?? 0 }} 篇</text>
+          </view>
           <view v-if="activeTab === 'records' && item.record_type" class="item-brief">
             <text class="item-brief-line">{{ getRecordBriefLine(item) }}</text>
             <text v-if="item.recognized_snippet" class="item-snippet">{{ item.recognized_snippet }}</text>
@@ -42,10 +46,6 @@
             <view class="item-activity-row">
               <text class="item-activity-label">最近背诵</text>
               <text class="item-activity-value">{{ item.last_recite_at ? formatTime(item.last_recite_at) : '暂无' }}</text>
-            </view>
-            <view class="item-activity-row">
-              <text class="item-activity-label">背诵进度</text>
-              <text class="item-activity-value item-activity-recite">{{ (item.recite_passed_count ?? 0) }}/{{ item.recite_total_count ?? 0 }}</text>
             </view>
           </view>
           <view v-else-if="activeTab === 'articleFavorites'" class="item-meta">
@@ -339,6 +339,22 @@ export default {
         url: '/uni_modules/uni-id-pages/pages/login/login-withoutpwd'
       })
     },
+    joinDays(item) {
+      if (!item || item.created_at == null) return 0
+      const t = typeof item.created_at === 'number' && item.created_at < 1e12 ? item.created_at * 1000 : item.created_at
+      const d = new Date(t)
+      if (Number.isNaN(d.getTime())) return 0
+      const today = new Date()
+      d.setHours(0, 0, 0, 0)
+      today.setHours(0, 0, 0, 0)
+      const diff = Math.floor((today - d) / 86400000)
+      return diff < 0 ? 0 : diff
+    },
+    joinDaysText(item) {
+      const join = this.joinDays(item)
+      const recite = item.recite_days_count ?? 0
+      return `加入 ${join} 天 · 背诵 ${recite} 天`
+    },
     formatTime(ts) {
       if (ts == null) return ''
       const t = typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts
@@ -407,6 +423,9 @@ export default {
   color: #1f2329;
   font-weight: 600;
   margin-right: 20rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-badge {
@@ -415,6 +434,18 @@ export default {
   background: #e8f3ff;
   border-radius: 999rpx;
   padding: 6rpx 14rpx;
+}
+
+.item-days-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+.item-days-text {
+  font-size: 26rpx;
+  color: #1677ff;
+  font-weight: 500;
 }
 
 .item-brief {
@@ -464,6 +495,15 @@ export default {
 }
 .item-activity-value {
   color: #1f2329;
+}
+.item-progress-tag {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1f2329;
+  background: #f2f3f5;
+  border-radius: 8rpx;
+  padding: 8rpx 16rpx;
+  flex-shrink: 0;
 }
 .item-activity-recite {
   font-weight: 600;
