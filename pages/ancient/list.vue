@@ -17,11 +17,20 @@
         :key="item._id"
         @click="goDetail(item)"
       >
-        <view class="item-title">{{ item.title }}</view>
-        <view class="item-meta">
-          <text class="item-author">{{ item.dynasty }} · {{ item.author || '出处未知' }}</text>
+        <view class="item-main">
+          <view class="item-title">{{ item.title }}</view>
+          <view class="item-meta">
+            <text class="item-author">{{ item.dynasty }} · {{ item.author || '出处未知' }}</text>
+          </view>
+          <view class="item-preview">{{ getPreview(item.content) }}</view>
         </view>
-        <view class="item-preview">{{ getPreview(item.content) }}</view>
+        <view class="item-scores" v-if="getItemScores(item).length">
+          <text
+            class="score-tag"
+            v-for="s in getItemScores(item)"
+            :key="s.label"
+          >{{ s.label }} {{ s.score }}</text>
+        </view>
       </view>
       <!-- 有搜索词时，即使有结果也提供“添加文章”入口：结果可能只是包含关键词，不一定是用户想找的那篇 -->
       <view class="empty-action-card add-below-list" v-if="keyword">
@@ -124,7 +133,9 @@ export default {
       showAddPopup: false,
       aiCandidates: [],
       // text_id -> 最近一次学习时间戳（读过/背诵过/默写过），用于列表优先排序
-      recentActivityMap: {}
+      recentActivityMap: {},
+      // text_id -> { read_last_score?, recite_last_score?, dictation_last_score? }
+      summaryMap: {}
     }
   },
   onLoad() {
@@ -219,11 +230,48 @@ export default {
         this.list = append ? [...this.list, ...list] : list
         this.total = total
         if (!append) this.applyRecentSort()
+        const ids = this.list.map((i) => i._id)
+        if (ids.length) this.loadSummaries(ids, append)
       } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' })
       } finally {
         this.loading = false
       }
+    },
+    /** 拉取指定 text_id 列表的朗读/背诵/默写最近分数，合并到 summaryMap */
+    async loadSummaries(textIds, merge = true) {
+      if (!textIds || textIds.length === 0) return
+      try {
+        const res = await uniCloud.callFunction({
+          name: 'gw_ancient-search',
+          data: {
+            action: 'getUserTextSummaries',
+            data: { text_ids: textIds }
+          }
+        })
+        const result = (res && res.result) || {}
+        if (result.code !== 0 || !result.data || !result.data.list) return
+        const list = result.data.list || []
+        if (!merge) this.summaryMap = {}
+        for (const s of list) {
+          if (s && s.text_id) this.summaryMap[s.text_id] = s
+        }
+      } catch (e) {
+        // 静默失败，列表照常展示
+      }
+    },
+    /** 返回该项要展示的分数数组 [{ label, score }]，无分数则空 */
+    getItemScores(item) {
+      const s = this.summaryMap[item._id]
+      if (!s) return []
+      const out = []
+      const add = (label, val) => {
+        if (typeof val === 'number' && !Number.isNaN(val)) out.push({ label, score: Math.round(val) })
+      }
+      add('朗读', s.read_last_score)
+      add('背诵', s.recite_last_score)
+      add('默写', s.dictation_last_score)
+      return out
     },
     getPreview(content, len = 30) {
       if (!content) return ''
@@ -367,11 +415,32 @@ export default {
   margin-bottom: 20rpx;
 }
 .list-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   padding: 24rpx;
   margin-bottom: 16rpx;
   background: #fff;
   border-radius: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+.item-main {
+  flex: 1;
+  min-width: 0;
+  margin-right: 16rpx;
+}
+.item-scores {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6rpx;
+}
+.score-tag {
+  font-size: 22rpx;
+  color: #888;
+  white-space: nowrap;
 }
 .item-title {
   font-size: 34rpx;

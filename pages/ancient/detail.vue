@@ -112,6 +112,7 @@
 <script>
 import { store } from '@/uni_modules/uni-id-pages/common/store.js'
 import { buildPlayUnits } from '@/common/playUnits.js'
+import ttsService from '@/common/ttsService.js'
 
 const db = uniCloud.database()
 
@@ -163,6 +164,7 @@ export default {
         const res = await db.collection('gw-ancient-texts').doc(this.id).get()
         if (res.result.data && res.result.data.length > 0) {
           this.detail = res.result.data[0]
+          this.preloadTts()
         }
       } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' })
@@ -297,6 +299,16 @@ export default {
       } catch (e) {
         console.error('检查收藏状态失败', e)
       }
+    },
+    preloadTts() {
+      const content = (this.detail && this.detail.content) || ''
+      if (!content) return
+      const units = buildPlayUnits(content)
+      const unitsWithHash = units.map(item => ({
+        ...item,
+        hash: ttsService.buildUnitHash(item.text)
+      }))
+      ttsService.preloadAll(unitsWithHash).catch(() => {})
     },
     async toggleFavorite() {
       if (!this.hasLogin) {

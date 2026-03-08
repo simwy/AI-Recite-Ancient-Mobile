@@ -95,52 +95,8 @@
           <uni-icons type="pause" size="22" color="#fff"></uni-icons>
           <text class="stop-read-text">停止朗读</text>
         </view>
-        <text class="debug-trigger" @tap="toggleDebugPanel">调试</text>
         <view class="clear-btn" @tap="onClearReadProgress">
           <uni-icons type="reload" size="24" color="#4f46e5"></uni-icons>
-        </view>
-      </view>
-    </view>
-
-    <!-- 朗读调试面板：用于定位体验版无法播放的原因 -->
-    <view v-if="showDebugPanel" class="debug-mask" @tap="showDebugPanel = false">
-      <view class="debug-panel" @tap.stop>
-        <view class="debug-title">朗读调试</view>
-        <scroll-view class="debug-body" scroll-y>
-          <view class="debug-section">
-            <text class="debug-label">运行环境</text>
-            <text class="debug-value">{{ debugEnv }}</text>
-          </view>
-          <view class="debug-section">
-            <text class="debug-label">InnerAudioContext</text>
-            <text class="debug-value">{{ debugAudioContextStatus }}</text>
-          </view>
-          <view class="debug-section">
-            <text class="debug-label">最近一次 TTS 返回</text>
-            <text class="debug-value">{{ lastTtsResultType || '—' }}</text>
-          </view>
-          <view class="debug-section">
-            <text class="debug-label">最近一次播放 src 类型</text>
-            <text class="debug-value">{{ lastPlaySrcType || '—' }}</text>
-          </view>
-          <view class="debug-section" v-if="lastPlaySrcPreview">
-            <text class="debug-label">播放地址预览</text>
-            <text class="debug-value debug-value-small">{{ lastPlaySrcPreview }}</text>
-          </view>
-          <view class="debug-section" v-if="lastAudioError">
-            <text class="debug-label">最近一次播放错误</text>
-            <text class="debug-value debug-value-error">{{ lastAudioError }}</text>
-          </view>
-          <view class="debug-section" v-if="lastDownloadTest">
-            <text class="debug-label">下载测试结果</text>
-            <text class="debug-value debug-value-small">{{ lastDownloadTest }}</text>
-          </view>
-        </scroll-view>
-        <view class="debug-actions">
-          <button class="debug-btn" size="mini" @tap="runTestPlayPublic">测试播放(公网MP3)</button>
-          <button class="debug-btn" size="mini" @tap="runTestDownload">测试下载(TTS域名)</button>
-          <button class="debug-btn" size="mini" @tap="runTestCurrentUnit">检测当前句</button>
-          <button class="debug-btn debug-btn-close" size="mini" @tap="showDebugPanel = false">关闭</button>
         </view>
       </view>
     </view>
@@ -150,39 +106,16 @@
 <script>
 import { diffChars, calcAccuracy } from '@/common/diff.js'
 import { buildPlayUnits as buildPlayUnitsFromContent } from '@/common/playUnits.js'
+import ttsService from '@/common/ttsService.js'
+import { createStableHash } from '@/common/ttsService.js'
 
 const db = uniCloud.database()
-const CACHE_INDEX_KEY = 'gw_tts_audio_cache_index_v1'
-const CACHE_AUDIO_PREFIX = 'gw_tts_audio_data_v1_'
-const MAX_LOCAL_CACHE_ITEMS = 80
 const SPLIT_VERSION = 'v1'
-const TTS_PENDING_RETRY_MAX = 6
-const TTS_PENDING_RETRY_DELAY = 800
-
-// 小程序真机原生解码不支持 data URI，仅支持网络 URL，否则会报 errCode 62
-function isMiniProgram() {
-  return typeof wx !== 'undefined' || typeof my !== 'undefined'
-}
 
 export default {
   computed: {
     showStopButton() {
       return this.isFullReading || this.loadingUnitIndex >= 0 || typeof this.audioPlayResolver === 'function'
-    },
-    debugEnv() {
-      const parts = []
-      if (typeof wx !== 'undefined') parts.push('微信')
-      if (typeof my !== 'undefined') parts.push('支付宝')
-      if (typeof plus !== 'undefined') parts.push('APP')
-      if (typeof window !== 'undefined' && !parts.length) parts.push('H5')
-      if (!parts.length) parts.push('未知')
-      parts.push(isMiniProgram() ? '(小程序)' : '(非小程序)')
-      return parts.join(' ')
-    },
-    debugAudioContextStatus() {
-      if (!this.audioContext) return '未创建'
-      const hasCreate = typeof uni.createInnerAudioContext === 'function'
-      return hasCreate ? '已创建' : 'API 不可用'
     },
     followTotalScore() {
       if (!this.playUnits.length) return 0
@@ -212,24 +145,7 @@ export default {
       queueNextIndex: 0,
       lastFinishedUnitIndex: -1,
       fullReadToken: 0,
-      localCacheIndex: {},
-      ttsOptions: {
-        voice: 'x6_lingyufei_pro',
-        speed: 50,
-        pitch: 50,
-        volume: 50,
-        format: 'mp3'
-      },
       snapshotSyncing: false,
-      // 小程序先下载再播：同一句复用本地路径，避免重复下载
-      downloadTempPathCache: {},
-      // 调试用：体验版无法播放时定位原因
-      showDebugPanel: false,
-      lastTtsResultType: '',
-      lastPlaySrcType: '',
-      lastPlaySrcPreview: '',
-      lastAudioError: '',
-      lastDownloadTest: '',
       // 跟读模式
       followMode: true,
       followingUnitIndex: -1,
@@ -265,7 +181,6 @@ export default {
     this.pendingAutoStartIndex = options.autoStart === '1' ? 0 : (options.startIndex != null && options.startIndex !== '' ? parseInt(options.startIndex, 10) : -1)
     // autoStart=1 → 跟读模式；startIndex → 朗读模式
     this.followMode = options.autoStart === '1'
-    this.localCacheIndex = this.loadCacheIndex()
     this.initAudioContext()
     this.initRecorder()
     this.loadDetail()
@@ -273,7 +188,6 @@ export default {
   onUnload() {
     this.stopActiveAudio()
     this.audioPlayResolver = null
-    this.downloadTempPathCache = {}
     // 清理录音/ASR资源
     this.closeSocket()
     if (this.useWebRecorder) {
@@ -336,10 +250,7 @@ export default {
         this.resolveAudioPlay('ended')
         this.handleUnitFinished()
       })
-      this.audioContext.onError((err) => {
-        const code = (err && err.errCode) != null ? err.errCode : (err && err.code)
-        const msg = (err && err.errMsg) || (err && err.message) || ''
-        this.lastAudioError = `errCode=${code} errMsg=${msg}`.trim()
+      this.audioContext.onError(() => {
         this.resolveAudioPlay('error')
         if (this.isFullReading) {
           this.playNextInQueue()
@@ -454,21 +365,13 @@ export default {
       return /^[，。！？；：、,.!?;:'"“”‘’（）()《》〈〉【】\[\]—…]$/.test(text)
     },
     createStableHash(text) {
-      const source = String(text || '')
-      let hash = 2166136261
-      for (let i = 0; i < source.length; i++) {
-        hash ^= source.charCodeAt(i)
-        hash = Math.imul(hash, 16777619)
-      }
-      return (hash >>> 0).toString(16)
+      return createStableHash(text)
     },
     createSha1Hash(text) {
-      return this.createStableHash(String(text || ''))
+      return createStableHash(String(text || ''))
     },
     buildUnitHash(text) {
-      const normalized = String(text || '').replace(/\s+/g, ' ').trim()
-      const payload = `${normalized}|${this.ttsOptions.voice}|${this.ttsOptions.speed}|${this.ttsOptions.pitch}|${this.ttsOptions.volume}|${this.ttsOptions.format}|v2`
-      return this.createStableHash(payload)
+      return ttsService.buildUnitHash(text)
     },
     buildSnapshotSentences() {
       const grouped = {}
@@ -646,58 +549,8 @@ export default {
      * 小程序真机播网络 URL 易报 err 55，先下载到本地再播；同一句复用本地路径。
      * 若 download 失败（如未配置下载域名），降级为直接使用网络地址播放。
      */
-    resolvePlaySrc(unit, audioSrc) {
-      if (!isMiniProgram()) {
-        this.lastPlaySrcType = audioSrc && String(audioSrc).startsWith('data:') ? 'dataUri' : 'networkUrl'
-        this.lastPlaySrcPreview = this.previewSrc(audioSrc)
-        return Promise.resolve(audioSrc)
-      }
-      const url = String(audioSrc || '')
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        this.lastPlaySrcType = 'dataUri_or_other'
-        this.lastPlaySrcPreview = this.previewSrc(audioSrc)
-        return Promise.resolve(audioSrc)
-      }
-      const hash = unit && unit.hash
-      if (!hash) {
-        this.lastPlaySrcType = 'networkUrl'
-        this.lastPlaySrcPreview = this.previewSrc(url)
-        return Promise.resolve(audioSrc)
-      }
-      if (this.downloadTempPathCache[hash]) {
-        this.lastPlaySrcType = 'tempPath'
-        this.lastPlaySrcPreview = this.previewSrc(this.downloadTempPathCache[hash])
-        return Promise.resolve(this.downloadTempPathCache[hash])
-      }
-      return new Promise((resolve) => {
-        uni.downloadFile({
-          url,
-          success: (res) => {
-            if (res.statusCode === 200 && res.tempFilePath) {
-              this.downloadTempPathCache[hash] = res.tempFilePath
-              this.lastPlaySrcType = 'tempPath'
-              this.lastPlaySrcPreview = this.previewSrc(res.tempFilePath)
-              resolve(res.tempFilePath)
-            } else {
-              this.lastPlaySrcType = 'networkUrl(下载非200)'
-              this.lastPlaySrcPreview = `statusCode=${res.statusCode}`
-              resolve(url)
-            }
-          },
-          fail: (e) => {
-            const errMsg = (e && e.errMsg) || (e && e.message) || ''
-            this.lastPlaySrcType = 'networkUrl(下载失败)'
-            this.lastPlaySrcPreview = errMsg ? this.previewSrc(url) + ' | ' + errMsg : this.previewSrc(url)
-            resolve(url)
-          }
-        })
-      })
-    },
-    previewSrc(src) {
-      if (!src || typeof src !== 'string') return '—'
-      if (src.startsWith('data:')) return 'data:...base64'
-      if (src.startsWith('http')) return src.length > 50 ? src.slice(0, 50) + '...' : src
-      return src.length > 40 ? src.slice(0, 40) + '...' : src
+    async resolvePlaySrc(unit, audioSrc) {
+      return ttsService.resolvePlaySrc(unit, audioSrc)
     },
     async playUnit(index) {
       const unit = this.playUnits[index]
@@ -729,222 +582,15 @@ export default {
       }
     },
     async ensureUnitAudio(unit) {
-      const cached = this.getCachedAudio(unit.hash)
-      if (cached) {
-        this.touchCacheEntry(unit.hash)
-        return cached
-      }
-      const result = await this.requestTtsResult(unit)
-      if (result.code !== 0 || !result.data) {
-        throw new Error(result.msg || '语音合成失败')
-      }
-      if (result.data.audioUrl) {
-        this.lastTtsResultType = 'audioUrl'
-        this.saveCachedAudioUrl(unit.hash, result.data.audioUrl, result.data.format || this.ttsOptions.format || 'mp3')
-        return result.data.audioUrl
-      }
-      if (!result.data.audioBase64) {
-        this.lastTtsResultType = '无'
-        throw new Error('语音合成结果为空')
-      }
-      this.lastTtsResultType = 'audioBase64'
-      if (isMiniProgram()) {
-        throw new Error('语音播放暂时不可用，请稍后重试')
-      }
-      const format = result.data.format || this.ttsOptions.format || 'mp3'
-      const dataUri = this.buildDataUri(result.data.audioBase64, format)
-      this.saveCachedAudio(unit.hash, result.data.audioBase64, format)
-      return dataUri
-    },
-    async requestTtsResult(unit) {
-      for (let i = 0; i < TTS_PENDING_RETRY_MAX; i++) {
-        const res = await uniCloud.callFunction({
-          name: 'gw_tts-synthesize',
-          data: {
-            text: unit.text,
-            ...this.ttsOptions
-          }
-        })
-        const result = (res && res.result) || {}
-        const status = result && result.data && result.data.status
-        if (result.code !== 0 || status !== 'pending') {
-          return result
-        }
-        const retryAfter = Number(result.data.retryAfter || TTS_PENDING_RETRY_DELAY)
-        await this.sleep(Math.max(200, retryAfter))
-      }
-      return {
-        code: -1,
-        msg: '语音生成排队中，请稍后重试'
-      }
-    },
-    sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms))
+      return ttsService.ensureUnitAudio(unit)
     },
     preloadNextUnits(startIndex, limit) {
       const end = Math.min(this.playUnits.length, startIndex + limit)
       for (let i = startIndex; i < end; i++) {
         const unit = this.playUnits[i]
         if (!unit) continue
-        if (this.getCachedAudio(unit.hash)) continue
-        this.ensureUnitAudio(unit).catch(() => {})
-      }
-    },
-    buildDataUri(base64, format) {
-      const mimeMap = {
-        mp3: 'audio/mpeg',
-        wav: 'audio/wav',
-        pcm: 'audio/L16'
-      }
-      const fmt = String(format || 'mp3').toLowerCase()
-      const mime = mimeMap[fmt] || 'audio/mpeg'
-      return `data:${mime};base64,${base64}`
-    },
-    loadCacheIndex() {
-      const cached = uni.getStorageSync(CACHE_INDEX_KEY)
-      if (!cached || typeof cached !== 'object') return {}
-      return cached
-    },
-    persistCacheIndex() {
-      uni.setStorageSync(CACHE_INDEX_KEY, this.localCacheIndex)
-    },
-    getCachedAudio(hash) {
-      const meta = this.localCacheIndex[hash]
-      if (meta && meta.url) {
-        return meta.url
-      }
-      if (isMiniProgram()) {
-        return ''
-      }
-      const base64 = uni.getStorageSync(`${CACHE_AUDIO_PREFIX}${hash}`)
-      if (!base64 || typeof base64 !== 'string') return ''
-      const format = (meta && meta.format) || this.ttsOptions.format || 'mp3'
-      return this.buildDataUri(base64, format)
-    },
-    touchCacheEntry(hash) {
-      if (!this.localCacheIndex[hash]) return
-      this.localCacheIndex[hash].lastAccessAt = Date.now()
-      this.persistCacheIndex()
-    },
-    saveCachedAudio(hash, base64, format) {
-      const storageKey = `${CACHE_AUDIO_PREFIX}${hash}`
-      try {
-        uni.setStorageSync(storageKey, base64)
-        this.localCacheIndex[hash] = {
-          key: storageKey,
-          format,
-          size: base64.length,
-          updatedAt: Date.now(),
-          lastAccessAt: Date.now()
-        }
-        this.trimCacheByLru()
-        this.persistCacheIndex()
-      } catch (e) {
-      }
-    },
-    saveCachedAudioUrl(hash, url, format) {
-      if (!url) return
-      this.localCacheIndex[hash] = {
-        key: '',
-        url,
-        format,
-        size: String(url).length,
-        updatedAt: Date.now(),
-        lastAccessAt: Date.now()
-      }
-      this.trimCacheByLru()
-      this.persistCacheIndex()
-    },
-    trimCacheByLru() {
-      const entries = Object.keys(this.localCacheIndex).map((hash) => ({
-        hash,
-        meta: this.localCacheIndex[hash]
-      }))
-      if (entries.length <= MAX_LOCAL_CACHE_ITEMS) return
-      entries.sort((a, b) => (a.meta.lastAccessAt || 0) - (b.meta.lastAccessAt || 0))
-      const removeCount = entries.length - MAX_LOCAL_CACHE_ITEMS
-      for (let i = 0; i < removeCount; i++) {
-        const current = entries[i]
-        if (!current) continue
-        const targetKey = `${CACHE_AUDIO_PREFIX}${current.hash}`
-        uni.removeStorageSync(targetKey)
-        delete this.localCacheIndex[current.hash]
-      }
-    },
-
-    toggleDebugPanel() {
-      this.showDebugPanel = !this.showDebugPanel
-    },
-
-    /** 测试：用公网音频直接播放（使用临时 Context），用于判断是播放器问题还是 TTS/下载问题 */
-    runTestPlayPublic() {
-      if (typeof uni.createInnerAudioContext !== 'function') {
-        uni.showToast({ title: 'InnerAudioContext API 不可用', icon: 'none' })
-        return
-      }
-      this.lastAudioError = ''
-      const testUrl = 'https://dldir1.qq.com/music/release/upload/t_mm_file_publish/2367852.m4a'
-      const ctx = uni.createInnerAudioContext()
-      const onEnd = () => {
-        try { ctx.offEnded(onEnd); ctx.offError(onErr) } catch (e) {}
-        try { ctx.destroy() } catch (e) {}
-        this.lastAudioError = ''
-        uni.showToast({ title: '公网音频播放成功', icon: 'success' })
-      }
-      const onErr = (err) => {
-        try { ctx.offEnded(onEnd); ctx.offError(onErr) } catch (e) {}
-        try { ctx.destroy() } catch (e) {}
-        const code = (err && err.errCode) != null ? err.errCode : (err && err.code)
-        const msg = (err && err.errMsg) || (err && err.message) || ''
-        this.lastAudioError = `[公网测试] errCode=${code} errMsg=${msg}`.trim()
-        uni.showToast({ title: '公网播放失败，见调试面板', icon: 'none', duration: 3000 })
-      }
-      ctx.onEnded(onEnd)
-      ctx.onError(onErr)
-      try {
-        ctx.src = testUrl
-        ctx.play()
-        uni.showToast({ title: '正在播放公网测试...', icon: 'none' })
-      } catch (e) {
-        try { ctx.destroy() } catch (e2) {}
-        this.lastAudioError = `[公网测试] play异常: ${(e && e.message) || e}`
-        uni.showToast({ title: '播放异常', icon: 'none' })
-      }
-    },
-
-    /** 测试：对 TTS 返回的地址做 downloadFile，用于判断是否未配置下载域名 */
-    async runTestDownload() {
-      const unit = this.playUnits[0]
-      if (!unit) {
-        uni.showToast({ title: '无句子可测', icon: 'none' })
-        return
-      }
-      this.lastDownloadTest = '请求 TTS 中...'
-      try {
-        const audioSrc = await this.ensureUnitAudio(unit)
-        const url = String(audioSrc || '')
-        if (!url.startsWith('http')) {
-          this.lastDownloadTest = `TTS 未返回网络地址，当前为: ${this.lastTtsResultType}`
-          uni.showToast({ title: 'TTS 未返回 URL', icon: 'none' })
-          return
-        }
-        uni.downloadFile({
-          url,
-          success: (res) => {
-            const status = res.statusCode
-            const path = res.tempFilePath ? '有' : '无'
-            this.lastDownloadTest = `statusCode=${status} tempFilePath=${path}`
-            uni.showToast({ title: status === 200 ? '下载成功' : `HTTP ${status}`, icon: status === 200 ? 'success' : 'none' })
-          },
-          fail: (err) => {
-            const msg = (err && err.errMsg) || (err && err.message) || ''
-            this.lastDownloadTest = `下载失败: ${msg}`
-            uni.showToast({ title: '下载失败，见调试面板', icon: 'none', duration: 3000 })
-          }
-        })
-      } catch (e) {
-        this.lastDownloadTest = `TTS/流程异常: ${(e && e.message) || e}`
-        uni.showToast({ title: '获取音频失败', icon: 'none' })
+        if (ttsService.getCachedAudio(unit.hash)) continue
+        ttsService.ensureUnitAudio(unit).catch(() => {})
       }
     },
 
@@ -1042,31 +688,6 @@ export default {
       })
     },
 
-    /** 检测当前第一句：只跑 TTS + resolvePlaySrc，不播放，用于看返回类型和最终 src */
-    async runTestCurrentUnit() {
-      const unit = this.playUnits[0]
-      if (!unit) {
-        uni.showToast({ title: '无句子可测', icon: 'none' })
-        return
-      }
-      this.lastTtsResultType = ''
-      this.lastPlaySrcType = ''
-      this.lastPlaySrcPreview = ''
-      this.lastAudioError = ''
-      try {
-        const audioSrc = await this.ensureUnitAudio(unit)
-        const playSrc = await this.resolvePlaySrc(unit, audioSrc)
-        uni.showToast({
-          title: `TTS: ${this.lastTtsResultType} → 播放: ${this.lastPlaySrcType}`,
-          icon: 'none',
-          duration: 2500
-        })
-      } catch (e) {
-        this.lastTtsResultType = this.lastTtsResultType || '异常'
-        this.lastAudioError = (e && e.message) || String(e)
-        uni.showToast({ title: '检测失败，见调试面板', icon: 'none', duration: 2500 })
-      }
-    },
     async loadAsrConfig() {
       if (this.asrConfig) return // 已有配置则跳过，避免重复网络请求
       const res = await uniCloud.callFunction({ name: 'gw_asr-config' })
@@ -1858,91 +1479,6 @@ export default {
   border: 1rpx solid #c7d2fe;
 }
 
-.debug-trigger {
-  font-size: 24rpx;
-  color: #98a2b3;
-  margin-right: 24rpx;
-  padding: 8rpx 16rpx;
-}
-.debug-mask {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32rpx;
-  box-sizing: border-box;
-}
-.debug-panel {
-  width: 100%;
-  max-width: 640rpx;
-  max-height: 80vh;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-}
-.debug-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 16rpx;
-}
-.debug-body {
-  flex: 1;
-  min-height: 200rpx;
-  max-height: 50vh;
-  margin-bottom: 16rpx;
-}
-.debug-section {
-  margin-bottom: 16rpx;
-}
-.debug-label {
-  display: block;
-  font-size: 24rpx;
-  color: #6b7280;
-  margin-bottom: 6rpx;
-}
-.debug-value {
-  display: block;
-  font-size: 26rpx;
-  color: #111827;
-  word-break: break-all;
-}
-.debug-value-small {
-  font-size: 22rpx;
-  color: #4b5563;
-}
-.debug-value-error {
-  color: #b42318;
-}
-.debug-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-.debug-btn {
-  font-size: 24rpx;
-  padding: 0 20rpx;
-  height: 56rpx;
-  line-height: 56rpx;
-  color: #2f6fff;
-  background: #eef4ff;
-  border: 1rpx solid #c9dcff;
-  border-radius: 28rpx;
-}
-.debug-btn-close {
-  color: #667085;
-  background: #f5f7fa;
-  border-color: #e4e7ed;
-}
 /* ========== 跟读模式样式 ========== */
 .tool-btn-active {
   background: #2f6fff !important;

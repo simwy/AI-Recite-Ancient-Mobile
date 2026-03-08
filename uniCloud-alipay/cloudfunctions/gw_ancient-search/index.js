@@ -5,6 +5,7 @@ const categoryCollection = db.collection('gw-square-categories')
 const subcollectionCollection = db.collection('gw-square-subcollections')
 const relationCollection = db.collection('gw-square-text-relations')
 const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
+const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -510,6 +511,40 @@ async function confirmAdd(event, data, context) {
   }
 }
 
+/** 批量获取当前用户对指定古文的最新朗读/背诵/默写分数（用于列表展示） */
+async function getUserTextSummaries(event, context) {
+  const uid = await getAuthUid(event, context)
+  if (!uid) {
+    return { code: 0, data: { list: [] } }
+  }
+  const { data = {} } = event
+  let textIds = Array.isArray(data.text_ids) ? data.text_ids : []
+  if (textIds.length > 100) textIds = textIds.slice(0, 100)
+  if (textIds.length === 0) {
+    return { code: 0, data: { list: [] } }
+  }
+  const res = await summaryCollection
+    .where({
+      user_id: uid,
+      text_id: db.command.in(textIds)
+    })
+    .field({
+      text_id: true,
+      read_last_score: true,
+      recite_last_score: true,
+      dictation_last_score: true
+    })
+    .limit(100)
+    .get()
+  const list = (res.data || []).map((doc) => ({
+    text_id: doc.text_id,
+    read_last_score: doc.read_last_score,
+    recite_last_score: doc.recite_last_score,
+    dictation_last_score: doc.dictation_last_score
+  }))
+  return { code: 0, data: { list } }
+}
+
 exports.main = async (event, context) => {
   const { action = 'search', keyword = '', page = 1, pageSize = 20, data = {} } = event || {}
   try {
@@ -532,6 +567,8 @@ exports.main = async (event, context) => {
         return await listSubcollectionFavorites(event, data, context)
       case 'confirmAdd':
         return await confirmAdd(event, data, context)
+      case 'getUserTextSummaries':
+        return await getUserTextSummaries(event, context)
       default:
         return { code: -1, msg: '未知操作' }
     }
