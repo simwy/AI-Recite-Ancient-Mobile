@@ -21,6 +21,25 @@ exports.main = async (event, context) => {
     return { code: -1, msg: '请先登录' }
   }
 
+  if (action === 'delete') {
+    const { id, record_type } = data
+    if (!id || !record_type) return { code: -1, msg: '缺少记录ID或类型' }
+    const collMap = {
+      recite: reciteCollection,
+      follow: followCollection,
+      dictation: dictationCollection
+    }
+    const coll = collMap[record_type]
+    if (!coll) return { code: -1, msg: '未知记录类型' }
+    const res = await coll.doc(id).get()
+    const record = res.data && res.data[0]
+    if (!record || record.user_id !== uid) {
+      return { code: -1, msg: '记录不存在' }
+    }
+    await coll.doc(id).remove()
+    return { code: 0, msg: '已删除' }
+  }
+
   if (action !== 'list') {
     return { code: -1, msg: '未知操作' }
   }

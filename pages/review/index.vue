@@ -50,10 +50,14 @@
           </view>
           <view v-else-if="activeTab === 'articleFavorites'" class="item-meta">
             <text>{{ getItemMeta(item) }}</text>
-            <text>{{ formatTime(item.created_at) }}</text>
+            <view class="item-meta-right">
+              <text>{{ formatTime(item.created_at) }}</text>
+              <text class="item-delete-btn" @tap.stop="onDeleteFavorite(item)">删除</text>
+            </view>
           </view>
           <view v-else-if="activeTab === 'records'" class="item-meta">
             <text>{{ formatTime(item.created_at) }}</text>
+            <text class="item-delete-btn" @tap.stop="onDeleteRecord(item)">删除</text>
           </view>
         </view>
       </view>
@@ -362,6 +366,66 @@ export default {
       if (Number.isNaN(d.getTime())) return ''
       const pad = (n) => String(n).padStart(2, '0')
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    },
+    onDeleteRecord(item) {
+      if (!item || !item._id || !item.record_type) return
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这条学习日志吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const result = await uniCloud.callFunction({
+              name: 'gw_learning-records',
+              data: {
+                action: 'delete',
+                data: { id: item._id, record_type: item.record_type }
+              }
+            })
+            const ret = (result && result.result) || {}
+            if (ret.code !== 0) {
+              uni.showToast({ title: ret.msg || '删除失败', icon: 'none' })
+              return
+            }
+            this.lists.records = this.lists.records.filter((r) => r._id !== item._id)
+            this.totalMap.records = Math.max(0, (this.totalMap.records || 1) - 1)
+            uni.showToast({ title: '已删除', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: (e && e.message) || '删除失败', icon: 'none' })
+          }
+        }
+      })
+    },
+    onDeleteFavorite(item) {
+      if (!item || !item.text_id) return
+      uni.showModal({
+        title: '确认删除',
+        content: '确定从学习清单中移除这篇古文吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const uniIdToken = this.getUniIdToken()
+            const result = await uniCloud.callFunction({
+              name: 'gw_favorite',
+              data: {
+                action: 'toggle',
+                data: { text_id: item.text_id },
+                uniIdToken
+              }
+            })
+            const ret = (result && result.result) || {}
+            if (ret.code !== 0) {
+              uni.showToast({ title: ret.msg || '移除失败', icon: 'none' })
+              return
+            }
+            this.lists.articleFavorites = this.lists.articleFavorites.filter((f) => f.text_id !== item.text_id)
+            this.totalMap.articleFavorites = Math.max(0, (this.totalMap.articleFavorites || 1) - 1)
+            uni.showToast({ title: '已移除', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: (e && e.message) || '移除失败', icon: 'none' })
+          }
+        }
+      })
     }
   }
 }
@@ -472,6 +536,16 @@ export default {
   justify-content: space-between;
   font-size: 24rpx;
   color: #86909c;
+}
+.item-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+.item-delete-btn {
+  font-size: 24rpx;
+  color: #f53f3f;
+  padding: 4rpx 8rpx;
 }
 
 .item-activity-stats {

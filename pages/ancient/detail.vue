@@ -66,6 +66,7 @@
               <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
               <text class="record-meta">跟读 · {{ formatDuration(item.duration_seconds) }}</text>
               <text class="record-time">{{ formatTime(item.created_at) }}</text>
+              <text class="record-delete-btn" @tap.stop="onDeleteFollow(item)">删除</text>
             </view>
           </view>
         </view>
@@ -91,6 +92,7 @@
               <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
               <text class="record-meta">提示 {{ item.hint_count || 0 }} 次 · {{ formatDuration(item.duration_seconds) }}</text>
               <text class="record-time">{{ formatTime(item.created_at) }}</text>
+              <text class="record-delete-btn" @tap.stop="onDeleteRecite(item)">删除</text>
             </view>
           </view>
         </view>
@@ -116,6 +118,7 @@
               <text class="record-accuracy">{{ item.accuracy || 0 }}%</text>
               <text class="record-meta">{{ item.difficulty ? difficultyLabel(item.difficulty) : '默写' }}</text>
               <text class="record-time">{{ formatTime(item.created_at) }}</text>
+              <text class="record-delete-btn" @tap.stop="onDeleteDictation(item)">删除</text>
             </view>
           </view>
         </view>
@@ -356,6 +359,84 @@ export default {
     },
     goDictationResult(recordId) {
       uni.navigateTo({ url: `/pages/ancient/dictation-result?recordId=${recordId}` })
+    },
+    onDeleteFollow(item) {
+      if (!item || !item._id) return
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这条跟读记录吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const result = await uniCloud.callFunction({
+              name: 'gw_follow-record',
+              data: { action: 'delete', data: { id: item._id } }
+            })
+            const ret = (result && result.result) || {}
+            if (ret.code !== 0) {
+              uni.showToast({ title: ret.msg || '删除失败', icon: 'none' })
+              return
+            }
+            this.followList = this.followList.filter((r) => r._id !== item._id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: (e && e.message) || '删除失败', icon: 'none' })
+          }
+        }
+      })
+    },
+    onDeleteRecite(item) {
+      if (!item || !item._id) return
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这条背诵记录吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const result = await uniCloud.callFunction({
+              name: 'gw_recite-record',
+              data: { action: 'delete', data: { id: item._id } }
+            })
+            const ret = (result && result.result) || {}
+            if (ret.code !== 0) {
+              uni.showToast({ title: ret.msg || '删除失败', icon: 'none' })
+              return
+            }
+            this.reciteList = this.reciteList.filter((r) => r._id !== item._id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: (e && e.message) || '删除失败', icon: 'none' })
+          }
+        }
+      })
+    },
+    onDeleteDictation(item) {
+      if (!item || !item._id) return
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这条默写记录吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const result = await uniCloud.callFunction({
+              name: 'gw_learning-records',
+              data: {
+                action: 'delete',
+                data: { id: item._id, record_type: 'dictation' }
+              }
+            })
+            const ret = (result && result.result) || {}
+            if (ret.code !== 0) {
+              uni.showToast({ title: ret.msg || '删除失败', icon: 'none' })
+              return
+            }
+            this.dictationList = this.dictationList.filter((r) => r._id !== item._id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: (e && e.message) || '删除失败', icon: 'none' })
+          }
+        }
+      })
     },
     async checkFavorite() {
       if (!this.id || !this.hasLogin) {
@@ -644,6 +725,12 @@ export default {
 .record-time {
   font-size: 22rpx;
   color: #999;
+}
+.record-delete-btn {
+  font-size: 24rpx;
+  color: #f53f3f;
+  padding: 4rpx 8rpx;
+  flex-shrink: 0;
 }
 .records-section:nth-child(1) .record-accuracy { color: #4f46e5; }
 .records-section:nth-child(2) .record-accuracy { color: #0b57d0; }
