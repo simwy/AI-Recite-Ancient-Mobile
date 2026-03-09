@@ -33,6 +33,7 @@
           :class="{
             active: currentUnitIndex === index,
             loading: loadingUnitIndex === index,
+            preparing: getFollowState(index) === 'preparing',
             recording: getFollowState(index) === 'recording',
             'follow-done': getFollowState(index) === 'done'
           }"
@@ -55,6 +56,13 @@
               <view class="follow-retry-btn" @tap.stop="startFollowUnit(index)">
                 <text>重试</text>
               </view>
+            </view>
+          </view>
+          <!-- 准备录音中 -->
+          <view v-else-if="getFollowState(index) === 'preparing'" class="sentence-text">
+            {{ unit.text }}
+            <view class="follow-recording-hint">
+              <text class="recording-label">准备录音中...</text>
             </view>
           </view>
           <!-- 录音中 -->
@@ -583,19 +591,20 @@ export default {
       }
     },
     async startFollowRecording(index) {
-      this.followStates = { ...this.followStates, [index]: { state: 'recording' } }
+      this.followStates = { ...this.followStates, [index]: { state: 'preparing' } }
       this.resetRealtimeState()
       try {
         await this.ensureRecordPermission()
         await this.loadAsrConfig()
+        if (this.followingUnitIndex !== index) return
         if (this.useWebRecorder) {
           await this.startH5PcmRecorder()
           this.recording = true
           this._followRecordStartTime = Date.now()
         } else {
+          await this.openSocket()
           this.recording = true
           this._followRecordStartTime = Date.now()
-          await this.openSocket()
           this.recorderManager.start({
             duration: 30000,
             sampleRate: this.asrConfig.sampleRate || 16000,
@@ -605,6 +614,8 @@ export default {
             frameSize: 4
           })
         }
+        if (this.followingUnitIndex !== index) return
+        this.followStates = { ...this.followStates, [index]: { state: 'recording' } }
         this._followTimer = setTimeout(() => {
           if (this.recording && this.followingUnitIndex === index) this.stopFollowRecording()
         }, 30000)
@@ -637,12 +648,23 @@ export default {
       if (this._autoAdvanceTimer) { clearTimeout(this._autoAdvanceTimer); this._autoAdvanceTimer = null }
       if (this._silenceTimer) { clearTimeout(this._silenceTimer); this._silenceTimer = null }
       if (this._followTimer) { clearTimeout(this._followTimer); this._followTimer = null }
+      // 清除前一个句子的非完成状态（playing/preparing/recording/recognizing）
+      const prevIdx = this.followingUnitIndex
+      if (prevIdx >= 0) {
+        const prevState = this.followStates[prevIdx] && this.followStates[prevIdx].state
+        if (prevState && prevState !== 'done') {
+          const updated = { ...this.followStates }
+          delete updated[prevIdx]
+          this.followStates = updated
+        }
+      }
       if (this.recording) {
         this.stopping = false
         this.recording = false
         if (this.useWebRecorder) { this.stopWebRecorder(); this.cleanupH5PcmRecorder() }
         else { try { this.recorderManager.stop() } catch (e) {} }
       }
+      this.stopActiveAudio()
       this.closeSocket()
       this.resetRealtimeState()
       this.followingUnitIndex = -1
@@ -820,6 +842,10 @@ export default {
 }
 .sentence-item.loading {
   border-color: #f2c94c;
+}
+.sentence-item.preparing {
+  border-left: 6rpx solid #d9d9d9;
+  background: #fafafa;
 }
 .sentence-item.recording {
   border-left: 6rpx solid #fa8c16;
