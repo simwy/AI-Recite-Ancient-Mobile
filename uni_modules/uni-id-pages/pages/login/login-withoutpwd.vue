@@ -1,52 +1,63 @@
-<!-- 免密登录页 -->
+<!-- 免密登录页 - 简约风格 -->
 <template>
-	<view class="uni-content">
-		<view class="login-logo">
-			<image :src="logo"></image>
+	<view class="uni-content login-page">
+		<view class="login-head">
+			<text class="login-title">登录</text>
+			<text class="login-tip" v-if="['apple','weixin', 'weixinMobile', 'huawei', 'huaweiMobile'].includes(type)">使用第三方账号快捷登录</text>
+			<text class="login-tip" v-else>输入手机号，验证码登录</text>
 		</view>
-		<!-- 顶部文字 -->
-		<text class="title">请选择登录方式</text>
-		<!-- 快捷登录框 当url带参数时有效 -->
+
+		<!-- 第三方快捷登录：统一用简约文字按钮 -->
 		<template v-if="['apple','weixin', 'weixinMobile', 'huawei', 'huaweiMobile'].includes(type)">
-			<text class="tip">将根据第三方账号服务平台的授权范围获取你的信息</text>
-			<view class="quickLogin">
-				<image v-if="type !== 'weixinMobile' && type !== 'huaweiMobile'" @click="quickLogin" :src="imgSrc" mode="widthFix"
-					class="quickLoginBtn"></image>
-				<view v-else style="position: relative">
-					<button v-if="type ==='weixinMobile'" type="primary" open-type="getPhoneNumber" @getphonenumber="quickLogin"
-					        class="uni-btn">微信授权手机号登录</button>
-					<!-- #ifdef APP-HARMONY -->
-					<app-harmony-get-phone-number
-						v-if="type === 'huaweiMobile'"
-						@getphonenumber="quickLogin"
-					>
-						<button class="quickLoginBtn" style="padding: 0; display: flex">
-							<image :src="imgSrc" mode="widthFix"></image>
-						</button>
-					</app-harmony-get-phone-number>
-					<!-- #endif -->
-					<!-- #ifdef MP-HARMONY -->
-					<button v-if="type === 'huaweiMobile'" open-type="getPhoneNumber" @getphonenumber="quickLogin"
-					        class="quickLoginBtn" style="padding: 0; display: flex">
-						<image :src="imgSrc" mode="widthFix"></image>
-					</button>
-					<!-- #endif -->
-					<view v-if="this.needAgreements && !this.agree" class="mobile-login-agreement-layer" @click="showAgreementModal"></view>
+			<view class="quick-login-block">
+				<text class="quick-tip">将根据授权范围获取你的信息</text>
+				<view class="quick-login">
+					<!-- 微信 / 苹果 / 华为（非手机号）→ 文字按钮 -->
+					<template v-if="type !== 'weixinMobile' && type !== 'huaweiMobile'">
+						<button type="primary" class="quick-btn-primary" :class="'quick-btn--' + type" @click="quickLogin">{{ quickLoginBtnText }}</button>
+					</template>
+					<!-- 微信手机号 / 华为手机号 → 需 open-type -->
+					<view v-else class="quick-btn-wrap">
+						<button v-if="type === 'weixinMobile'" type="primary" open-type="getPhoneNumber" @getphonenumber="quickLogin" class="quick-btn-primary quick-btn--weixin">微信手机号登录</button>
+						<!-- #ifdef APP-HARMONY -->
+						<app-harmony-get-phone-number v-if="type === 'huaweiMobile'" @getphonenumber="quickLogin">
+							<button class="quick-btn-primary quick-btn--huawei">华为手机号登录</button>
+						</app-harmony-get-phone-number>
+						<!-- #endif -->
+						<!-- #ifdef MP-HARMONY -->
+						<button v-if="type === 'huaweiMobile'" open-type="getPhoneNumber" @getphonenumber="quickLogin" class="quick-btn-primary quick-btn--huawei">华为手机号登录</button>
+						<!-- #endif -->
+						<view v-if="needAgreements && !agree" class="mobile-login-agreement-layer" @click="showAgreementModal"></view>
+					</view>
+				</view>
+				<view class="agreement-wrap">
+					<uni-id-pages-agreements scope="register" ref="agreements"></uni-id-pages-agreements>
+				</view>
+			</view>
+		</template>
+
+		<!-- 手机号验证码登录 -->
+		<template v-else>
+			<view class="form-block">
+				<view class="phone-row">
+					<view @click="chooseArea" class="area-code">+86</view>
+					<uni-easyinput
+						trim="both"
+						:focus="focusPhone"
+						@blur="focusPhone = false"
+						class="phone-input"
+						type="number"
+						:inputBorder="false"
+						v-model="phone"
+						maxlength="11"
+						placeholder="请输入手机号"
+					/>
 				</view>
 				<uni-id-pages-agreements scope="register" ref="agreements"></uni-id-pages-agreements>
+				<button class="submit-btn" type="primary" @click="toSmsPage">获取验证码</button>
 			</view>
 		</template>
-		<template v-else>
-			<text class="tip">未注册的账号验证通过后将自动注册</text>
-			<view class="phone-box">
-				<view @click="chooseArea" class="area">+86</view>
-				<uni-easyinput trim="both" :focus="focusPhone" @blur="focusPhone = false" class="input-box" type="number"
-					:inputBorder="false" v-model="phone" maxlength="11" placeholder="请输入手机号" />
-			</view>
-			<uni-id-pages-agreements scope="register" ref="agreements"></uni-id-pages-agreements>
-			<button class="uni-btn" type="primary" @click="toSmsPage">获取验证码</button>
-		</template>
-		<!-- 固定定位的快捷登录按钮 -->
+
 		<uni-id-pages-fab-login ref="uniFabLogin"></uni-id-pages-fab-login>
 	</view>
 </template>
@@ -72,7 +83,7 @@
 			isPhone() { //手机号码校验正则
 				return /^1\d{10}$/.test(this.phone);
 			},
-			imgSrc() { //大快捷登录按钮图
+			imgSrc() { //大快捷登录按钮图（保留供 fab 等使用）
 				const images = {
 					weixin: '/uni_modules/uni-id-pages/static/login/weixin.png',
 					apple: '/uni_modules/uni-id-pages/static/app/apple.png',
@@ -80,6 +91,10 @@
 					huaweiMobile: '/uni_modules/uni-id-pages/static/login/huawei-mobile.png',
 				}
 				return images[this.type]
+			},
+			quickLoginBtnText() {
+				const map = { weixin: '微信登录', apple: '苹果登录', huawei: '华为登录' }
+				return map[this.type] || '登录'
 			}
 		},
 		async onLoad(e) {
@@ -204,10 +219,186 @@
 <style lang="scss" scoped>
 	@import "@/uni_modules/uni-id-pages/common/login-page.scss";
 
-	@media screen and (min-width: 690px) {
-		.uni-content {
-			height: 350px;
-		}
+	/* 简约风格：与 App 主色、标题色统一 */
+	.login-page.uni-content {
+		padding: 80rpx 48rpx 48rpx;
+		min-height: 100vh;
+		box-sizing: border-box;
+		/* #ifndef APP-NVUE */
+		display: flex;
+		flex-direction: column;
+		/* #endif */
+	}
+
+	.login-head {
+		margin-bottom: 56rpx;
+	}
+	.login-title {
+		display: block;
+		font-size: 44rpx;
+		font-weight: 600;
+		color: #2C405A;
+		letter-spacing: 0.5rpx;
+		margin-bottom: 16rpx;
+	}
+	.login-tip {
+		display: block;
+		font-size: 26rpx;
+		color: #999;
+		line-height: 1.4;
+	}
+
+	/* 手机号表单 */
+	.form-block {
+		/* #ifndef APP-NVUE */
+		display: flex;
+		flex-direction: column;
+		/* #endif */
+	}
+	.phone-row {
+		position: relative;
+		/* #ifndef APP-NVUE */
+		display: flex;
+		align-items: center;
+		/* #endif */
+		background: #f5f5f5;
+		border-radius: 16rpx;
+		margin-bottom: 32rpx;
+		overflow: hidden;
+	}
+	.area-code {
+		padding: 0 24rpx;
+		font-size: 28rpx;
+		color: #333;
+		flex-shrink: 0;
+		/* #ifndef APP-NVUE */
+		line-height: 88rpx;
+		/* #endif */
+	}
+	.area-code::after {
+		content: "";
+		border: 4rpx solid transparent;
+		border-top-color: #666;
+		margin-left: 8rpx;
+		vertical-align: 4rpx;
+		display: inline-block;
+	}
+	/* #ifdef MP */
+	.phone-row ::v-deep .uni-easyinput__content,
+	/* #endif */
+	.phone-input,
+	.phone-row ::v-deep .uni-easyinput__content {
+		flex: 1;
+		height: 88rpx;
+		background: transparent !important;
+		border: none;
+		font-size: 28rpx;
+		padding-left: 0;
+		margin-bottom: 0;
+		border-radius: 0;
+	}
+	.submit-btn {
+		height: 88rpx;
+		line-height: 88rpx;
+		border-radius: 16rpx;
+		font-size: 32rpx;
+		font-weight: 500;
+		background: #007aff !important;
+		color: #fff !important;
+		border: none;
+		margin: 0;
+	}
+
+	/* 第三方快捷登录 */
+	.quick-login-block {
+		/* #ifndef APP-NVUE */
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		/* #endif */
+		flex: 1;
+		padding-top: 24rpx;
+	}
+	.quick-tip {
+		font-size: 24rpx;
+		color: #999;
+		margin-bottom: 48rpx;
+	}
+	.quick-login {
+		width: 100%;
+		/* #ifndef APP-NVUE */
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		/* #endif */
+	}
+	.quick-btn-wrap {
+		position: relative;
+		width: 100%;
+		/* #ifndef APP-NVUE */
+		display: flex;
+		justify-content: center;
+		/* #endif */
+	}
+	.quick-btn-primary {
+		width: 100%;
+		max-width: 400rpx;
+		height: 88rpx;
+		line-height: 88rpx;
+		border-radius: 16rpx;
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #fff !important;
+		border: none;
+	}
+	.quick-btn--weixin {
+		background: #07c160 !important;
+	}
+	.quick-btn--apple {
+		background: #000 !important;
+	}
+	.quick-btn--huawei {
+		background: #007aff !important;
+	}
+	.agreement-wrap {
+		margin-top: 32rpx;
+		width: 100%;
+	}
+	.agreement-wrap ::v-deep .checkbox-box {
+		align-items: center;
+	}
+	.agreement-wrap ::v-deep .text {
+		font-size: 24rpx;
+		color: #999;
+	}
+	.agreement-wrap ::v-deep .agreement {
+		color: #007aff;
+	}
+	/* 底部「账号登录」等入口：简约小字 */
+	.login-page ::v-deep .fab-login-box {
+		margin-top: 48rpx;
+		padding-top: 32rpx;
+		border-top: 1rpx solid #eee;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 32rpx;
+		flex-wrap: wrap;
+	}
+	.login-page ::v-deep .fab-login-box .item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8rpx;
+	}
+	.login-page ::v-deep .fab-login-box .logo {
+		width: 48rpx;
+		height: 48rpx;
+	}
+	.login-page ::v-deep .fab-login-box .login-title {
+		font-size: 24rpx;
+		color: #999;
 	}
 
 	.mobile-login-agreement-layer {
@@ -217,78 +408,16 @@
 		width: 100%;
 		height: 100%;
 	}
-	.uni-content,
-	.quickLogin {
-		/* #ifndef APP-NVUE */
-		display: flex;
-		flex-direction: column;
-		/* #endif */
-	}
-
-	.phone-box {
-		position: relative;
-		/* #ifndef APP-NVUE */
-		display: flex;
-		/* #endif */
-	}
-
-	.area {
-		position: absolute;
-		left: 10px;
-		z-index: 9;
-		top: 12px;
-		font-size: 14px;
-	}
-
-	.area::after {
-		content: "";
-		border: 3px solid transparent;
-		border-top-color: #000;
-		top: 12px;
-		left: 3px;
-		position: relative;
-	}
-
-	/* #ifdef MP */
-	// 解决小程序端开启虚拟节点virtualHost引起的 class = input-box丢失的问题 [详情参考](https://uniapp.dcloud.net.cn/matter.html#%E5%90%84%E5%AE%B6%E5%B0%8F%E7%A8%8B%E5%BA%8F%E5%AE%9E%E7%8E%B0%E6%9C%BA%E5%88%B6%E4%B8%8D%E5%90%8C-%E5%8F%AF%E8%83%BD%E5%AD%98%E5%9C%A8%E7%9A%84%E5%B9%B3%E5%8F%B0%E5%85%BC%E5%AE%B9%E9%97%AE%E9%A2%98)
-	.phone-box ::v-deep .uni-easyinput__content,
-	/* #endif */
-	.input-box {
-		/* #ifndef APP-NVUE */
-		box-sizing: border-box;
-		/* #endif */
-		flex: 1;
-		padding-left: 45px;
-		margin-bottom: 10px;
-		border-radius: 0;
-	}
-
-	.quickLogin {
-		height: 350px;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.quickLoginBtn {
-		margin: 20px 0;
-		width: 450rpx;
-		background-color: transparent;
-		border: none;
-		box-shadow: none;
-		/* #ifndef APP-NVUE */
-		max-width: 230px;
-		/* #endif */
-		height: 82rpx;
-	}
-
-	.tip {
-		margin-top: -15px;
-		margin-bottom: 20px;
-	}
 
 	@media screen and (min-width: 690px) {
-		.quickLogin {
-			height: auto;
+		.login-page.uni-content {
+			padding: 60px 48px 48px;
+			max-width: 400px;
+			margin: 0 auto;
+			min-height: auto;
+		}
+		.quick-login-block {
+			flex: none;
 		}
 	}
 </style>

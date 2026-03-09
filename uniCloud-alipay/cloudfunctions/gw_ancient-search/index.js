@@ -235,7 +235,7 @@ async function searchList(keyword, page, pageSize) {
   }
 }
 
-async function aiSearch(data) {
+async function aiSearch(event, data, context) {
   const title = normalizeText(data.title)
   const author = normalizeText(data.author)
   if (!title) {
@@ -255,6 +255,15 @@ async function aiSearch(data) {
 
   const aiCandidates = await requestPoemsFromBailian(title, author)
   if (!aiCandidates || aiCandidates.length === 0) {
+    // 添加文章流程中“未找到匹配的古文”视为添加失败，记录日志
+    const uid = await getAuthUid(event, context)
+    saveAddArticleLog({
+      success: false,
+      title,
+      author,
+      user_id: uid || '',
+      error_msg: '未找到匹配的古文'
+    })
     return { code: -1, msg: '未检索到匹配的古文（标题约 80% 匹配，作者或出处选填）' }
   }
 
@@ -1006,7 +1015,7 @@ exports.main = async (event, context) => {
       case 'search':
         return await searchList(keyword, page, pageSize)
       case 'aiSearch':
-        return await aiSearch(data)
+        return await aiSearch(event, data, context)
       case 'getSquareCategories':
         return await getSquareCategories()
       case 'getSubcollectionsByCategory':

@@ -309,13 +309,13 @@ export default {
       if (this.activeTab === 'records' && item.record_type) {
         if (item.record_type === 'recite') {
           uni.navigateTo({
-            url: `/pages/ancient/result?recordId=${item._id}`
+            url: `/pages/ancient/recite-result?recordId=${item._id}`
           })
           return
         }
         if (item.record_type === 'follow') {
           uni.navigateTo({
-            url: `/pages/ancient/result?recordId=${item._id}&type=follow`
+            url: `/pages/ancient/recite-result?recordId=${item._id}&type=follow`
           })
           return
         }

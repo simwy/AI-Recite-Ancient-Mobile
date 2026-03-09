@@ -99,6 +99,8 @@ export default {
       hintCharCount: 0,
       hintStartIndex: -1,
       hints: [],
+      /** 所有被提示过的原文字符索引（去标点后的索引） */
+      hintedIndices: [],
       recorderManager: null,
       socketTask: null,
       asrConfig: null,
@@ -293,13 +295,17 @@ export default {
         // #endif
         this.recording = false
         clearInterval(this.durationTimer)
+        // 暂停触发的 stop 不走结束流程
+        if (this.paused) return
         this.handleRecorderStop()
       })
       this.recorderManager.onError((err) => {
         this.recording = false
-        this.started = false
         clearInterval(this.durationTimer)
         this.closeSocket()
+        // 暂停触发的 stop 可能引发 onError，此时不重置 started
+        if (this.paused) return
+        this.started = false
         const msg = (err && err.errMsg) ? err.errMsg : '录音失败'
         uni.showToast({ title: msg.indexOf('record') !== -1 ? '请允许麦克风权限后重试' : '录音失败', icon: 'none', duration: 3000 })
         console.error('录音错误:', err)
@@ -402,6 +408,12 @@ export default {
 
       const hintText = originalChars.slice(pos, pos + this.hintCharCount).join('')
       this.hints = [hintText]
+      // 记录被提示过的原文字符索引
+      for (let i = pos; i < pos + this.hintCharCount; i++) {
+        if (this.hintedIndices.indexOf(i) === -1) {
+          this.hintedIndices.push(i)
+        }
+      }
     },
     getOriginalChars() {
       const content = this.textData.content || ''
@@ -698,6 +710,7 @@ export default {
       this.hintStartIndex = -1
       this.hintCharCount = 0
       this.hints = []
+      this.hintedIndices = []
       this.lastSpeechTime = 0
       this.paused = false
     },
@@ -861,8 +874,13 @@ export default {
       this.h5MediaRecorder.onstop = async () => {
         if (!this.stopping) return
         try {
-          uni.showLoading({ title: '语音识别中...' })
           const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
+          // 音频太小（几乎没说话），直接用空文本跳转打分
+          if (audioBlob.size < 1000) {
+            this.goResult('')
+            return
+          }
+          uni.showLoading({ title: '语音识别中...' })
           const audioBase64 = await this.blobToBase64(audioBlob)
           const callRes = await uniCloud.callFunction({
             name: 'gw_asr-file-recognize',
@@ -873,13 +891,16 @@ export default {
           })
           const result = callRes.result || {}
           if (result.code !== 0) {
-            throw new Error(result.msg || '识别失败')
+            // 识别失败也用空文本跳转打分页
+            this.goResult('')
+            return
           }
           this.realtimeText = (result.data && result.data.text) || ''
           this.goResult(this.realtimeText)
         } catch (error) {
-          uni.showToast({ title: error.message || '识别失败', icon: 'none' })
           console.error('H5 文件识别失败:', error)
+          // 识别异常也跳转打分页，避免卡在录音页
+          this.goResult(this.realtimeText || '')
         } finally {
           uni.hideLoading()
           this.cleanupH5PcmRecorder()
@@ -976,10 +997,11 @@ export default {
         textData: this.textData,
         recognizedText,
         hintCount: this.hintCount,
-        duration: Number(this.duration) || 0
+        duration: Number(this.duration) || 0,
+        hintedIndices: this.hintedIndices
       }
       uni.redirectTo({
-        url: `/pages/ancient/result?id=${this.id}`
+        url: `/pages/ancient/recite-result?id=${this.id}`
       })
     },
     formatTime(seconds) {

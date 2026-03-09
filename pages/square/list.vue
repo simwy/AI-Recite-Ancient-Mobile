@@ -710,6 +710,8 @@ export default {
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   min-height: 100vh;
   background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
 }
 
 .top-tabs {
@@ -746,13 +748,17 @@ export default {
   color: #86909c;
 }
 .intro-panel {
-  min-height: 60vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border-radius: 12rpx;
   padding: 24rpx;
 }
 .intro-content {
-  max-height: 70vh;
+  flex: 1;
+  min-height: 0;
 }
 
 .intro-richtext {
@@ -760,6 +766,7 @@ export default {
   color: #333;
   line-height: 1.8;
   word-break: break-word;
+  padding-bottom: 48rpx;
 }
 
 .search-bar {

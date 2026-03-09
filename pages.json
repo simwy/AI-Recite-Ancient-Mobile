@@ -45,7 +45,7 @@
 			"needLogin": true
 		},	
 		{
-			"path": "pages/ancient/result",
+			"path": "pages/ancient/recite-result",
 			"style": {
 				"navigationBarTitleText": "背诵结果"
 			}

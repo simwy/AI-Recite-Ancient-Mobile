@@ -19,7 +19,7 @@ Built on **uni-app (Vue 3)** targeting Android, iOS, WeChat Mini Program, H5, an
 ## Architecture
 
 ### Page Flow
-`pages/ancient/list` (search/browse) → `pages/ancient/detail` (text detail) → `pages/ancient/recite` (speech recognition) → `pages/ancient/result` (accuracy analysis)
+`pages/ancient/list` (search/browse) → `pages/ancient/detail` (text detail) → `pages/ancient/recite` (speech recognition) → `pages/ancient/recite-result` (accuracy analysis)
 
 Additional flows:
 - Dictation: `detail` → `pages/ancient/dictation` → `pages/ancient/dictation-result` (accuracy analysis)

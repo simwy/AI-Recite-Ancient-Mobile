@@ -30,7 +30,7 @@
           :class="{ active: currentUnitIndex === gIdx, loading: loadingUnitIndex === gIdx }"
           @tap="onTapSentence(gIdx)">
           <text v-for="(item, idx) in group" :key="idx"
-            :class="['diff-char', 'diff-' + item.status]">{{ item.char }}</text>
+            :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']">{{ item.char }}</text>
           <text v-if="loadingUnitIndex === gIdx" class="sentence-tip">合成中...</text>
         </view>
       </view>
@@ -38,7 +38,7 @@
         <text
           v-for="(item, idx) in diffResult"
           :key="idx"
-          :class="['diff-char', 'diff-' + item.status]"
+          :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']"
         >{{ item.char }}</text>
       </view>
     </view>
@@ -46,6 +46,7 @@
     <view class="legend">
       <text class="legend-correct">● 正确</text>
       <text class="legend-missing">● 遗漏/错误</text>
+      <text v-if="hintedIndices.length" class="legend-hinted">● 提示</text>
     </view>
 
     <view class="recognized-area" v-if="recognizedText">
@@ -80,7 +81,9 @@ export default {
       diffResult: [],
       accuracy: 0,
       saved: false,
-      diffGroups: []
+      diffGroups: [],
+      /** 被提示过的原文字符索引（去标点后的索引） */
+      hintedIndices: []
     }
   },
   onLoad(options) {
@@ -98,6 +101,7 @@ export default {
       this.recognizedText = result.recognizedText
       this.hintCount = result.hintCount
       this.duration = Number(result.duration) || 0
+      this.hintedIndices = Array.isArray(result.hintedIndices) ? result.hintedIndices : []
     }
     this.doDiff()
     this.rebuildPlayUnitsForResult()
@@ -192,6 +196,20 @@ export default {
         this.recognizedText
       )
       this.accuracy = calcAccuracy(this.diffResult)
+      this.markHintedChars()
+    },
+    /** 将 hintedIndices（去标点索引）映射到 diffResult（含标点索引），标记 hinted */
+    markHintedChars() {
+      if (!this.hintedIndices.length || !this.diffResult.length) return
+      const hintedSet = new Set(this.hintedIndices)
+      let noPuncIdx = 0
+      for (let i = 0; i < this.diffResult.length; i++) {
+        if (this.diffResult[i].status === 'punctuation') continue
+        if (hintedSet.has(noPuncIdx)) {
+          this.diffResult[i].hinted = true
+        }
+        noPuncIdx++
+      }
     },
     getUniIdToken() {
       const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
@@ -351,6 +369,12 @@ export default {
   color: #f5222d;
   text-decoration: underline;
 }
+.diff-hinted {
+  background-color: #fffbe6;
+  border: 1rpx solid #ffe58f;
+  border-radius: 4rpx;
+  padding: 0 2rpx;
+}
 .legend {
   display: flex;
   gap: 40rpx;
@@ -364,6 +388,10 @@ export default {
 .legend-missing {
   font-size: 24rpx;
   color: #f5222d;
+}
+.legend-hinted {
+  font-size: 24rpx;
+  color: #d48806;
 }
 .recognized-area {
   background: #fff;

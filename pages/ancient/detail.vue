@@ -371,10 +371,10 @@ export default {
       return map[v] || v || '默写'
     },
     goReciteResult(recordId) {
-      uni.navigateTo({ url: `/pages/ancient/result?recordId=${recordId}` })
+      uni.navigateTo({ url: `/pages/ancient/recite-result?recordId=${recordId}` })
     },
     goFollowResult(recordId) {
-      uni.navigateTo({ url: `/pages/ancient/result?recordId=${recordId}&type=follow` })
+      uni.navigateTo({ url: `/pages/ancient/recite-result?recordId=${recordId}&type=follow` })
     },
     goDictationResult(recordId) {
       uni.navigateTo({ url: `/pages/ancient/dictation-result?recordId=${recordId}` })
