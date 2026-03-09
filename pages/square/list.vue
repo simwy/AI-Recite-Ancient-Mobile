@@ -362,6 +362,10 @@ export default {
   },
   onShow() {
     this.loadSubcollectionFavoriteStatus()
+    // 从背诵等页面返回时，重新合并最新背诵成绩，保证列表/统计及时刷新
+    if ((this.groups && this.groups.length) || (this.ungrouped && this.ungrouped.length)) {
+      this.mergeReciteScores()
+    }
   },
   onPullDownRefresh() {
     this.loadData().then(() => uni.stopPullDownRefresh())

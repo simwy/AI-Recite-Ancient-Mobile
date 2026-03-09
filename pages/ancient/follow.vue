@@ -741,7 +741,7 @@ export default {
 .top-tools {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 16rpx;
 }
 .correction-btn {
@@ -762,6 +762,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8rpx;
+  margin-left: auto;
 }
 .font-switch {
   display: flex;
