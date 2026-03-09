@@ -8,3 +8,7 @@
 {"_id":"grp_100d_08","name":"第71～80天","sort":8,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
 {"_id":"grp_100d_09","name":"第81～90天","sort":9,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
 {"_id":"grp_100d_10","name":"第91～100天（收尾巩固）","sort":10,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_gaozhong2020_bixiu","name":"文言文-必修（10篇）","sort":1,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_gaozhong2020"}
+{"_id":"grp_gaozhong2020_shici40","name":"诗词曲（40首）","sort":4,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_gaozhong2020"}
+{"_id":"grp_gaozhong2020_xiuxuan","name":"文言文-选修（12篇）","sort":3,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_gaozhong2020"}
+{"_id":"grp_gaozhong2020_xuanze","name":"文言文-选择性必修（10篇）","sort":2,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_gaozhong2020"}

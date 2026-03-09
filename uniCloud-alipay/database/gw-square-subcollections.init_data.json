@@ -1,11 +1,11 @@
 [
   {
-    "_id": "sub_gaozhong2020",
+    "_id": "sub_chuzhong_zhongkao",
     "category_id": "cat_hot",
-    "name": "普通高中语文课程标准2020年修订版（中华人民共和国教育部发布）",
-    "intro": "",
-    "sort": 1,
+    "name": "初中中考必背核心篇目（7-9年级，共60篇/段）",
+    "intro": "中考必考文言文20篇与诗词曲40首，适用于初中语文复习与备考。",
+    "sort": 2,
     "enabled": true,
-    "created_at": { "$date": 1704067200000 }
+    "created_at": { "$date": 1738965600000 }
   }
 ]

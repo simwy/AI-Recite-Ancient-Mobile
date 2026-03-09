@@ -1,8 +1,8 @@
 [
   {
-    "_id": "cat_gaozhong_2020",
-    "name": "普通高中语文课程标准2020年修订版",
-    "sort": 1,
+    "_id": "cat_chuzhong_zhongkao",
+    "name": "初中中考必背核心篇目",
+    "sort": 2,
     "enabled": true
   }
 ]
