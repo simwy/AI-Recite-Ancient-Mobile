@@ -22,7 +22,14 @@
     </view>
 
     <view class="diff-area">
-      <view class="diff-label">对比结果：</view>
+      <view class="diff-header">
+        <text class="diff-label">对比结果：</text>
+        <view class="legend-inline">
+          <text class="legend-correct">● 正确</text>
+          <text class="legend-missing">● 遗漏</text>
+          <text v-if="hintedIndices.length" class="legend-hinted">● 提示</text>
+        </view>
+      </view>
       <view class="diff-content" v-if="diffGroups.length">
         <view v-for="(group, gIdx) in diffGroups" :key="gIdx"
           :id="`play-unit-${gIdx}`"
@@ -41,12 +48,6 @@
           :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']"
         >{{ item.char }}</text>
       </view>
-    </view>
-
-    <view class="legend">
-      <text class="legend-correct">● 正确</text>
-      <text class="legend-missing">● 遗漏/错误</text>
-      <text v-if="hintedIndices.length" class="legend-hinted">● 提示</text>
     </view>
 
     <view class="recognized-area" v-if="recognizedText">
@@ -350,7 +351,17 @@ export default {
 .diff-label {
   font-size: 26rpx;
   color: #999;
+}
+.diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 16rpx;
+}
+.legend-inline {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
 }
 .diff-content {
   line-height: 2.2;
@@ -375,22 +386,16 @@ export default {
   border-radius: 4rpx;
   padding: 0 2rpx;
 }
-.legend {
-  display: flex;
-  gap: 40rpx;
-  margin-bottom: 24rpx;
-  padding: 0 10rpx;
-}
 .legend-correct {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #52c41a;
 }
 .legend-missing {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #f5222d;
 }
 .legend-hinted {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #d48806;
 }
 .recognized-area {

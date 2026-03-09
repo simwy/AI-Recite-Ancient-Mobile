@@ -740,12 +740,17 @@ export default {
   font-size: 24rpx;
   font-weight: normal;
   color: #1d4ed8;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eff6ff;
 }
 .tab-item.active .tab-recite-count {
   color: #1d4ed8;
+  background: #eff6ff;
 }
 .tab-item:not(.active) .tab-recite-count {
-  color: #86909c;
+  color: #64748b;
+  background: #f1f5f9;
 }
 .intro-panel {
   flex: 1;
