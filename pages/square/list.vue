@@ -103,7 +103,19 @@
 
     <view v-show="currentTab === 'intro'" v-if="hasIntro" class="intro-panel">
       <scroll-view scroll-y class="intro-content">
-        <view class="intro-richtext"><rich-text :nodes="introHtml"></rich-text></view>
+        <view class="intro-richtext">
+          <template v-for="(seg, idx) in introSegments" :key="idx">
+            <rich-text
+              v-if="seg.type === 'html'"
+              :nodes="seg.content"
+              class="intro-seg-html"
+              @itemclick="onIntroRichItemClick"
+            ></rich-text>
+            <view v-else-if="seg.type === 'link'" class="intro-link" @click="onIntroLinkClick(seg.url)">
+              {{ seg.text }}
+            </view>
+          </template>
+        </view>
       </scroll-view>
     </view>
 
@@ -240,6 +252,29 @@ export default {
       } catch (e) {
         return this.subcollectionIntro
       }
+    },
+    /** 介绍内容按「普通 HTML / 链接」拆成片段，便于对链接做点击复制+提示 */
+    introSegments() {
+      const html = this.introHtml
+      if (!html || !html.trim()) return []
+      const segments = []
+      const linkRe = /<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi
+      let lastEnd = 0
+      let m
+      while ((m = linkRe.exec(html)) !== null) {
+        if (m.index > lastEnd) {
+          segments.push({ type: 'html', content: html.slice(lastEnd, m.index) })
+        }
+        const url = m[1]
+        const rawText = m[2]
+        const text = rawText.replace(/<[^>]+>/g, '').trim() || url
+        segments.push({ type: 'link', url, text })
+        lastEnd = m.index + m[0].length
+      }
+      if (lastEnd < html.length) {
+        segments.push({ type: 'html', content: html.slice(lastEnd) })
+      }
+      return segments.length ? segments : [{ type: 'html', content: html }]
     },
     /** 整个子合集背诵通过篇数（≥90 分） */
     totalRecitePassed() {
@@ -725,6 +760,51 @@ export default {
       const [y, m, d] = dateKey.split('-')
       this.selectedDayDateLabel = `${parseInt(m, 10)}月${parseInt(d, 10)}日`
       this.selectedDayTitles = titles
+    },
+    /** 介绍栏内链接点击：复制网址并提示在浏览器中打开 */
+    onIntroLinkClick(url) {
+      if (!url || typeof url !== 'string') return
+      const trim = url.trim()
+      if (!trim) return
+      uni.setClipboardData({
+        data: trim,
+        success: () => {
+          uni.showModal({
+            title: '提示',
+            content: `网址已复制，请在浏览器中打开。\n链接地址是：${trim}`,
+            showCancel: false
+          })
+        },
+        fail: () => {
+          uni.showModal({
+            title: '提示',
+            content: `请在浏览器中打开以下链接：\n${trim}`,
+            showCancel: false
+          })
+        }
+      })
+    },
+    /** 介绍栏内图片点击：预览大图（支持缩放、保存） */
+    onIntroRichItemClick(e) {
+      const node = e && e.detail && e.detail.node
+      if (!node || node.name !== 'img' || !node.attrs || !node.attrs.src) return
+      const current = (node.attrs.src || '').trim()
+      if (!current) return
+      const html = this.introHtml || ''
+      const urls = []
+      const imgRe = /<img[^>]+src=["']?([^"'\s>]+)[^>]*>/gi
+      let m
+      while ((m = imgRe.exec(html)) !== null) {
+        const src = (m[1] || '').trim()
+        if (src && !urls.includes(src)) {
+          urls.push(src)
+        }
+      }
+      const finalUrls = urls.length ? urls : [current]
+      uni.previewImage({
+        current,
+        urls: finalUrls
+      })
     }
   }
 }
@@ -808,6 +888,22 @@ export default {
   line-height: 1.8;
   word-break: break-word;
   padding-bottom: 48rpx;
+}
+.intro-seg-html {
+  display: inline;
+}
+.intro-link {
+  display: inline;
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+.intro-link:active {
+  opacity: 0.8;
+}
+.intro-richtext ::v-deep img {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 .search-bar {
