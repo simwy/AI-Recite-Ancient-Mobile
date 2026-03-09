@@ -31,8 +31,8 @@ function signRequest(params, accessKeySecret) {
 }
 
 async function createNlsToken() {
-  if (!nls || !nls.accessKeyId || nls.accessKeyId === 'YOUR_ACCESS_KEY_ID') {
-    throw new Error('请先在 common/config/index.js 中配置阿里云 NLS accessKeyId/accessKeySecret/appkey')
+  if (!nls || !nls.accessKeyId) {
+    throw new Error('请配置环境变量 NLS_ACCESS_KEY_ID、NLS_ACCESS_KEY_SECRET、NLS_APPKEY，或创建 common/config/config.local.js')
   }
 
   const now = Math.floor(Date.now() / 1000)
