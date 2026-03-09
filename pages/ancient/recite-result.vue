@@ -27,7 +27,7 @@
         <view class="legend-inline">
           <text class="legend-correct">● 正确</text>
           <text class="legend-missing">● 遗漏</text>
-          <text v-if="hintedIndices.length" class="legend-hinted">● 提示</text>
+          <text class="legend-hinted">● 提醒</text>
         </view>
       </view>
       <view class="diff-content" v-if="diffGroups.length">
@@ -196,8 +196,9 @@ export default {
         this.textData.content,
         this.recognizedText
       )
-      this.accuracy = calcAccuracy(this.diffResult)
       this.markHintedChars()
+      const baseAccuracy = calcAccuracy(this.diffResult)
+      this.accuracy = this.applyHintPenalty(baseAccuracy)
     },
     /** 将 hintedIndices（去标点索引）映射到 diffResult（含标点索引），标记 hinted */
     markHintedChars() {
@@ -211,6 +212,19 @@ export default {
         }
         noPuncIdx++
       }
+    },
+    applyHintPenalty(baseAccuracy) {
+      const totalChars = Array.isArray(this.diffResult)
+        ? this.diffResult.filter(d => d.status !== 'punctuation' && d.status !== 'normal').length
+        : 0
+      const hintedCharCount = Array.isArray(this.hintedIndices) ? this.hintedIndices.length : 0
+      if (!totalChars || !hintedCharCount) return baseAccuracy
+
+      const ratio = hintedCharCount / totalChars
+      const maxPenalty = 20
+      const penalty = Math.round(ratio * maxPenalty)
+      const finalAccuracy = Math.max(0, baseAccuracy - penalty)
+      return finalAccuracy
     },
     getUniIdToken() {
       const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
@@ -381,8 +395,8 @@ export default {
   text-decoration: underline;
 }
 .diff-hinted {
-  background-color: #fffbe6;
-  border: 1rpx solid #ffe58f;
+  background-color: #fff7e6;
+  border: 1rpx solid #d48806;
   border-radius: 4rpx;
   padding: 0 2rpx;
 }
@@ -396,7 +410,7 @@ export default {
 }
 .legend-hinted {
   font-size: 22rpx;
-  color: #d48806;
+  color: #ad4e00;
 }
 .recognized-area {
   background: #fff;

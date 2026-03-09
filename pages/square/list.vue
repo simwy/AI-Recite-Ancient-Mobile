@@ -17,7 +17,8 @@
       </view>
     </view>
 
-    <view v-show="currentTab === 'list'">
+    <!-- 列表 tab：仅列表区域，不渲染介绍，避免滑到底看到介绍 -->
+    <view v-if="currentTab === 'list'">
     <view class="search-bar">
       <view class="search-bar-row">
         <view class="correction-btn" @click="goCorrection">
@@ -101,7 +102,8 @@
     </view>
     </view>
 
-    <view v-show="currentTab === 'intro'" v-if="hasIntro" class="intro-panel">
+    <!-- 介绍 tab：仅介绍区域，列表 tab 时此块不在 DOM 中 -->
+    <view v-if="currentTab === 'intro' && hasIntro" class="intro-panel">
       <scroll-view scroll-y class="intro-content">
         <view class="intro-richtext">
           <template v-for="(seg, idx) in introSegments" :key="idx">
@@ -253,7 +255,7 @@ export default {
         return this.subcollectionIntro
       }
     },
-    /** 介绍内容按「普通 HTML / 链接」拆成片段，便于对链接做点击复制+提示 */
+    /** 介绍内容按「普通 HTML / 链接」拆成片段，便于对链接做点击复制+提示；HTML 会做防溢出处理 */
     introSegments() {
       const html = this.introHtml
       if (!html || !html.trim()) return []
@@ -263,7 +265,7 @@ export default {
       let m
       while ((m = linkRe.exec(html)) !== null) {
         if (m.index > lastEnd) {
-          segments.push({ type: 'html', content: html.slice(lastEnd, m.index) })
+          segments.push({ type: 'html', content: this.constrainIntroHtml(html.slice(lastEnd, m.index)) })
         }
         const url = m[1]
         const rawText = m[2]
@@ -272,9 +274,9 @@ export default {
         lastEnd = m.index + m[0].length
       }
       if (lastEnd < html.length) {
-        segments.push({ type: 'html', content: html.slice(lastEnd) })
+        segments.push({ type: 'html', content: this.constrainIntroHtml(html.slice(lastEnd)) })
       }
-      return segments.length ? segments : [{ type: 'html', content: html }]
+      return segments.length ? segments : [{ type: 'html', content: this.constrainIntroHtml(html) }]
     },
     /** 整个子合集背诵通过篇数（≥90 分） */
     totalRecitePassed() {
@@ -765,6 +767,16 @@ export default {
       this.selectedDayDateLabel = `${parseInt(m, 10)}月${parseInt(d, 10)}日`
       this.selectedDayTitles = titles
     },
+    /** 对介绍 HTML 做防溢出处理：图片内联 max-width、表格与容器限制宽度，因 rich-text 内层不响应 :deep 样式 */
+    constrainIntroHtml(html) {
+      if (!html || typeof html !== 'string') return html
+      let s = html
+        // 图片：在 img 标签上注入内联样式，确保不溢出（rich-text 内层无法用 CSS 选择器）
+        .replace(/<img(\s)/gi, '<img style="max-width:100%!important;height:auto!important;display:block"$1')
+        // 表格：限制宽度并允许换行
+        .replace(/<table(\s)/gi, '<table style="max-width:100%!important;table-layout:fixed!important;width:100%!important;word-break:break-all"$1')
+      return '<div style="max-width:100%;overflow-x:hidden;word-wrap:break-word;box-sizing:border-box">' + s + '</div>'
+    },
     /** 介绍栏内链接点击：复制网址并提示在浏览器中打开 */
     onIntroLinkClick(url) {
       if (!url || typeof url !== 'string') return
@@ -892,9 +904,12 @@ export default {
   line-height: 1.8;
   word-break: break-word;
   padding-bottom: 48rpx;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .intro-seg-html {
   display: inline;
+  max-width: 100%;
 }
 .intro-link {
   display: inline;
@@ -904,9 +919,11 @@ export default {
 .intro-link:active {
   opacity: 0.8;
 }
-.intro-richtext ::v-deep img {
-  max-width: 100%;
-  height: auto;
+/* 介绍页图片不溢出屏幕；Vue3 用 :deep() */
+.intro-richtext :deep(img) {
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
   display: block;
 }
 
@@ -1058,6 +1075,8 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 16rpx 20rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
@@ -1069,6 +1088,7 @@ export default {
 
 .action-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1091,6 +1111,9 @@ export default {
   font-size: 28rpx;
   color: #333;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calendar-mask {
