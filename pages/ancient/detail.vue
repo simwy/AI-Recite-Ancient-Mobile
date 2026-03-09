@@ -2,7 +2,12 @@
   <view class="container">
     <view class="header" @click="goReadFromStart">
       <view class="header-top">
-        <view class="header-placeholder"></view>
+        <view class="header-left">
+          <view class="correction-btn" @click.stop="goCorrection">
+            <uni-icons type="compose" size="16" color="#666" />
+            <text class="correction-text">纠错</text>
+          </view>
+        </view>
         <view class="fav-icon-btn" @click.stop="toggleFavorite">
           <uni-icons
             :type="isFavorited ? 'star-filled' : 'star'"
@@ -50,8 +55,10 @@
           <uni-icons type="eye" size="14" color="#4f46e5" />
           <text>跟读记录</text>
           <text v-if="followList.length > 0" class="section-count">({{ followList.length }})</text>
-          <text v-if="followList.length > 0" class="section-latest">最近 {{ followList[0].accuracy || 0 }}%</text>
-          <uni-icons :type="followExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+          <view class="section-right">
+            <text v-if="followList.length > 0" class="section-latest">最近 {{ followList[0].accuracy || 0 }}%</text>
+            <uni-icons :type="followExpanded ? 'arrowup' : 'arrowright'" size="14" :color="followExpanded ? '#4f46e5' : '#999'" class="section-arrow" />
+          </view>
         </view>
         <view v-show="followExpanded" class="section-body">
           <view v-if="followLoading" class="records-loading"><text>加载中...</text></view>
@@ -76,8 +83,10 @@
           <uni-icons type="mic" size="14" color="#0b57d0" />
           <text>背诵记录</text>
           <text v-if="reciteList.length > 0" class="section-count">({{ reciteList.length }})</text>
-          <text v-if="reciteList.length > 0" class="section-latest">最近 {{ reciteList[0].accuracy || 0 }}%</text>
-          <uni-icons :type="reciteExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+          <view class="section-right">
+            <text v-if="reciteList.length > 0" class="section-latest">最近 {{ reciteList[0].accuracy || 0 }}%</text>
+            <uni-icons :type="reciteExpanded ? 'arrowup' : 'arrowright'" size="14" :color="reciteExpanded ? '#0b57d0' : '#999'" class="section-arrow" />
+          </view>
         </view>
         <view v-show="reciteExpanded" class="section-body">
           <view v-if="reciteLoading" class="records-loading"><text>加载中...</text></view>
@@ -102,8 +111,10 @@
           <uni-icons type="compose" size="14" color="#2563eb" />
           <text>默写记录</text>
           <text v-if="dictationList.length > 0" class="section-count">({{ dictationList.length }})</text>
-          <text v-if="dictationList.length > 0" class="section-latest">最近 {{ dictationList[0].accuracy || 0 }}%</text>
-          <uni-icons :type="dictationExpanded ? 'arrowdown' : 'arrowright'" size="14" color="#999" class="section-arrow" />
+          <view class="section-right">
+            <text v-if="dictationList.length > 0" class="section-latest">最近 {{ dictationList[0].accuracy || 0 }}%</text>
+            <uni-icons :type="dictationExpanded ? 'arrowup' : 'arrowright'" size="14" :color="dictationExpanded ? '#2563eb' : '#999'" class="section-arrow" />
+          </view>
         </view>
         <view v-show="dictationExpanded" class="section-body">
           <view v-if="dictationLoading" class="records-loading"><text>加载中...</text></view>
@@ -151,6 +162,7 @@
 import { store } from '@/uni_modules/uni-id-pages/common/store.js'
 import { buildPlayUnits } from '@/common/playUnits.js'
 import ttsService from '@/common/ttsService.js'
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 const db = uniCloud.database()
 
@@ -241,6 +253,13 @@ export default {
       uni.navigateTo({
         url: `/pages/ancient/follow?id=${this.id}`
       })
+    },
+    /** 跳转意见反馈页并预填纠错信息（id、标题），供用户补充纠错类型与内容 */
+    goCorrection() {
+      const id = this.id || (this.detail && this.detail._id) || ''
+      const title = (this.detail && this.detail.title) || ''
+      const url = getFeedbackUrl({ id, title, type: 'correction' })
+      uni.navigateTo({ url })
     },
     /** 从首句开始朗读：进入朗读页并自动从头播放 */
     goReadFromStart() {
@@ -529,9 +548,22 @@ export default {
   justify-content: space-between;
   margin-bottom: 4rpx;
 }
-.header-placeholder {
-  width: 1rpx;
-  height: 1rpx;
+.header-left {
+  display: flex;
+  align-items: center;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .title-row {
   display: flex;
@@ -672,12 +704,17 @@ export default {
   font-weight: normal;
   color: #999;
 }
-.section-latest {
+.section-right {
   margin-left: auto;
-  margin-right: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.section-latest {
   font-size: 26rpx;
   font-weight: 600;
   color: #0b57d0;
+  text-align: right;
 }
 .records-section:nth-child(1) .section-latest { color: #4f46e5; }
 .records-section:nth-child(2) .section-latest { color: #0b57d0; }

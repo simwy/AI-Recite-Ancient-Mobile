@@ -6,16 +6,11 @@
     </view>
 
     <view class="content-box" v-if="showArticleContent && textData.content">
-      <text class="content">{{ textData.content }}</text>
-    </view>
-
-    <!-- 提示区域 -->
-    <view class="hint-area" v-if="hints.length > 0">
-      <view class="hint-label">提示内容：</view>
-      <view class="hint-content">
-        <text v-for="(h, idx) in hints" :key="idx" class="hint-text">
-          {{ h }}
-        </text>
+      <view class="content-inner" :class="{ collapsed: needExpand && !expanded }">
+        <text class="content">{{ textData.content }}</text>
+      </view>
+      <view v-if="needExpand" class="expand-wrap">
+        <text class="expand-btn" @click="expanded = !expanded">{{ expanded ? '收起' : '展开全文' }}</text>
       </view>
     </view>
 
@@ -40,6 +35,18 @@
 
     <!-- 操作按钮 -->
     <view class="action-area">
+      <!-- 提示区域 -->
+      <view class="hint-wrapper">
+        <view class="hint-area" v-show="hints.length > 0">
+          <view class="hint-label">提示内容：</view>
+          <view class="hint-content">
+            <text v-for="(h, idx) in hints" :key="idx" class="hint-text">
+              {{ h }}
+            </text>
+          </view>
+        </view>
+      </view>
+
       <button
         v-if="!started"
         type="primary"
@@ -49,9 +56,9 @@
       >{{ requestingPermission ? '授权中...' : '开始背诵' }}</button>
 
       <template v-if="recording">
-        <!-- <button class="btn btn-hint" @click="showHint">
+        <button class="btn btn-hint" @click="showHint">
           提醒我（已用 {{ hintCount }} 次）
-        </button> -->
+        </button>
         <button type="warn" class="btn" @click="stopRecite">
           背诵结束
         </button>
@@ -75,6 +82,7 @@ export default {
       durationTimer: null,
       hintCount: 0,
       hintCharCount: 0,
+      hintStartIndex: -1,
       hints: [],
       recorderManager: null,
       socketTask: null,
@@ -96,7 +104,36 @@ export default {
       h5AudioChunks: [],
       h5StopPromiseResolver: null,
       /** 微信等：正在等待用户授权，未真正开始录音，按钮仍为「开始背诵」 */
-      requestingPermission: false
+      requestingPermission: false,
+      expanded: false,
+      /** 静默检测：最后一次收到识别文本的时间戳 */
+      lastSpeechTime: 0,
+      silenceTimer: null
+    }
+  },
+  computed: {
+    needExpand() {
+      const content = (this.textData && this.textData.content) || ''
+      return content.length > 80
+    }
+  },
+  watch: {
+    realtimeText(newVal) {
+      if (this.hintStartIndex < 0 || this.hints.length === 0) return
+      const originalChars = this.getOriginalChars()
+      const hintChars = originalChars.slice(this.hintStartIndex, this.hintStartIndex + this.hintCharCount)
+      if (hintChars.length === 0) return
+
+      const realtimeChars = [...(newVal || '')].filter(c => /[\u4e00-\u9fff]/.test(c))
+      const hintStr = hintChars.join('')
+      const realtimeStr = realtimeChars.join('')
+
+      // 检查 realtimeText 尾部是否包含提示字
+      if (realtimeStr.endsWith(hintStr) || realtimeStr.includes(hintStr)) {
+        this.hintStartIndex = -1
+        this.hintCharCount = 0
+        this.hints = []
+      }
     }
   },
   onLoad(options) {
@@ -111,6 +148,7 @@ export default {
   },
   onUnload() {
     clearInterval(this.durationTimer)
+    this.stopSilenceDetection()
     // #ifdef H5
     this.cleanupH5PcmRecorder()
     // #endif
@@ -265,6 +303,7 @@ export default {
           this.duration++
         }, 1000)
         await this.startH5PcmRecorder()
+        this.startSilenceDetection()
         return
         // #endif
 
@@ -312,29 +351,67 @@ export default {
           format: this.asrConfig.format || 'pcm',
           sampleRate: this.asrConfig.sampleRate || 16000,
           numberOfChannels: 1,
-          frameSize: 5
+          frameSize: 5,
+          duration: 600000
         })
       }
+      this.startSilenceDetection()
     },
     showHint() {
-      const hintChars = this.getHintChars()
-      if (hintChars.length === 0) return
-      if (this.hintCharCount >= hintChars.length) {
-        uni.showToast({ title: '已无更多提示', icon: 'none' })
+      const originalChars = this.getOriginalChars()
+      if (originalChars.length === 0) return
+
+      const pos = this.findRecitePosition()
+      if (pos >= originalChars.length) {
+        uni.showToast({ title: '已到末尾', icon: 'none' })
         return
       }
 
-      this.hintCharCount++
-      const hintText = hintChars.slice(0, this.hintCharCount).join('') + '...'
+      // 同一位置继续追加提示字，不重复计数
+      if (this.hintStartIndex === pos) {
+        this.hintCharCount++
+      } else {
+        // 新位置，重置提示
+        this.hintStartIndex = pos
+        this.hintCharCount = 1
+        this.hintCount++
+      }
+
+      // 不超过剩余字数
+      const maxChars = originalChars.length - pos
+      if (this.hintCharCount > maxChars) {
+        this.hintCharCount = maxChars
+      }
+
+      const hintText = originalChars.slice(pos, pos + this.hintCharCount).join('')
       this.hints = [hintText]
-      this.hintCount++
     },
-    getHintChars() {
+    getOriginalChars() {
       const content = this.textData.content || ''
       return [...content].filter(char => /[\u4e00-\u9fff]/.test(char))
     },
+    findRecitePosition() {
+      const originalChars = this.getOriginalChars()
+      const realtimeChars = [...(this.realtimeText || '')].filter(c => /[\u4e00-\u9fff]/.test(c))
+      if (realtimeChars.length === 0) return 0
+      if (originalChars.length === 0) return 0
+
+      // 尾部匹配：取 realtimeText 尾部子串，在原文中搜索
+      const origStr = originalChars.join('')
+      const maxTail = Math.min(realtimeChars.length, 10)
+      for (let tailLen = maxTail; tailLen >= 1; tailLen--) {
+        const tail = realtimeChars.slice(-tailLen).join('')
+        const idx = origStr.lastIndexOf(tail)
+        if (idx !== -1) {
+          return idx + tailLen
+        }
+      }
+      // 完全匹配不到，回退到 realtimeChars 长度作为粗略位置
+      return Math.min(realtimeChars.length, originalChars.length)
+    },
     stopRecite() {
       this.stopping = true
+      this.stopSilenceDetection()
       // #ifdef H5
       this.recording = false
       clearInterval(this.durationTimer)
@@ -539,6 +616,8 @@ export default {
       const text = sentence.text || ''
       if (!text) return
 
+      this.lastSpeechTime = Date.now()
+
       if (sentence.sentence_end) {
         this.finalSentences.push(text)
         this.partialSentence = ''
@@ -599,6 +678,32 @@ export default {
       this.partialSentence = ''
       this.realtimeText = ''
       this.waitTaskFinishedResolver = null
+      this.hintStartIndex = -1
+      this.hintCharCount = 0
+      this.hints = []
+      this.lastSpeechTime = 0
+    },
+    startSilenceDetection() {
+      this.lastSpeechTime = Date.now()
+      this.stopSilenceDetection()
+      this.silenceTimer = setInterval(() => {
+        if (!this.recording || !this.lastSpeechTime) return
+        if (Date.now() - this.lastSpeechTime >= 10000) {
+          this.handleSilenceTimeout()
+        }
+      }, 2000)
+    },
+    stopSilenceDetection() {
+      if (this.silenceTimer) {
+        clearInterval(this.silenceTimer)
+        this.silenceTimer = null
+      }
+    },
+    handleSilenceTimeout() {
+      if (!this.recording) return
+      this.stopSilenceDetection()
+      uni.showToast({ title: '10秒未检测到语音，已自动结束', icon: 'none', duration: 3000 })
+      this.stopRecite()
     },
     createTaskId() {
       return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
@@ -786,6 +891,7 @@ export default {
 <style scoped>
 .container {
   padding: 40rpx;
+  padding-bottom: 360rpx;
   min-height: 100vh;
   background: #f5f5f5;
 }
@@ -811,17 +917,39 @@ export default {
   margin-bottom: 36rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
+.content-inner {
+  overflow: hidden;
+}
+.content-inner.collapsed {
+  max-height: 20vh;
+}
+.expand-wrap {
+  margin-top: 24rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eee;
+  text-align: center;
+}
+.expand-btn {
+  font-size: 26rpx;
+  color: #4f46e5;
+  padding: 8rpx 24rpx;
+  background: #eef2ff;
+  border-radius: 24rpx;
+}
 .content {
   font-size: 34rpx;
   color: #333;
   line-height: 2;
   letter-spacing: 1rpx;
 }
+.hint-wrapper {
+  overflow: hidden;
+}
 .hint-area {
   background: #fffbe6;
   border-radius: 12rpx;
   padding: 24rpx;
-  margin-bottom: 40rpx;
+  margin-bottom: 20rpx;
   border-left: 6rpx solid #faad14;
 }
 .hint-label {
@@ -882,7 +1010,13 @@ export default {
   min-height: 80rpx;
 }
 .action-area {
-  padding: 0 20rpx;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f5f5f5;
+  padding: 20rpx 40rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 }
 .btn {
   width: 100%;

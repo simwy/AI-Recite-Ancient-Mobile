@@ -338,10 +338,32 @@ export default {
       })
     },
     onSearch() {
-      // 使用 computed filteredList，无需额外操作
+      const k = (this.keyword || '').trim()
+      if (k) {
+        this.saveSearchLog({
+          content: k,
+          scene: 'square_subcollection',
+          category_id: this.categoryId || '',
+          subcollection_id: this.subcollectionId || '',
+          category_name: this.categoryName || '',
+          subcollection_name: this.subcollectionName || ''
+        })
+      }
     },
     onClear() {
       this.keyword = ''
+    },
+    /** 记录搜索日志（静默，不阻塞列表） */
+    saveSearchLog(payload) {
+      const uniIdToken = this.getUniIdToken()
+      uniCloud.callFunction({
+        name: 'gw_ancient-search',
+        data: {
+          action: 'saveSearchLog',
+          data: payload,
+          uniIdToken
+        }
+      }).catch(() => {})
     },
     getUniIdToken() {
       const currentUserInfo = uniCloud.getCurrentUserInfo() || {}

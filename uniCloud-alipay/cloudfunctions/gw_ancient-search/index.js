@@ -8,6 +8,7 @@ const subcollectionGroupCollection = db.collection('gw-square-subcollections-gro
 const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
 const summaryCollection = db.collection('gw-user-text-summary')
 const reciteCollection = db.collection('gw-recite-records')
+const searchLogCollection = db.collection('gw-search-logs')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -911,6 +912,29 @@ async function getUserTextSummaries(event, context) {
   return { code: 0, data: { list } }
 }
 
+/** 记录用户搜索日志（场景、关键词、广场栏目等） */
+async function saveSearchLog(event, data, context) {
+  const content = typeof data.content === 'string' ? data.content.trim() : ''
+  const scene = data.scene === 'square_subcollection' ? 'square_subcollection' : 'ancient_list'
+  if (!content) return { code: 0, msg: '忽略空关键词' }
+  const uid = await getAuthUid(event, context)
+  const doc = {
+    content,
+    scene,
+    create_date: Date.now()
+  }
+  if (uid) doc.user_id = uid
+  if (data.device_id && typeof data.device_id === 'string') doc.device_id = data.device_id
+  if (scene === 'square_subcollection') {
+    if (data.category_id) doc.category_id = data.category_id
+    if (data.subcollection_id) doc.subcollection_id = data.subcollection_id
+    if (data.category_name) doc.category_name = data.category_name
+    if (data.subcollection_name) doc.subcollection_name = data.subcollection_name
+  }
+  await searchLogCollection.add(doc)
+  return { code: 0 }
+}
+
 exports.main = async (event, context) => {
   const raw = event || {}
   const action = raw.action || (raw.data && raw.data.action) || 'search'
@@ -948,6 +972,8 @@ exports.main = async (event, context) => {
         return await listExistingTitleAuthor()
       case 'getUserTextSummaries':
         return await getUserTextSummaries(event, context)
+      case 'saveSearchLog':
+        return await saveSearchLog(event, data, context)
       default:
         return { code: -1, msg: '未知操作' }
     }

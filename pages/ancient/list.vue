@@ -188,6 +188,8 @@ export default {
       this.page = 1
       this.aiCandidates = []
       this.loadData()
+      const k = (this.keyword || '').trim()
+      if (k) this.saveSearchLog({ content: k, scene: 'ancient_list' })
     },
     onClear() {
       this.keyword = ''
@@ -197,6 +199,24 @@ export default {
       this.aiCandidates = []
       this.showAddPopup = false
       this.loadData()
+    },
+    /** 记录搜索日志（静默，不阻塞列表） */
+    saveSearchLog(payload) {
+      const uniIdToken = this.getUniIdToken()
+      uniCloud.callFunction({
+        name: 'gw_ancient-search',
+        data: {
+          action: 'saveSearchLog',
+          data: payload,
+          uniIdToken
+        }
+      }).catch(() => {})
+    },
+    getUniIdToken() {
+      const cur = uniCloud.getCurrentUserInfo() || {}
+      if (!cur.token) return ''
+      if (cur.tokenExpired && cur.tokenExpired < Date.now()) return ''
+      return cur.token
     },
     /** 拉取最近学习记录（读过/背诵过/默写过），构建 text_id -> 最近时间 映射 */
     async loadRecentActivity() {
