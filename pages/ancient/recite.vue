@@ -84,6 +84,7 @@
 <script>
 const db = uniCloud.database()
 import { getFeedbackUrl } from '@/common/feedbackHelper.js'
+import NlsAsrClient from '@/utils/asr-nls.js'
 
 export default {
   data() {
@@ -102,24 +103,16 @@ export default {
       /** 所有被提示过的原文字符索引（去标点后的索引） */
       hintedIndices: [],
       recorderManager: null,
-      socketTask: null,
+      asrClient: null,
       asrConfig: null,
-      taskId: '',
-      taskStarted: false,
-      taskFinished: false,
-      frameQueue: [],
       finalSentences: [],
       partialSentence: '',
       realtimeText: '',
       stopping: false,
-      waitTaskFinishedResolver: null,
       useWebRecorder: false,
       webAudioContext: null,
       webMediaStream: null,
       webScriptProcessor: null,
-      h5MediaRecorder: null,
-      h5AudioChunks: [],
-      h5StopPromiseResolver: null,
       /** 微信等：正在等待用户授权，未真正开始录音，按钮仍为「开始背诵」 */
       requestingPermission: false,
       expanded: false,
@@ -168,19 +161,22 @@ export default {
   onUnload() {
     clearInterval(this.durationTimer)
     this.stopSilenceDetection()
-    // #ifdef H5
-    this.cleanupH5PcmRecorder()
-    // #endif
-
     if (this.recording) {
+      // #ifdef H5
+      this.stopWebRecorder()
+      // #endif
+      // #ifndef H5
       if (this.useWebRecorder) {
         this.stopWebRecorder()
       } else if (this.recorderManager) {
         this.recorderManager.stop()
       }
+      // #endif
     }
-    this.closeSocket()
-    this.destroyWebRecorder()
+    if (this.asrClient) {
+      this.asrClient.destroy()
+      this.asrClient = null
+    }
   },
   methods: {
     async loadTextData() {
@@ -282,28 +278,21 @@ export default {
         return
       }
 
-      // #ifdef MP-WEIXIN
-      console.log('[recite] 使用 RecorderManager（微信原生录音），停止时会调用 stop() 释放麦克风')
-      // #endif
-
       this.recorderManager.onFrameRecorded((res) => {
-        this.sendAudioFrame(res.frameBuffer)
+        if (this.asrClient) {
+          this.asrClient.sendAudio(res.frameBuffer)
+        }
       })
       this.recorderManager.onStop((res) => {
-        // #ifdef MP-WEIXIN
-        console.log('[recite] RecorderManager onStop 已触发，麦克风应已释放')
-        // #endif
         this.recording = false
         clearInterval(this.durationTimer)
-        // 暂停触发的 stop 不走结束流程
         if (this.paused) return
         this.handleRecorderStop()
       })
       this.recorderManager.onError((err) => {
         this.recording = false
         clearInterval(this.durationTimer)
-        this.closeSocket()
-        // 暂停触发的 stop 可能引发 onError，此时不重置 started
+        if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
         if (this.paused) return
         this.started = false
         const msg = (err && err.errMsg) ? err.errMsg : '录音失败'
@@ -322,10 +311,10 @@ export default {
         this.recording = true
         this.stopping = false
         this.duration = 0
-        this.durationTimer = setInterval(() => {
-          this.duration++
-        }, 1000)
-        await this.startH5PcmRecorder()
+        this.durationTimer = setInterval(() => { this.duration++ }, 1000)
+        await this.loadAsrConfig()
+        await this.startAsrClient()
+        await this.startWebRecorder()
         this.startSilenceDetection()
         return
         // #endif
@@ -333,52 +322,65 @@ export default {
         this.requestingPermission = true
         await this.ensureRecordPermission()
         this.requestingPermission = false
-        // 用户同意授权后才真正开始：拉配置、建连、开录音，此时按钮会变为「背诵结束」
         await this.doRealStartRecite()
       } catch (err) {
         this.requestingPermission = false
         this.started = false
         this.recording = false
         clearInterval(this.durationTimer)
-        this.closeSocket()
+        if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
         const msg = (err && (err.errMsg || err.message)) || '启动识别失败'
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         console.error('启动实时识别失败:', err)
-        // #ifdef MP-WEIXIN
-        if (/domain|url|合法|request:fail/i.test(String(msg))) {
-          console.warn('微信小程序真机 WebSocket 失败时，请到 微信公众平台 → 开发 → 开发管理 → 开发设置 → 服务器域名 → socket合法域名 中添加 ASR 服务域名')
-        }
-        // #endif
       }
     },
-    /** 仅在用户已同意麦克风权限后调用：拉配置、建连、开录音，并置为录音中（按钮变为「背诵结束」） */
     async doRealStartRecite() {
       // #ifdef MP-WEIXIN
       await new Promise(r => setTimeout(r, 200))
       // #endif
       await this.loadAsrConfig()
-      await this.openSocket()
+      await this.startAsrClient()
 
       this.started = true
       this.recording = true
       this.stopping = false
       this.duration = 0
-      this.durationTimer = setInterval(() => {
-        this.duration++
-      }, 1000)
+      this.durationTimer = setInterval(() => { this.duration++ }, 1000)
 
       if (this.useWebRecorder) {
         await this.startWebRecorder()
       } else {
         this.recorderManager.start({
-          format: this.asrConfig.format || 'pcm',
-          sampleRate: this.asrConfig.sampleRate || 16000,
+          format: 'PCM',
+          sampleRate: 16000,
           numberOfChannels: 1,
           frameSize: 5,
           duration: 600000
         })
       }
       this.startSilenceDetection()
+    },
+    async startAsrClient() {
+      const config = this.asrConfig
+      this.asrClient = new NlsAsrClient({
+        url: `${config.wsUrl}?token=${config.token}`,
+        appkey: config.appkey,
+        onResultChanged: (text) => {
+          this.partialSentence = text
+          this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
+          this.lastSpeechTime = Date.now()
+        },
+        onSentenceEnd: (text) => {
+          this.finalSentences.push(text)
+          this.partialSentence = ''
+          this.realtimeText = this.finalSentences.join('')
+          this.lastSpeechTime = Date.now()
+        },
+        onError: (err) => {
+          console.error('ASR error:', err)
+        }
+      })
+      await this.asrClient.start()
     },
     showHint() {
       const originalChars = this.getOriginalChars()
@@ -425,288 +427,76 @@ export default {
       if (realtimeChars.length === 0) return 0
       if (originalChars.length === 0) return 0
 
-      // 尾部匹配：取 realtimeText 尾部子串，在原文中搜索
       const origStr = originalChars.join('')
+      // 预期位置：已识别字数（粗略估计当前背到哪里了）
+      const expectedPos = Math.min(realtimeChars.length, originalChars.length)
       const maxTail = Math.min(realtimeChars.length, 10)
+
       for (let tailLen = maxTail; tailLen >= 1; tailLen--) {
         const tail = realtimeChars.slice(-tailLen).join('')
-        const idx = origStr.lastIndexOf(tail)
-        if (idx !== -1) {
-          return idx + tailLen
+        // 找所有匹配位置，选离预期位置最近的
+        let bestIdx = -1
+        let bestDist = Infinity
+        let searchFrom = 0
+        while (true) {
+          const idx = origStr.indexOf(tail, searchFrom)
+          if (idx === -1) break
+          const endPos = idx + tailLen
+          const dist = Math.abs(endPos - expectedPos)
+          if (dist < bestDist) {
+            bestDist = dist
+            bestIdx = idx
+          }
+          searchFrom = idx + 1
+        }
+        if (bestIdx !== -1) {
+          return bestIdx + tailLen
         }
       }
-      // 完全匹配不到，回退到 realtimeChars 长度作为粗略位置
-      return Math.min(realtimeChars.length, originalChars.length)
+      return expectedPos
     },
     stopRecite() {
       this.stopping = true
       this.stopSilenceDetection()
-      // #ifdef H5
       this.recording = false
       clearInterval(this.durationTimer)
-      this.stopH5PcmRecorder()
+
+      // #ifdef H5
+      this.stopWebRecorder()
+      this.handleRecorderStop()
       return
       // #endif
 
       if (this.useWebRecorder) {
-        this.recording = false
-        clearInterval(this.durationTimer)
-        this.handleRecorderStop()
         this.stopWebRecorder()
+        this.handleRecorderStop()
       } else if (this.recorderManager) {
-        // #ifdef MP-WEIXIN
-        console.log('[recite] 调用 recorderManager.stop()，主动释放麦克风')
-        // #endif
-        this.recording = false
-        clearInterval(this.durationTimer)
         this.recorderManager.stop()
       }
     },
     async handleRecorderStop() {
       if (!this.stopping) return
       uni.showLoading({ title: '正在结束识别...' })
-      await this.finishTask()
-      uni.hideLoading()
-      // #ifdef MP-WEIXIN
-      // 再次调用 stop 确保释放麦克风（部分机型 onStop 延迟或未触发时右上角麦克风图标仍会闪）
-      if (this.recorderManager) {
-        try { this.recorderManager.stop() } catch (e) {}
+      if (this.asrClient) {
+        await this.asrClient.stop()
+        this.asrClient = null
       }
-      await new Promise(r => setTimeout(r, 300))
-      // #endif
+      uni.hideLoading()
       this.goResult(this.realtimeText)
     },
     async loadAsrConfig() {
-      const res = await uniCloud.callFunction({
-        name: 'gw_asr-config'
-      })
+      const res = await uniCloud.callFunction({ name: 'gw_asr-config' })
       const result = res.result || {}
       if (result.code !== 0 || !result.data) {
         throw new Error(result.msg || '获取语音配置失败')
       }
       this.asrConfig = result.data
     },
-    openSocket() {
-      return new Promise((resolve, reject) => {
-        let socketUrl = this.asrConfig.wsUrl
-        let socketHeader = {
-          Authorization: `${this.asrConfig.tokenType || 'bearer'} ${this.asrConfig.temporaryToken}`
-        }
-
-        // #ifdef H5
-        if (!window.isSecureContext) {
-          reject(new Error('H5 录音需要 HTTPS 或 localhost 安全上下文'))
-          return
-        }
-
-        const fallbackRelayWsUrl = this.buildDefaultRelayWsUrl()
-        const relayWsUrl = this.asrConfig.relayWsUrl || fallbackRelayWsUrl
-        if (!relayWsUrl) {
-          reject(new Error('H5 需要配置 relayWsUrl，或确保当前站点可用 /asr-relay'))
-          return
-        }
-        socketUrl = relayWsUrl
-        socketHeader = {}
-        // #endif
-
-        this.taskId = this.createTaskId()
-        this.socketTask = uni.connectSocket({
-          url: socketUrl,
-          header: socketHeader,
-          complete: () => {}
-        })
-
-        this.socketTask.onOpen(() => {
-          this.sendRunTask()
-          resolve()
-        })
-
-        this.socketTask.onMessage(({ data }) => {
-          this.handleSocketMessage(data)
-        })
-
-        this.socketTask.onError((err) => {
-          // #ifdef H5
-          reject(new Error('H5 WebSocket 连接失败，请检查临时Token是否有效，以及当前浏览器是否允许在握手中携带鉴权头'))
-          // #endif
-          // #ifndef H5
-          reject(err)
-          // #endif
-        })
-
-        this.socketTask.onClose(() => {
-          this.socketTask = null
-        })
-      })
-    },
-    sendRunTask() {
-      if (!this.socketTask) return
-      const payload = {
-        header: {
-          action: 'run-task',
-          task_id: this.taskId,
-          streaming: 'duplex'
-        },
-        payload: {
-          task_group: 'audio',
-          task: 'asr',
-          function: 'recognition',
-          model: this.asrConfig.model || 'paraformer-realtime-v2',
-          parameters: {
-            format: this.asrConfig.format || 'pcm',
-            sample_rate: this.asrConfig.sampleRate || 16000,
-            language_hints: this.asrConfig.languageHints || ['zh'],
-            punctuation_prediction_enabled: this.asrConfig.punctuationPredictionEnabled !== false,
-            inverse_text_normalization_enabled: this.asrConfig.inverseTextNormalizationEnabled !== false
-          },
-          input: {}
-        }
-      }
-      this.socketTask.send({
-        data: JSON.stringify(payload)
-      })
-    },
-    sendAudioFrame(frameBuffer) {
-      if (!frameBuffer || !this.socketTask) return
-      if (!this.taskStarted) {
-        this.frameQueue.push(frameBuffer)
-        return
-      }
-      this.socketTask.send({
-        data: frameBuffer
-      })
-    },
-    flushFrameQueue() {
-      if (!this.socketTask || !this.taskStarted || this.frameQueue.length === 0) return
-      while (this.frameQueue.length > 0) {
-        const frame = this.frameQueue.shift()
-        this.socketTask.send({ data: frame })
-      }
-    },
-    handleSocketMessage(rawData) {
-      const decoded = this.decodeSocketData(rawData)
-      if (!decoded) return
-      let message = decoded
-      try {
-        message = JSON.parse(decoded)
-      } catch (e) {
-        return
-      }
-      const header = message.header || {}
-      const event = header.event
-
-      if (event === 'task-started') {
-        this.taskStarted = true
-        this.flushFrameQueue()
-        return
-      }
-
-      if (event === 'result-generated') {
-        this.handleRecognizedSentence(message.payload && message.payload.output && message.payload.output.sentence)
-        return
-      }
-
-      if (event === 'task-finished') {
-        this.taskFinished = true
-        if (this.waitTaskFinishedResolver) {
-          this.waitTaskFinishedResolver()
-          this.waitTaskFinishedResolver = null
-        }
-        this.closeSocket()
-        return
-      }
-
-      if (event === 'task-failed') {
-        console.error('任务失败:', header.error_message || '未知错误')
-        if (this.waitTaskFinishedResolver) {
-          this.waitTaskFinishedResolver()
-          this.waitTaskFinishedResolver = null
-        }
-        this.closeSocket()
-      }
-    },
-    decodeSocketData(rawData) {
-      if (typeof rawData === 'string') return rawData
-      if (!(rawData instanceof ArrayBuffer)) return ''
-
-      if (typeof TextDecoder !== 'undefined') {
-        return new TextDecoder('utf-8').decode(rawData)
-      }
-
-      const bytes = new Uint8Array(rawData)
-      let result = ''
-      for (let i = 0; i < bytes.length; i++) {
-        result += String.fromCharCode(bytes[i])
-      }
-      return decodeURIComponent(escape(result))
-    },
-    handleRecognizedSentence(sentence) {
-      if (!sentence || sentence.heartbeat) return
-      const text = sentence.text || ''
-      if (!text) return
-
-      this.lastSpeechTime = Date.now()
-
-      if (sentence.sentence_end) {
-        this.finalSentences.push(text)
-        this.partialSentence = ''
-      } else {
-        this.partialSentence = text
-      }
-
-      this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
-    },
-    finishTask() {
-      return new Promise((resolve) => {
-        if (!this.socketTask) {
-          resolve()
-          return
-        }
-
-        if (this.taskStarted && !this.taskFinished) {
-          this.socketTask.send({
-            data: JSON.stringify({
-              header: {
-                action: 'finish-task',
-                task_id: this.taskId,
-                streaming: 'duplex'
-              },
-              payload: {
-                input: {}
-              }
-            })
-          })
-        }
-
-        const timer = setTimeout(() => {
-          this.closeSocket()
-          resolve()
-        }, 5000)
-
-        this.waitTaskFinishedResolver = () => {
-          clearTimeout(timer)
-          resolve()
-        }
-      })
-    },
-    closeSocket() {
-      if (!this.socketTask) return
-      try {
-        this.socketTask.close({})
-      } catch (e) {
-        console.error('关闭 socket 失败:', e)
-      }
-      this.socketTask = null
-    },
     resetRealtimeState() {
-      this.taskId = ''
-      this.taskStarted = false
-      this.taskFinished = false
-      this.frameQueue = []
+      if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
       this.finalSentences = []
       this.partialSentence = ''
       this.realtimeText = ''
-      this.waitTaskFinishedResolver = null
       this.hintStartIndex = -1
       this.hintCharCount = 0
       this.hints = []
@@ -736,20 +526,13 @@ export default {
       uni.showToast({ title: '10秒未检测到语音，已自动暂停', icon: 'none', duration: 3000 })
       this.pauseRecite()
     },
-    /** 暂停背诵：停录音、关 WebSocket、停计时，但保留已识别文本 */
+    /** 暂停背诵：停录音、关 ASR、停计时，但保留已识别文本 */
     pauseRecite() {
       this.stopSilenceDetection()
       clearInterval(this.durationTimer)
 
       // #ifdef H5
-      if (this.h5MediaRecorder && this.h5MediaRecorder.state !== 'inactive') {
-        this.h5MediaRecorder.stop()
-      }
-      if (this.webMediaStream) {
-        this.webMediaStream.getTracks().forEach(track => track.stop())
-        this.webMediaStream = null
-      }
-      this.h5MediaRecorder = null
+      this.stopWebRecorder()
       // #endif
 
       // #ifndef H5
@@ -760,42 +543,33 @@ export default {
       }
       // #endif
 
-      this.finishTask()
-      this.closeSocket()
+      if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
       this.recording = false
       this.paused = true
     },
     /** 继续背诵：重新建连、开录音，保留已识别文本 */
     async resumeRecite() {
       try {
-        // 重置 WebSocket 相关状态，但保留 finalSentences / realtimeText
-        this.taskId = ''
-        this.taskStarted = false
-        this.taskFinished = false
-        this.frameQueue = []
-        this.waitTaskFinishedResolver = null
         this.paused = false
+        await this.loadAsrConfig()
+        await this.startAsrClient()
 
-        // #ifdef H5
         this.recording = true
         this.stopping = false
         this.durationTimer = setInterval(() => { this.duration++ }, 1000)
-        await this.startH5PcmRecorder()
+
+        // #ifdef H5
+        await this.startWebRecorder()
         this.startSilenceDetection()
         return
         // #endif
 
-        await this.loadAsrConfig()
-        await this.openSocket()
-        this.recording = true
-        this.stopping = false
-        this.durationTimer = setInterval(() => { this.duration++ }, 1000)
         if (this.useWebRecorder) {
           await this.startWebRecorder()
         } else {
           this.recorderManager.start({
-            format: this.asrConfig.format || 'pcm',
-            sampleRate: this.asrConfig.sampleRate || 16000,
+            format: 'PCM',
+            sampleRate: 16000,
             numberOfChannels: 1,
             frameSize: 5,
             duration: 600000
@@ -805,7 +579,7 @@ export default {
       } catch (err) {
         this.recording = false
         this.paused = true
-        this.closeSocket()
+        if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
         const msg = (err && (err.errMsg || err.message)) || '恢复识别失败'
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         console.error('恢复背诵失败:', err)
@@ -816,132 +590,27 @@ export default {
       this.paused = false
       this.goResult(this.realtimeText)
     },
-    createTaskId() {
-      return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
-    },
-    buildDefaultRelayWsUrl() {
-      // #ifdef H5
-      if (!window.location || !window.location.host) return ''
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      return `${wsProtocol}//${window.location.host}/asr-relay`
-      // #endif
-      // #ifndef H5
-      return ''
-      // #endif
-    },
     async startWebRecorder() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('当前浏览器不支持录音')
       }
 
-      const targetSampleRate = this.asrConfig.sampleRate || 16000
       this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.webAudioContext = new (window.AudioContext || window.webkitAudioContext)()
       const source = this.webAudioContext.createMediaStreamSource(this.webMediaStream)
       this.webScriptProcessor = this.webAudioContext.createScriptProcessor(4096, 1, 1)
 
       this.webScriptProcessor.onaudioprocess = (event) => {
-        if (!this.recording || !this.socketTask) return
+        if (!this.recording || !this.asrClient) return
         const inputData = event.inputBuffer.getChannelData(0)
-        const pcmBuffer = this.convertFloat32To16kPcm(inputData, this.webAudioContext.sampleRate, targetSampleRate)
+        const pcmBuffer = this.convertFloat32To16kPcm(inputData, this.webAudioContext.sampleRate, 16000)
         if (pcmBuffer && pcmBuffer.byteLength > 0) {
-          this.sendAudioFrame(pcmBuffer)
+          this.asrClient.sendAudio(pcmBuffer)
         }
       }
 
       source.connect(this.webScriptProcessor)
       this.webScriptProcessor.connect(this.webAudioContext.destination)
-    },
-    async startH5PcmRecorder() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('当前浏览器不支持录音')
-      }
-      if (typeof MediaRecorder === 'undefined') {
-        throw new Error('当前浏览器不支持 MediaRecorder')
-      }
-
-      this.h5AudioChunks = []
-      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-
-      this.h5MediaRecorder = new MediaRecorder(this.webMediaStream, {
-        mimeType: 'audio/webm'
-      })
-      this.h5MediaRecorder.ondataavailable = (evt) => {
-        if (evt.data && evt.data.size > 0) {
-          this.h5AudioChunks.push(evt.data)
-        }
-      }
-      this.h5MediaRecorder.onstop = async () => {
-        if (!this.stopping) return
-        try {
-          const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
-          // 音频太小（几乎没说话），直接用空文本跳转打分
-          if (audioBlob.size < 1000) {
-            this.goResult('')
-            return
-          }
-          uni.showLoading({ title: '语音识别中...' })
-          const audioBase64 = await this.blobToBase64(audioBlob)
-          const callRes = await uniCloud.callFunction({
-            name: 'gw_asr-file-recognize',
-            data: {
-              audioBase64,
-              format: 'webm'
-            }
-          })
-          const result = callRes.result || {}
-          if (result.code !== 0) {
-            // 识别失败也用空文本跳转打分页
-            this.goResult('')
-            return
-          }
-          this.realtimeText = (result.data && result.data.text) || ''
-          this.goResult(this.realtimeText)
-        } catch (error) {
-          console.error('H5 文件识别失败:', error)
-          // 识别异常也跳转打分页，避免卡在录音页
-          this.goResult(this.realtimeText || '')
-        } finally {
-          uni.hideLoading()
-          this.cleanupH5PcmRecorder()
-          if (this.h5StopPromiseResolver) {
-            this.h5StopPromiseResolver()
-            this.h5StopPromiseResolver = null
-          }
-        }
-      }
-      this.h5MediaRecorder.start()
-    },
-    async stopH5PcmRecorder() {
-      if (!this.h5MediaRecorder || this.h5MediaRecorder.state === 'inactive') {
-        this.cleanupH5PcmRecorder()
-        return
-      }
-      await new Promise((resolve) => {
-        this.h5StopPromiseResolver = resolve
-        this.h5MediaRecorder.stop()
-      })
-    },
-    cleanupH5PcmRecorder() {
-      if (this.webMediaStream) {
-        this.webMediaStream.getTracks().forEach(track => track.stop())
-      }
-      this.webMediaStream = null
-      this.h5MediaRecorder = null
-      this.h5AudioChunks = []
-      this.h5StopPromiseResolver = null
-    },
-    blobToBase64(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const result = reader.result || ''
-          const base64 = String(result).split(',')[1] || ''
-          resolve(base64)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
     },
     stopWebRecorder() {
       if (this.webScriptProcessor) {
@@ -957,9 +626,6 @@ export default {
       this.webScriptProcessor = null
       this.webMediaStream = null
       this.webAudioContext = null
-    },
-    destroyWebRecorder() {
-      this.stopWebRecorder()
     },
     convertFloat32To16kPcm(float32Array, inputSampleRate, outputSampleRate) {
       if (!float32Array || float32Array.length === 0) return null

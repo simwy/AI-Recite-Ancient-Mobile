@@ -114,6 +114,7 @@
 import { diffChars, calcAccuracy } from '@/common/diff.js'
 import readBaseMixin from '@/common/readBaseMixin.js'
 import { getFeedbackUrl } from '@/common/feedbackHelper.js'
+import NlsAsrClient from '@/utils/asr-nls.js'
 
 export default {
   mixins: [readBaseMixin],
@@ -141,19 +142,11 @@ export default {
       webAudioContext: null,
       webMediaStream: null,
       webScriptProcessor: null,
-      h5MediaRecorder: null,
-      h5AudioChunks: [],
-      h5StopPromiseResolver: null,
       asrConfig: null,
-      socketTask: null,
-      taskId: '',
-      taskStarted: false,
-      taskFinished: false,
-      frameQueue: [],
+      asrClient: null,
       finalSentences: [],
       partialSentence: '',
       realtimeText: '',
-      waitTaskFinishedResolver: null,
       followStartTime: 0,
       followRecordSaved: false,
       requestingPermission: false
@@ -168,10 +161,12 @@ export default {
   onUnload() {
     this.stopActiveAudio()
     this.audioPlayResolver = null
-    this.closeSocket()
+    if (this.asrClient) {
+      this.asrClient.destroy()
+      this.asrClient = null
+    }
     if (this.useWebRecorder) {
       this.stopWebRecorder()
-      this.cleanupH5PcmRecorder()
     }
     if (this.recorderManager && this.recording) {
       try { this.recorderManager.stop() } catch (e) {}
@@ -275,11 +270,11 @@ export default {
       if (typeof uni.getRecorderManager !== 'function') { this.useWebRecorder = true; return }
       try { this.recorderManager = uni.getRecorderManager() } catch (e) { this.useWebRecorder = true; return }
       if (!this.recorderManager) { this.useWebRecorder = true; return }
-      this.recorderManager.onFrameRecorded((res) => { this.sendAudioFrame(res.frameBuffer) })
+      this.recorderManager.onFrameRecorded((res) => { if (this.asrClient) this.asrClient.sendAudio(res.frameBuffer) })
       this.recorderManager.onStop(() => { this.recording = false; this.handleFollowRecorderStop() })
       this.recorderManager.onError((err) => {
         this.recording = false
-        this.closeSocket()
+        if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
         const msg = (err && err.errMsg) ? err.errMsg : '录音失败'
         uni.showToast({ title: msg.indexOf('record') !== -1 ? '请允许麦克风权限后重试' : '录音失败', icon: 'none', duration: 3000 })
       })
@@ -293,179 +288,50 @@ export default {
       if (result.code !== 0 || !result.data) throw new Error(result.msg || '获取语音配置失败')
       this.asrConfig = result.data
     },
-    openSocket() {
-      return new Promise((resolve, reject) => {
-        let socketUrl = this.asrConfig.wsUrl
-        let socketHeader = { Authorization: `${this.asrConfig.tokenType || 'bearer'} ${this.asrConfig.temporaryToken}` }
-        // #ifdef H5
-        if (!window.isSecureContext) { reject(new Error('H5 录音需要 HTTPS 或 localhost 安全上下文')); return }
-        const fallbackRelayWsUrl = this.buildDefaultRelayWsUrl()
-        const relayWsUrl = this.asrConfig.relayWsUrl || fallbackRelayWsUrl
-        if (!relayWsUrl) { reject(new Error('H5 需要配置 relayWsUrl')); return }
-        socketUrl = relayWsUrl
-        socketHeader = {}
-        // #endif
-        this.taskId = this.createTaskId()
-        this.socketTask = uni.connectSocket({ url: socketUrl, header: socketHeader, complete: () => {} })
-        this.socketTask.onOpen(() => {
-          this._openSocketResolver = resolve
-          this._openSocketTimer = setTimeout(() => {
-            if (this._openSocketResolver) { this._openSocketResolver(); this._openSocketResolver = null }
-          }, 5000)
-          this.sendRunTask()
-        })
-        this.socketTask.onMessage(({ data }) => { this.handleSocketMessage(data) })
-        this.socketTask.onError((err) => {
-          // #ifdef H5
-          reject(new Error('H5 WebSocket 连接失败'))
-          // #endif
-          // #ifndef H5
-          reject(err)
-          // #endif
-        })
-        this.socketTask.onClose(() => { this.socketTask = null })
+    createAsrClient() {
+      const config = this.asrConfig
+      const wsUrl = `${config.wsUrl}?token=${config.token}`
+      this.asrClient = new NlsAsrClient({
+        url: wsUrl,
+        appkey: config.appkey,
+        params: { format: 'pcm', sample_rate: 16000, enable_intermediate_result: true, enable_punctuation_prediction: true, enable_inverse_text_normalization: true, max_sentence_silence: 800 },
+        onResultChanged: (text) => {
+          this.partialSentence = text
+          this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
+        },
+        onSentenceEnd: (text) => {
+          this.finalSentences.push(text)
+          this.partialSentence = ''
+          this.realtimeText = this.finalSentences.join('')
+          this.checkAutoStopFollow()
+        },
+        onError: (err) => {
+          console.error('[follow] ASR error:', err)
+        }
       })
     },
-    sendRunTask() {
-      if (!this.socketTask) return
-      const payload = {
-        header: { action: 'run-task', task_id: this.taskId, streaming: 'duplex' },
-        payload: {
-          task_group: 'audio', task: 'asr', function: 'recognition',
-          model: this.asrConfig.model || 'paraformer-realtime-v2',
-          parameters: {
-            format: this.asrConfig.format || 'pcm',
-            sample_rate: this.asrConfig.sampleRate || 16000,
-            language_hints: this.asrConfig.languageHints || ['zh'],
-            punctuation_prediction_enabled: this.asrConfig.punctuationPredictionEnabled !== false,
-            inverse_text_normalization_enabled: this.asrConfig.inverseTextNormalizationEnabled !== false
-          },
-          input: {}
-        }
-      }
-      this.socketTask.send({ data: JSON.stringify(payload) })
-    },
-    sendAudioFrame(frameBuffer) {
-      if (!frameBuffer || !this.socketTask) return
-      if (!this.taskStarted) { this.frameQueue.push(frameBuffer); return }
-      this.socketTask.send({ data: frameBuffer })
-    },
-    flushFrameQueue() {
-      if (!this.socketTask || !this.taskStarted || this.frameQueue.length === 0) return
-      while (this.frameQueue.length > 0) { this.socketTask.send({ data: this.frameQueue.shift() }) }
-    },
-    handleSocketMessage(rawData) {
-      const decoded = this.decodeSocketData(rawData)
-      if (!decoded) return
-      let message = decoded
-      try { message = JSON.parse(decoded) } catch (e) { return }
-      const header = message.header || {}
-      const event = header.event
-      if (event === 'task-started') {
-        this.taskStarted = true
-        this.flushFrameQueue()
-        if (this._openSocketTimer) { clearTimeout(this._openSocketTimer); this._openSocketTimer = null }
-        if (this._openSocketResolver) { this._openSocketResolver(); this._openSocketResolver = null }
-        return
-      }
-      if (event === 'result-generated') {
-        this.handleRecognizedSentence(message.payload && message.payload.output && message.payload.output.sentence)
-        return
-      }
-      if (event === 'task-finished') {
-        this.taskFinished = true
-        if (this.waitTaskFinishedResolver) { this.waitTaskFinishedResolver(); this.waitTaskFinishedResolver = null }
-        this.closeSocket()
-        return
-      }
-      if (event === 'task-failed') {
-        if (this.waitTaskFinishedResolver) { this.waitTaskFinishedResolver(); this.waitTaskFinishedResolver = null }
-        this.closeSocket()
-      }
-    },
-    decodeSocketData(rawData) {
-      if (typeof rawData === 'string') return rawData
-      if (!(rawData instanceof ArrayBuffer)) return ''
-      if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(rawData)
-      const bytes = new Uint8Array(rawData)
-      let result = ''
-      for (let i = 0; i < bytes.length; i++) { result += String.fromCharCode(bytes[i]) }
-      return decodeURIComponent(escape(result))
-    },
-    handleRecognizedSentence(sentence) {
-      if (!sentence || sentence.heartbeat) return
-      const text = sentence.text || ''
-      if (!text) return
-      if (sentence.sentence_end) {
-        this.finalSentences.push(text)
-        this.partialSentence = ''
-        this.realtimeText = this.finalSentences.join('')
-        this.checkAutoStopFollow()
-      } else {
-        this.partialSentence = text
-        this.realtimeText = `${this.finalSentences.join('')}${this.partialSentence}`
-      }
+    resetRealtimeState() {
+      this.finalSentences = []
+      this.partialSentence = ''
+      this.realtimeText = ''
     },
     checkAutoStopFollow() {
       if (!this.recording || this.followingUnitIndex < 0) return
       if (this._followRecordStartTime && (Date.now() - this._followRecordStartTime < 1500)) return
       this.stopFollowRecording()
     },
-    finishTask() {
-      return new Promise((resolve) => {
-        if (!this.socketTask) { resolve(); return }
-        if (this.taskStarted && !this.taskFinished) {
-          this.socketTask.send({
-            data: JSON.stringify({
-              header: { action: 'finish-task', task_id: this.taskId, streaming: 'duplex' },
-              payload: { input: {} }
-            })
-          })
-        }
-        const timer = setTimeout(() => { this.closeSocket(); resolve() }, 5000)
-        this.waitTaskFinishedResolver = () => { clearTimeout(timer); resolve() }
-      })
-    },
-    closeSocket() {
-      if (!this.socketTask) return
-      try { this.socketTask.close() } catch (e) {}
-      this.socketTask = null
-    },
-    resetRealtimeState() {
-      this.taskId = ''
-      this.taskStarted = false
-      this.taskFinished = false
-      this.frameQueue = []
-      this.finalSentences = []
-      this.partialSentence = ''
-      this.realtimeText = ''
-      this.waitTaskFinishedResolver = null
-    },
-    createTaskId() {
-      return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
-    },
-    buildDefaultRelayWsUrl() {
-      // #ifdef H5
-      if (!window.location || !window.location.host) return ''
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      return `${wsProtocol}//${window.location.host}/asr-relay`
-      // #endif
-      // #ifndef H5
-      return ''
-      // #endif
-    },
     async startWebRecorder() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('当前浏览器不支持录音')
-      const targetSampleRate = this.asrConfig.sampleRate || 16000
+      const targetSampleRate = 16000
       this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.webAudioContext = new (window.AudioContext || window.webkitAudioContext)()
       const source = this.webAudioContext.createMediaStreamSource(this.webMediaStream)
       this.webScriptProcessor = this.webAudioContext.createScriptProcessor(4096, 1, 1)
       this.webScriptProcessor.onaudioprocess = (event) => {
-        if (!this.recording || !this.socketTask) return
+        if (!this.recording || !this.asrClient) return
         const inputData = event.inputBuffer.getChannelData(0)
         const pcmBuffer = this.convertFloat32To16kPcm(inputData, this.webAudioContext.sampleRate, targetSampleRate)
-        if (pcmBuffer && pcmBuffer.byteLength > 0) this.sendAudioFrame(pcmBuffer)
+        if (pcmBuffer && pcmBuffer.byteLength > 0) this.asrClient.sendAudio(pcmBuffer)
       }
       source.connect(this.webScriptProcessor)
       this.webScriptProcessor.connect(this.webAudioContext.destination)
@@ -496,57 +362,6 @@ export default {
       }
       return result.buffer
     },
-    async startH5PcmRecorder() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('当前浏览器不支持录音')
-      if (typeof MediaRecorder === 'undefined') throw new Error('当前浏览器不支持 MediaRecorder')
-      this.h5AudioChunks = []
-      this.webMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      this.h5MediaRecorder = new MediaRecorder(this.webMediaStream, { mimeType: 'audio/webm' })
-      this.h5MediaRecorder.ondataavailable = (evt) => {
-        if (evt.data && evt.data.size > 0) this.h5AudioChunks.push(evt.data)
-      }
-      this.h5MediaRecorder.onstop = async () => {
-        if (!this.stopping) return
-        const idx = this.followingUnitIndex
-        try {
-          uni.showLoading({ title: '语音识别中...' })
-          const audioBlob = new Blob(this.h5AudioChunks, { type: 'audio/webm' })
-          const audioBase64 = await this.blobToBase64(audioBlob)
-          const callRes = await uniCloud.callFunction({ name: 'gw_asr-file-recognize', data: { audioBase64, format: 'webm' } })
-          const result = (callRes && callRes.result) || {}
-          if (result.code !== 0) throw new Error(result.msg || '识别失败')
-          const recognizedText = (result.data && result.data.text) || ''
-          this.processFollowResult(idx, recognizedText)
-        } catch (error) {
-          uni.showToast({ title: error.message || '识别失败', icon: 'none' })
-          this.followStates = { ...this.followStates, [idx]: { state: 'error' } }
-        } finally {
-          uni.hideLoading()
-          this.cleanupH5PcmRecorder()
-          if (this.h5StopPromiseResolver) { this.h5StopPromiseResolver(); this.h5StopPromiseResolver = null }
-        }
-      }
-      this.h5MediaRecorder.start()
-    },
-    async stopH5PcmRecorder() {
-      if (!this.h5MediaRecorder || this.h5MediaRecorder.state === 'inactive') { this.cleanupH5PcmRecorder(); return }
-      await new Promise((resolve) => { this.h5StopPromiseResolver = resolve; this.h5MediaRecorder.stop() })
-    },
-    cleanupH5PcmRecorder() {
-      if (this.webMediaStream) { this.webMediaStream.getTracks().forEach(track => track.stop()) }
-      this.webMediaStream = null
-      this.h5MediaRecorder = null
-      this.h5AudioChunks = []
-      this.h5StopPromiseResolver = null
-    },
-    blobToBase64(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => { resolve(String(reader.result || '').split(',')[1] || '') }
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
-    },
     handleFollowRecorderStop() {
       if (!this.stopping) return
       this.processFollowStopWithASR()
@@ -555,7 +370,10 @@ export default {
       const idx = this.followingUnitIndex
       try {
         uni.showLoading({ title: '正在结束识别...' })
-        await this.finishTask()
+        if (this.asrClient) {
+          await this.asrClient.stop()
+          this.asrClient = null
+        }
         uni.hideLoading()
         this.processFollowResult(idx, this.realtimeText)
       } catch (e) {
@@ -597,23 +415,22 @@ export default {
         await this.ensureRecordPermission()
         await this.loadAsrConfig()
         if (this.followingUnitIndex !== index) return
+        this.createAsrClient()
+        await this.asrClient.start()
         if (this.useWebRecorder) {
-          await this.startH5PcmRecorder()
-          this.recording = true
-          this._followRecordStartTime = Date.now()
+          await this.startWebRecorder()
         } else {
-          await this.openSocket()
-          this.recording = true
-          this._followRecordStartTime = Date.now()
           this.recorderManager.start({
             duration: 30000,
-            sampleRate: this.asrConfig.sampleRate || 16000,
+            sampleRate: 16000,
             numberOfChannels: 1,
             encodeBitRate: 48000,
             format: 'PCM',
             frameSize: 4
           })
         }
+        this.recording = true
+        this._followRecordStartTime = Date.now()
         if (this.followingUnitIndex !== index) return
         this.followStates = { ...this.followStates, [index]: { state: 'recording' } }
         this._followTimer = setTimeout(() => {
@@ -624,6 +441,7 @@ export default {
         }, 8000)
       } catch (e) {
         this.recording = false
+        if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
         try { this.recorderManager && this.recorderManager.stop() } catch (_) {}
         this.followStates = { ...this.followStates, [index]: { state: 'error' } }
         uni.showToast({ title: e.message || '录音启动失败', icon: 'none' })
@@ -636,11 +454,13 @@ export default {
       this.stopping = true
       const idx = this.followingUnitIndex
       this.followStates = { ...this.followStates, [idx]: { state: 'recognizing' } }
+      this.recording = false
       if (this.useWebRecorder) {
-        this.recording = false
-        await this.stopH5PcmRecorder()
-        this.stopping = false
+        this.stopWebRecorder()
+        // H5 没有 recorderManager.onStop，直接走 processFollowStopWithASR
+        await this.processFollowStopWithASR()
       } else {
+        // native: recorderManager.stop() 触发 onStop → handleFollowRecorderStop → processFollowStopWithASR
         this.recorderManager.stop()
       }
     },
@@ -661,11 +481,11 @@ export default {
       if (this.recording) {
         this.stopping = false
         this.recording = false
-        if (this.useWebRecorder) { this.stopWebRecorder(); this.cleanupH5PcmRecorder() }
+        if (this.useWebRecorder) { this.stopWebRecorder() }
         else { try { this.recorderManager.stop() } catch (e) {} }
       }
       this.stopActiveAudio()
-      this.closeSocket()
+      if (this.asrClient) { this.asrClient.destroy(); this.asrClient = null }
       this.resetRealtimeState()
       this.followingUnitIndex = -1
     },

@@ -1,50 +1,32 @@
+// 敏感配置从环境变量读取，请在 uniCloud 控制台为云函数配置环境变量。
+// 本地开发可创建 config.local.js（已 gitignore）导出同结构对象，会优先使用。
+// 参考 config.example.js 中的环境变量名。
+
+function env(key, fallback = '') {
+  return (typeof process !== 'undefined' && process.env && process.env[key]) || fallback
+}
+
+try {
+  const local = require('./config.local.js')
+  if (local && typeof local === 'object') {
+    module.exports = local
+    return
+  }
+} catch (e) { /* 无 config.local.js 时使用下方 env 配置 */ }
+
 module.exports = {
-  aliyunParaformer: {
-    wsUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/inference',
-    relayWsUrl: '',
-    apiKey: 'sk-2a5626f893bf4455825b04cee41a879d',
-    tokenExpireSeconds: 600,
-    model: 'paraformer-realtime-v2',
-    sampleRate: 16000,
-    format: 'pcm',
-    languageHints: ['zh'],
-    punctuationPredictionEnabled: true,
-    inverseTextNormalizationEnabled: true
-  },
-  iflytekAsr: {
-    // 默认使用实时语音转写标准版，保留大模型版配置用于后续切换
-    useStandardRtasr: false,
-    standard: {
-      endpoint: 'wss://rtasr.xfyun.cn/v1/ws',
-      appId: '43758daa',
-      apiKey: '06df65940f5b99c189f5b08f58557880',
-      lang: 'cn',
-      punc: 1,
-      frameBytes: 1280,
-      frameIntervalMs: 40,
-      sampleRate: 16000,
-      timeout: 20000
-    },
-    llm: {
-      endpoint: 'wss://office-api-ast-dx.iflyaisol.com/ast/communicate/v1',
-      appId: '43758daa',
-      apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',
-      apiSecret: 'ZjE4ZmJhOTFhYjhjYzE5NTk2NGViZjIy',
-      uuidPrefix: 'gw-read',
-      sampleRate: 16000,
-      audioEncode: 'pcm_s16le',
-      lang: 'autodialect',
-      frameBytes: 1280,
-      frameIntervalMs: 40,
-      timeout: 20000,
-      utcOffset: '+0800'
-    }
+  nls: {
+    get accessKeyId() { return env('NLS_ACCESS_KEY_ID') },
+    get accessKeySecret() { return env('NLS_ACCESS_KEY_SECRET') },
+    get appkey() { return env('NLS_APPKEY') },
+    wsUrl: 'wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1',
+    tokenExpireSeconds: 600
   },
   iflytekTts: {
-    appId: '43758daa',
-    apiKey: '42e35e0d9251ad92ce0090d8bb84e3f8',
-    apiSecret: 'ZjE4ZmJhOTFhYjhjYzE5NTk2NGViZjIy',
-    endpoint: 'wss://cbm01.cn-huabei-1.xf-yun.com/v1/private/mcd9m97e6',
+    get appId() { return env('IFLYTEK_TTS_APP_ID') },
+    get apiKey() { return env('IFLYTEK_TTS_API_KEY') },
+    get apiSecret() { return env('IFLYTEK_TTS_API_SECRET') },
+    get endpoint() { return env('IFLYTEK_TTS_ENDPOINT', 'wss://cbm01.cn-huabei-1.xf-yun.com/v1/private/xxx') },
     defaultVoice: 'x6_lingyufei_pro',
     defaultSpeed: 50,
     defaultPitch: 50,
@@ -60,7 +42,6 @@ module.exports = {
     defaultWatermark: 0,
     defaultImplicitWatermark: false,
     defaultEncoding: 'lame',
-    // 文档推荐 24000，微信等真机对 24k MP3 兼容更好；8k MP3 易报 err 55 unknown format
     defaultSampleRate: 24000,
     defaultChannels: 1,
     defaultBitDepth: 16,
@@ -68,13 +49,13 @@ module.exports = {
     timeout: 20000
   },
   bailianPoemSearch: {
-    apiKey: 'sk-2a5626f893bf4455825b04cee41a879d',
+    get apiKey() { return env('BAILIAN_API_KEY') },
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-plus',
     timeout: 20000
   },
   bailianVision: {
-    apiKey: 'sk-2a5626f893bf4455825b04cee41a879d',
+    get apiKey() { return env('BAILIAN_API_KEY') },
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-vl-plus',
     timeout: 60000

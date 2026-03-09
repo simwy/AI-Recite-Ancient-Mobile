@@ -12,7 +12,6 @@ Built on **uni-app (Vue 3)** targeting Android, iOS, WeChat Mini Program, H5, an
 
 - **Package manager:** npm (`npm install` for dependencies)
 - **Build/Run:** Open project in HBuilderX, use its built-in run/build commands for each platform
-- **ASR relay for H5 dev:** `cd tools/asr-relay && npm start` (WebSocket proxy on port 8787, requires `DASHSCOPE_API_KEY` env var)
 - **Cloud functions:** Deployed via HBuilderX to uniCloud (Alipay space). Right-click cloud function folder → Upload
 - **No test framework or linter configured**
 
@@ -47,12 +46,10 @@ No Vuex/Pinia. Data flows via `getApp().globalData`:
 ### Backend (uniCloud Alipay)
 Cloud functions in `uniCloud-alipay/cloudfunctions/` (all prefixed `gw_`):
 - **gw_ancient-search** — text search, AI search (Aliyun Bailian qwen-plus), square/category browsing, favorites
-- **gw_asr-config** — returns WebSocket URL + temp token for real-time ASR (supports Aliyun Paraformer and iFlytek)
+- **gw_asr-config** — returns NLS WebSocket URL + token for real-time ASR (Aliyun ISI NLS)
 - **gw_recite-record** — persists recitation history (save/list/detail/delete)
 - **gw_tts-synthesize** — text-to-speech via iFlytek WebSocket
 - **gw_dictation-print-pdf** — PDF generation for dictation practice
-- **gw_asr-file-recognize** — file-based ASR (Aliyun)
-- **gw_asr-file-recognize-iflytek** — file-based ASR (iFlytek)
 - **gw_dictation-check** — validates dictation submissions, returns accuracy
 - **gw_favorite** — manages user favorites (texts and subcollections)
 - **gw_learning-records** — tracks learning/practice history
@@ -85,7 +82,7 @@ LCS-based character comparison that:
 ### Platform Conditional Compilation
 Uses uni-app's `// #ifdef PLATFORM` / `// #endif` directives throughout:
 - `APP` / `APP-PLUS` — native features (recorder, clipboard invite, version check)
-- `H5` — web features (download bar via `common/openApp.js`, relay server for ASR)
+- `H5` — web features (download bar via `common/openApp.js`)
 - `MP-WEIXIN` — WeChat Mini Program specifics
 - `VUE3` / `#ifndef VUE3` — Vue version splits in main.js and App.vue
 
@@ -104,4 +101,4 @@ Uses uni-app's `// #ifdef PLATFORM` / `// #endif` directives throughout:
 - Styling: rpx units (750rpx = screen width), global variables in `uni.scss`
 - i18n: Framework exists in `lang/` but currently disabled in config
 - Components: Heavy use of `uni_modules/` ecosystem components (65+ modules)
-- API keys: Stored in `uniCloud-alipay/cloudfunctions/common/config/index.js` (Aliyun DashScope, iFlytek, Bailian)
+- API keys: Stored in `uniCloud-alipay/cloudfunctions/common/config/index.js` (Aliyun NLS, iFlytek TTS, Bailian)
