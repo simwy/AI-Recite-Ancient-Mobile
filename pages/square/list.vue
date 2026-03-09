@@ -9,9 +9,12 @@
         <text class="tab-recite-count">背诵 {{ totalRecitePassed }}/{{ totalReciteCount }}</text>
       </view>
       <view
-        :class="['tab-item', currentTab === 'intro' ? 'active' : '']"
-        @click="currentTab = 'intro'"
-      >介绍</view>
+        :class="['tab-item', 'tab-item--intro', currentTab === 'intro' ? 'active' : '']"
+        @click="onIntroTabClick"
+      >
+        <text>介绍</text>
+        <view v-if="introBadgeVisible" class="tab-intro-badge"></view>
+      </view>
     </view>
 
     <view v-show="currentTab === 'list'">
@@ -208,7 +211,9 @@ export default {
       calendarLoading: false,
       firstPassList: [],
       selectedDayTitles: [],
-      selectedDayDateLabel: ''
+      selectedDayDateLabel: '',
+      /** 介绍 tab 是否显示红点（首次进入未点击过介绍时为 true） */
+      introBadgeVisible: false
     }
   },
   computed: {
@@ -410,6 +415,7 @@ export default {
         this.groups = result.data.groups || []
         this.ungrouped = result.data.ungrouped || []
         this.subcollectionIntro = result.data.intro || ''
+        this.refreshIntroBadgeVisible()
         await this.mergeReciteScores()
         const saved = this.loadExpandState()
         if (saved) {
@@ -572,6 +578,26 @@ export default {
         this.favoriteLoading = false
       }
     },
+    /** 介绍已读的本地缓存 key，与 expand 风格一致 */
+    getIntroReadStorageKey() {
+      return this.subcollectionId ? `square_intro_read_${this.subcollectionId}` : ''
+    },
+    /** 根据本地缓存刷新介绍 tab 红点显示状态 */
+    refreshIntroBadgeVisible() {
+      if (!this.hasIntro || !this.subcollectionId) {
+        this.introBadgeVisible = false
+        return
+      }
+      const key = this.getIntroReadStorageKey()
+      this.introBadgeVisible = !uni.getStorageSync(key)
+    },
+    /** 点击介绍 tab：切换 tab 并标记已读、隐藏红点 */
+    onIntroTabClick() {
+      const key = this.getIntroReadStorageKey()
+      if (key) uni.setStorageSync(key, true)
+      this.introBadgeVisible = false
+      this.currentTab = 'intro'
+    },
     getExpandStorageKey() {
       return this.subcollectionId ? `square_list_expand_${this.subcollectionId}` : ''
     },
@@ -728,6 +754,16 @@ export default {
   padding: 14rpx 0;
   font-size: 30rpx;
   color: #999;
+  position: relative;
+}
+.tab-item--intro .tab-intro-badge {
+  position: absolute;
+  top: 6rpx;
+  right: 20%;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #f56c6c;
 }
 .tab-item.active {
   color: #333;
