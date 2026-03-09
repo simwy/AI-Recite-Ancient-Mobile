@@ -6,6 +6,7 @@
         @click="currentTab = 'list'"
       >
         <text>列表</text>
+        <text class="tab-recite-count">背诵 {{ totalRecitePassed }}/{{ totalReciteCount }}</text>
       </view>
       <view
         :class="['tab-item', currentTab === 'intro' ? 'active' : '']"
@@ -46,7 +47,7 @@
             <view class="item-meta">
               <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
             </view>
-            <view class="item-preview">{{ item.intro || getPreview(item.content, 40) }}</view>
+            <view class="item-preview">{{ getPreview(item.content, 80) }}</view>
             </view>
           </template>
         </view>
@@ -73,7 +74,7 @@
               <view class="item-meta">
                 <text class="item-author">{{ item.dynasty }} · {{ item.author }}</text>
               </view>
-              <view class="item-preview">{{ item.intro || getPreview(item.content, 40) }}</view>
+              <view class="item-preview">{{ getPreview(item.content, 80) }}</view>
             </view>
           </template>
         </view>
@@ -96,15 +97,17 @@
     </view>
 
     <view class="action-bar">
-      <view class="favorite-icon" @click="toggleSubcollectionFavorite">
+      <view class="action-btn action-btn--left" @click="toggleSubcollectionFavorite">
         <uni-icons
           :type="subcollectionFavorited ? 'star-filled' : 'star'"
-          size="22"
+          size="20"
           :color="subcollectionFavorited ? '#f59e0b' : '#86909c'"
         />
+        <text class="action-btn-text">我要参加活动</text>
       </view>
-      <view class="calendar-btn" @click="openCalendar">
-        <text class="calendar-btn-text">背诵打开日历（{{ totalRecitePassed }}/{{ totalReciteCount }}）</text>
+      <view class="action-btn action-btn--right" @click="openCalendar">
+        <uni-icons type="calendar" size="20" color="#1d4ed8" />
+        <text class="action-btn-text">背诵打卡日历</text>
       </view>
     </view>
 
@@ -690,6 +693,18 @@ export default {
   border-bottom: 4rpx solid #1d4ed8;
   margin-bottom: -2rpx;
 }
+.tab-recite-count {
+  margin-left: 8rpx;
+  font-size: 24rpx;
+  font-weight: normal;
+  color: #1d4ed8;
+}
+.tab-item.active .tab-recite-count {
+  color: #1d4ed8;
+}
+.tab-item:not(.active) .tab-recite-count {
+  color: #86909c;
+}
 .intro-panel {
   min-height: 60vh;
   background: #fff;
@@ -822,37 +837,9 @@ export default {
   font-size: 28rpx;
   color: #666;
   line-height: 1.6;
-}
-
-.favorite-icon {
-  flex-shrink: 0;
-  padding: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.favorite-icon:active {
-  opacity: 0.7;
-}
-
-.calendar-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18rpx 24rpx;
-  margin-left: 12rpx;
-  border-radius: 12rpx;
-  background: #fff7e6;
-  border: 2rpx solid #ffe6b0;
-}
-.calendar-btn:active {
-  opacity: 0.9;
-}
-.calendar-btn-text {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action-bar {
@@ -866,6 +853,33 @@ export default {
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
+  gap: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 12rpx;
+}
+.action-btn:active {
+  opacity: 0.85;
+}
+.action-btn--left {
+  background: #f2f3f5;
+  border: 2rpx solid #e5e6eb;
+}
+.action-btn--right {
+  background: #fff7e6;
+  border: 2rpx solid #ffe6b0;
+}
+.action-btn-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
 }
 
 .calendar-mask {

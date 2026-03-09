@@ -555,9 +555,14 @@ export default {
       this.followingUnitIndex = index
       this.followStates = { ...this.followStates, [index]: { state: 'playing' } }
       try {
-        await this.playUnit(index)
+        // 并行：播放TTS + 预加载ASR配置 + 预请求录音权限
+        await Promise.all([
+          this.playUnit(index),
+          this.ensureRecordPermission().catch(() => {}),
+          this.loadAsrConfig().catch(() => {})
+        ])
         if (this.followingUnitIndex !== index) return
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 300))
         if (this.followingUnitIndex !== index) return
         await this.startFollowRecording(index)
       } catch (e) {
@@ -580,6 +585,7 @@ export default {
         } else {
           this.recording = true
           this._followRecordStartTime = Date.now()
+          await this.openSocket()
           this.recorderManager.start({
             duration: 30000,
             sampleRate: this.asrConfig.sampleRate || 16000,
@@ -588,7 +594,6 @@ export default {
             format: 'PCM',
             frameSize: 4
           })
-          await this.openSocket()
         }
         this._followTimer = setTimeout(() => {
           if (this.recording && this.followingUnitIndex === index) this.stopFollowRecording()

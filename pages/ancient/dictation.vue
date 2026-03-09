@@ -101,7 +101,7 @@ export default {
     return {
       id: '',
       detail: {},
-      selectedDifficulty: 'junior',
+      selectedDifficulty: 'advanced',
       selectedFontSize: 'medium',
       difficultyOptions: [
         { label: '初级默写', value: 'junior' },
