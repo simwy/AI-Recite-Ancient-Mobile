@@ -1,5 +1,11 @@
 <template>
   <view class="container">
+    <view class="title-bar-top">
+      <view class="correction-btn" @click="goCorrection">
+        <uni-icons type="compose" size="16" color="#666" />
+        <text class="correction-text">纠错</text>
+      </view>
+    </view>
     <view class="title-bar">
       <text class="title">{{ textData.title }}</text>
       <text class="meta">{{ textData.dynasty }} · {{ textData.author }}</text>
@@ -19,6 +25,9 @@
       <view v-if="recording" class="recording-indicator">
         <text class="recording-dot">●</text>
         <text class="recording-text">录音中... {{ formatTime(duration) }}</text>
+      </view>
+      <view v-else-if="paused" class="status-text">
+        <text>背诵已暂停 {{ formatTime(duration) }}</text>
       </view>
       <view v-else-if="!started" class="status-text">
         <text>准备好后点击开始背诵</text>
@@ -63,12 +72,18 @@
           背诵结束
         </button>
       </template>
+
+      <template v-if="paused">
+        <button type="primary" class="btn" @click="resumeRecite">继续背诵</button>
+        <button type="warn" class="btn" @click="endFromPause">结束背诵</button>
+      </template>
     </view>
   </view>
 </template>
 
 <script>
 const db = uniCloud.database()
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 export default {
   data() {
@@ -106,6 +121,8 @@ export default {
       /** 微信等：正在等待用户授权，未真正开始录音，按钮仍为「开始背诵」 */
       requestingPermission: false,
       expanded: false,
+      /** 背诵已暂停（静默超时触发），等待用户继续或结束 */
+      paused: false,
       /** 静默检测：最后一次收到识别文本的时间戳 */
       lastSpeechTime: 0,
       silenceTimer: null
@@ -682,6 +699,7 @@ export default {
       this.hintCharCount = 0
       this.hints = []
       this.lastSpeechTime = 0
+      this.paused = false
     },
     startSilenceDetection() {
       this.lastSpeechTime = Date.now()
@@ -702,8 +720,88 @@ export default {
     handleSilenceTimeout() {
       if (!this.recording) return
       this.stopSilenceDetection()
-      uni.showToast({ title: '10秒未检测到语音，已自动结束', icon: 'none', duration: 3000 })
-      this.stopRecite()
+      uni.showToast({ title: '10秒未检测到语音，已自动暂停', icon: 'none', duration: 3000 })
+      this.pauseRecite()
+    },
+    /** 暂停背诵：停录音、关 WebSocket、停计时，但保留已识别文本 */
+    pauseRecite() {
+      this.stopSilenceDetection()
+      clearInterval(this.durationTimer)
+
+      // #ifdef H5
+      if (this.h5MediaRecorder && this.h5MediaRecorder.state !== 'inactive') {
+        this.h5MediaRecorder.stop()
+      }
+      if (this.webMediaStream) {
+        this.webMediaStream.getTracks().forEach(track => track.stop())
+        this.webMediaStream = null
+      }
+      this.h5MediaRecorder = null
+      // #endif
+
+      // #ifndef H5
+      if (this.useWebRecorder) {
+        this.stopWebRecorder()
+      } else if (this.recorderManager) {
+        this.recorderManager.stop()
+      }
+      // #endif
+
+      this.finishTask()
+      this.closeSocket()
+      this.recording = false
+      this.paused = true
+    },
+    /** 继续背诵：重新建连、开录音，保留已识别文本 */
+    async resumeRecite() {
+      try {
+        // 重置 WebSocket 相关状态，但保留 finalSentences / realtimeText
+        this.taskId = ''
+        this.taskStarted = false
+        this.taskFinished = false
+        this.frameQueue = []
+        this.waitTaskFinishedResolver = null
+        this.paused = false
+
+        // #ifdef H5
+        this.recording = true
+        this.stopping = false
+        this.durationTimer = setInterval(() => { this.duration++ }, 1000)
+        await this.startH5PcmRecorder()
+        this.startSilenceDetection()
+        return
+        // #endif
+
+        await this.loadAsrConfig()
+        await this.openSocket()
+        this.recording = true
+        this.stopping = false
+        this.durationTimer = setInterval(() => { this.duration++ }, 1000)
+        if (this.useWebRecorder) {
+          await this.startWebRecorder()
+        } else {
+          this.recorderManager.start({
+            format: this.asrConfig.format || 'pcm',
+            sampleRate: this.asrConfig.sampleRate || 16000,
+            numberOfChannels: 1,
+            frameSize: 5,
+            duration: 600000
+          })
+        }
+        this.startSilenceDetection()
+      } catch (err) {
+        this.recording = false
+        this.paused = true
+        this.closeSocket()
+        const msg = (err && (err.errMsg || err.message)) || '恢复识别失败'
+        uni.showToast({ title: msg, icon: 'none', duration: 3000 })
+        console.error('恢复背诵失败:', err)
+      }
+    },
+    /** 暂停状态下用户主动结束背诵 */
+    endFromPause() {
+      this.paused = false
+      this.goResult(this.realtimeText)
     },
     createTaskId() {
       return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
@@ -867,6 +965,11 @@ export default {
 
       return result.buffer
     },
+    goCorrection() {
+      const id = this.id || (this.textData && this.textData._id) || ''
+      const title = (this.textData && this.textData.title) || ''
+      uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'recite' }) })
+    },
     goResult(recognizedText) {
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.reciteResult = {
@@ -894,6 +997,24 @@ export default {
   padding-bottom: 360rpx;
   min-height: 100vh;
   background: #f5f5f5;
+}
+.title-bar-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .title-bar {
   text-align: center;

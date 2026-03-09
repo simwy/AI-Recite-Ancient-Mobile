@@ -9,6 +9,7 @@ const subcollectionFavoriteCollection = db.collection('gw-square-sub-favorites')
 const summaryCollection = db.collection('gw-user-text-summary')
 const reciteCollection = db.collection('gw-recite-records')
 const searchLogCollection = db.collection('gw-search-logs')
+const addArticleLogCollection = db.collection('gw-add-article-logs')
 const uniID = require('uni-id-common')
 const { bailianPoemSearch } = require('config')
 
@@ -659,21 +660,44 @@ async function listSubcollectionFavorites(event, data = {}, context) {
 
 async function confirmAdd(event, data, context) {
   const uid = await getAuthUid(event, context)
+  const title = normalizeText(data.title)
+  const author = normalizeText(data.author) || ''
+
   if (!uid) {
+    saveAddArticleLog({
+      success: false,
+      title: title || (data.title && String(data.title).trim()) || '',
+      author,
+      user_id: '',
+      error_msg: '请先登录'
+    })
     return { code: -1, msg: '请先登录' }
   }
 
-  const title = normalizeText(data.title)
-  const author = normalizeText(data.author) || ''
   const dynasty = normalizeText(data.dynasty)
   const content = normalizeText(data.content)
 
   if (!title || !content) {
+    saveAddArticleLog({
+      success: false,
+      title: title || (data.title && String(data.title).trim()) || '',
+      author,
+      user_id: uid,
+      error_msg: '缺少必要古文信息（标题与正文）'
+    })
     return { code: -1, msg: '缺少必要古文信息（标题与正文）' }
   }
 
   const existed = await findExactInDB(title, author || undefined)
   if (existed) {
+    saveAddArticleLog({
+      success: true,
+      text_id: existed._id,
+      title,
+      author,
+      existed: true,
+      user_id: uid
+    })
     return {
       code: 0,
       data: {
@@ -683,24 +707,43 @@ async function confirmAdd(event, data, context) {
     }
   }
 
-  const addRes = await collection.add({
-    title,
-    author,
-    dynasty,
-    content,
-    created_by: uid,
-    created_at: new Date(),
-    source: `ai_bailian_${bailianPoemSearch.model || 'qwen-plus'}`
-  })
+  try {
+    const addRes = await collection.add({
+      title,
+      author,
+      dynasty,
+      content,
+      created_by: uid,
+      created_at: new Date(),
+      source: `ai_bailian_${bailianPoemSearch.model || 'qwen-plus'}`
+    })
 
-  const detailRes = await collection.doc(addRes.id).get()
-  return {
-    code: 0,
-    data: {
+    const detailRes = await collection.doc(addRes.id).get()
+    saveAddArticleLog({
+      success: true,
+      text_id: addRes.id,
+      title,
+      author,
       existed: false,
-      id: addRes.id,
-      text: detailRes.data && detailRes.data[0]
+      user_id: uid
+    })
+    return {
+      code: 0,
+      data: {
+        existed: false,
+        id: addRes.id,
+        text: detailRes.data && detailRes.data[0]
+      }
     }
+  } catch (err) {
+    saveAddArticleLog({
+      success: false,
+      title,
+      author,
+      user_id: uid,
+      error_msg: (err && err.message) || String(err)
+    })
+    throw err
   }
 }
 
@@ -910,6 +953,22 @@ async function getUserTextSummaries(event, context) {
     dictation_last_score: doc.dictation_last_score
   }))
   return { code: 0, data: { list } }
+}
+
+/** 记录用户添加文章日志：是否成功、成功时记录哪篇文章 */
+async function saveAddArticleLog(payload) {
+  const doc = {
+    success: !!payload.success,
+    title: normalizeText(payload.title) || '',
+    create_date: Date.now()
+  }
+  if (payload.text_id) doc.text_id = String(payload.text_id)
+  if (payload.author !== undefined) doc.author = normalizeText(payload.author) || ''
+  if (payload.existed !== undefined) doc.existed = !!payload.existed
+  if (payload.user_id) doc.user_id = payload.user_id
+  if (payload.error_msg && !payload.success) doc.error_msg = String(payload.error_msg).slice(0, 200)
+  if (!doc.title) return
+  addArticleLogCollection.add(doc).catch(() => {})
 }
 
 /** 记录用户搜索日志（场景、关键词、广场栏目等） */

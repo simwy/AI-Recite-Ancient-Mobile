@@ -16,12 +16,20 @@
 
     <view v-show="currentTab === 'list'">
     <view class="search-bar">
-      <uni-search-bar
-        v-model="keyword"
-        placeholder="在本合集中搜索标题、作者或内容"
-        @confirm="onSearch"
-        @clear="onClear"
-      />
+      <view class="search-bar-row">
+        <view class="correction-btn" @click="goCorrection">
+          <uni-icons type="compose" size="16" color="#666" />
+          <text class="correction-text">纠错</text>
+        </view>
+        <view class="search-bar-input-wrap">
+          <uni-search-bar
+            v-model="keyword"
+            placeholder="在本合集中搜索标题、作者或内容"
+            @confirm="onSearch"
+            @clear="onClear"
+          />
+        </view>
+      </view>
     </view>
 
     <view class="list" v-if="hasFilteredContent">
@@ -172,6 +180,7 @@
 
 <script>
 import { marked } from 'marked'
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 /** 背诵得分 ≥ 此值视为通过 */
 const RECITE_PASS_SCORE = 90
@@ -352,6 +361,15 @@ export default {
     },
     onClear() {
       this.keyword = ''
+    },
+    /** 跳转意见反馈页，预填当前合集信息，用于反馈收录少了、收录错了等问题 */
+    goCorrection() {
+      const url = getFeedbackUrl({
+        id: this.subcollectionId || '',
+        title: this.subcollectionName || '',
+        type: 'collection'
+      })
+      uni.navigateTo({ url })
     },
     /** 记录搜索日志（静默，不阻塞列表） */
     saveSearchLog(payload) {
@@ -746,6 +764,29 @@ export default {
 
 .search-bar {
   margin-bottom: 10rpx;
+}
+.search-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.search-bar-input-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+  flex-shrink: 0;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 
 .group-section {

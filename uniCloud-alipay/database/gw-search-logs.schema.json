@@ -1,0 +1,57 @@
+{
+  "bsonType": "object",
+  "required": ["content", "scene"],
+  "permission": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "content": {
+      "bsonType": "string",
+      "description": "搜索关键词",
+      "trim": "both"
+    },
+    "scene": {
+      "bsonType": "string",
+      "description": "搜索场景：ancient_list=古文列表，square_subcollection=广场子合集内",
+      "enum": ["ancient_list", "square_subcollection"]
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID，登录时写入",
+      "foreignKey": "uni-id-users._id"
+    },
+    "device_id": {
+      "bsonType": "string",
+      "description": "设备标识，未登录时可选"
+    },
+    "category_id": {
+      "bsonType": "string",
+      "description": "广场分类ID，仅 scene=square_subcollection 时有值"
+    },
+    "subcollection_id": {
+      "bsonType": "string",
+      "description": "子合集ID，仅 scene=square_subcollection 时有值"
+    },
+    "category_name": {
+      "bsonType": "string",
+      "description": "分类名称，便于统计"
+    },
+    "subcollection_name": {
+      "bsonType": "string",
+      "description": "子合集名称，便于统计"
+    },
+    "create_date": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

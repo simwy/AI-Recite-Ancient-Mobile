@@ -2,8 +2,16 @@
   <view class="container">
     <!-- 头部信息 -->
     <view class="header">
-      <text class="title">{{ title }}</text>
-      <text class="author" v-if="author">{{ dynasty ? dynasty + ' · ' : '' }}{{ author }}</text>
+      <view class="header-left">
+        <view class="correction-btn" @click="goCorrection">
+          <uni-icons type="compose" size="16" color="#666" />
+          <text class="correction-text">纠错</text>
+        </view>
+      </view>
+      <view class="header-main">
+        <text class="title">{{ title }}</text>
+        <text class="author" v-if="author">{{ dynasty ? dynasty + ' · ' : '' }}{{ author }}</text>
+      </view>
     </view>
 
     <!-- 准确率 -->
@@ -74,6 +82,8 @@
 </template>
 
 <script>
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
+
 export default {
   data() {
     return {
@@ -116,6 +126,11 @@ export default {
     this.articleId = result.articleId || ''
   },
   methods: {
+    goCorrection() {
+      const id = this.articleId || ''
+      const title = this.title || ''
+      uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'dictation' }) })
+    },
     async loadRecordDetail(recordId) {
       try {
         const res = await uniCloud.callFunction({
@@ -168,8 +183,32 @@ export default {
   padding-bottom: 40rpx;
 }
 .header {
-  text-align: center;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
   margin-bottom: 24rpx;
+}
+.header-left {
+  flex-shrink: 0;
+  margin-right: 16rpx;
+}
+.header-main {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .title {
   display: block;

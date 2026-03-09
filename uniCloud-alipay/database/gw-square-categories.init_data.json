@@ -1,9 +1,8 @@
 [
- 
   {
-    "_id": "cat_kindergarten",
-    "name": "幼儿园",
-    "sort": 5,
+    "_id": "cat_gaozhong_2020",
+    "name": "普通高中语文课程标准2020年修订版",
+    "sort": 1,
     "enabled": true
   }
 ]

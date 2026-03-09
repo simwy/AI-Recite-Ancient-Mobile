@@ -1,5 +1,11 @@
 <template>
   <view class="container">
+    <view class="top-bar">
+      <view class="correction-btn" @click="goCorrection">
+        <uni-icons type="compose" size="16" color="#666" />
+        <text class="correction-text">纠错</text>
+      </view>
+    </view>
     <view class="section-top">
       <view class="section-header">
         <view class="section-title">默写练习</view>
@@ -95,6 +101,7 @@
 <script>
 const db = uniCloud.database()
 import { runDictationCheck } from '@/common/dictationCheck.js'
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 export default {
   data() {
@@ -243,6 +250,11 @@ export default {
         difficulty: this.selectedDifficulty
       })
     },
+    goCorrection() {
+      const id = this.id || (this.detail && this.detail._id) || ''
+      const title = (this.detail && this.detail.title) || ''
+      uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'dictation' }) })
+    },
     getUniIdToken() {
       const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
       if (!currentUserInfo.token) return ''
@@ -368,6 +380,24 @@ export default {
   padding: 24rpx;
   padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+}
+.top-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .section-top {
   position: relative;

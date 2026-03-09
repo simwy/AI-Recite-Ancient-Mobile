@@ -27,8 +27,16 @@ export function getFeedbackUrl(params = {}) {
   return FEEDBACK_PAGE_PATH + (query.length ? '?' + query.join('&') : '')
 }
 
-/** 纠错类反馈的默认内容模板中的“纠错类型”占位说明 */
+/** 文章纠错：纠错类型占位说明 */
 const CORRECTION_TYPE_HINT = '纠错类型：（正文错误/标点错误/作者或出处错误/其他）'
+/** 合集纠错：问题类型占位说明（收录少了、收录错了等） */
+const COLLECTION_ISSUE_HINT = '问题类型：（收录少了/收录错了/其他）'
+/** 跟读问题反馈：语音没声音、语音错误等 */
+const FOLLOW_ISSUE_HINT = '问题类型：（语音没有声音/语音识别错误/其他）\n请描述具体问题：'
+/** 背诵问题反馈：识别错误、录音未识别等 */
+const RECITE_ISSUE_HINT = '问题类型：（识别错误/录音功能没有识别/其他）\n请描述具体问题：'
+/** 默写问题反馈：默写纸错误、拍照检查不可用、检查错误等 */
+const DICTATION_ISSUE_HINT = '问题类型：（默写纸错误/拍照检查功能无法使用/检查结果错误/其他）\n请描述具体问题：'
 
 /**
  * 根据页面 onLoad 的 options 生成反馈表单的默认留言内容。
@@ -47,7 +55,48 @@ export function buildFeedbackContentFromOptions(options = {}) {
 
   const lines = []
 
-  // 根据 type 可扩展不同模板，例如 correction | bug | other
+  if (type === 'collection') {
+    // 广场子合集纠错：收录少了、收录错了等
+    lines.push('【合集纠错】')
+    if (title) lines.push('合集：《' + title + '》')
+    if (id) lines.push('合集ID：' + id)
+    if (lines.length) lines.push('')
+    lines.push(COLLECTION_ISSUE_HINT)
+    lines.push('纠错内容：')
+    return lines.join('\n')
+  }
+
+  // 跟读问题反馈：语音没声音、语音错误等
+  if (type === 'follow') {
+    lines.push('【跟读-问题反馈】')
+    if (title) lines.push('文章：《' + title + '》')
+    if (id) lines.push('文章ID：' + id)
+    if (lines.length) lines.push('')
+    lines.push(FOLLOW_ISSUE_HINT)
+    return lines.join('\n')
+  }
+
+  // 背诵问题反馈：识别错误、录音未识别等
+  if (type === 'recite') {
+    lines.push('【背诵-问题反馈】')
+    if (title) lines.push('文章：《' + title + '》')
+    if (id) lines.push('文章ID：' + id)
+    if (lines.length) lines.push('')
+    lines.push(RECITE_ISSUE_HINT)
+    return lines.join('\n')
+  }
+
+  // 默写问题反馈：默写纸错误、拍照检查不可用、检查错误等
+  if (type === 'dictation') {
+    lines.push('【默写-问题反馈】')
+    if (title) lines.push('文章：《' + title + '》')
+    if (id) lines.push('文章ID：' + id)
+    if (lines.length) lines.push('')
+    lines.push(DICTATION_ISSUE_HINT)
+    return lines.join('\n')
+  }
+
+  // 文章纠错或未传 type
   if (type === 'correction' || (!type && (id || title))) {
     lines.push('【纠错】')
   } else if (type) {

@@ -1,6 +1,12 @@
 <template>
   <view class="container">
     <view class="header">
+      <view class="header-left">
+        <view class="correction-btn" @click="goCorrection">
+          <uni-icons type="compose" size="16" color="#666" />
+          <text class="correction-text">纠错</text>
+        </view>
+      </view>
       <text class="link-tag" @click="goDetail">古文正文</text>
       <text class="title">{{ textData.title }}</text>
       <view class="stats">
@@ -59,6 +65,7 @@
 import { diffChars, calcAccuracy } from '@/common/diff.js'
 import readBaseMixin from '@/common/readBaseMixin.js'
 import { buildPlayUnits } from '@/common/playUnits.js'
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 export default {
   mixins: [readBaseMixin],
@@ -235,6 +242,11 @@ export default {
         url: `/pages/ancient/recite?id=${this.id}`
       })
     },
+    goCorrection() {
+      const id = this.id || (this.textData && this.textData._id) || ''
+      const title = (this.textData && this.textData.title) || ''
+      uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'recite' }) })
+    },
     goDetail() {
       if (!this.id) return
       uni.navigateTo({
@@ -255,6 +267,26 @@ export default {
   position: relative;
   text-align: center;
   margin-bottom: 40rpx;
+}
+.header-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .link-tag {
   position: absolute;

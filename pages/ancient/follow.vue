@@ -1,6 +1,10 @@
 <template>
   <view class="container">
     <view class="top-tools">
+      <view class="correction-btn" @click="goCorrection">
+        <uni-icons type="compose" size="16" color="#666" />
+        <text class="correction-text">纠错</text>
+      </view>
       <view class="font-switch">
         <text class="font-item" :class="{ active: fontSize === 'large' }" @tap="setFontSize('large')">大</text>
         <text class="font-item" :class="{ active: fontSize === 'medium' }" @tap="setFontSize('medium')">中</text>
@@ -101,6 +105,7 @@
 <script>
 import { diffChars, calcAccuracy } from '@/common/diff.js'
 import readBaseMixin from '@/common/readBaseMixin.js'
+import { getFeedbackUrl } from '@/common/feedbackHelper.js'
 
 export default {
   mixins: [readBaseMixin],
@@ -182,6 +187,11 @@ export default {
     onTapSentence(index) {
       if (index < 0 || index >= this.playUnits.length) return
       this.startFollowUnit(index)
+    },
+    goCorrection() {
+      const id = this.id || (this.detail && this.detail._id) || ''
+      const title = (this.detail && this.detail.title) || ''
+      uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'follow' }) })
     },
     onClearReadProgress() {
       this.abortCurrentFollowRecording()
@@ -711,6 +721,20 @@ export default {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16rpx;
+}
+.correction-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 16rpx;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+  flex-shrink: 0;
+}
+.correction-text {
+  font-size: 22rpx;
+  color: #666;
 }
 .right-tools {
   display: flex;

@@ -1,0 +1,53 @@
+{
+  "bsonType": "object",
+  "required": ["success", "title", "create_date"],
+  "permission": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "ID"
+    },
+    "success": {
+      "bsonType": "bool",
+      "description": "用户添加文章是否成功"
+    },
+    "text_id": {
+      "bsonType": "string",
+      "description": "成功时对应的古文 _id（新增或已存在）"
+    },
+    "title": {
+      "bsonType": "string",
+      "description": "用户尝试添加的古文标题",
+      "trim": "both"
+    },
+    "author": {
+      "bsonType": "string",
+      "description": "作者或出处",
+      "trim": "both"
+    },
+    "existed": {
+      "bsonType": "bool",
+      "description": "成功且为库中已存在（未真正新增）时为 true"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID，登录时写入",
+      "foreignKey": "uni-id-users._id"
+    },
+    "error_msg": {
+      "bsonType": "string",
+      "description": "失败时的错误信息"
+    },
+    "create_date": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "defaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

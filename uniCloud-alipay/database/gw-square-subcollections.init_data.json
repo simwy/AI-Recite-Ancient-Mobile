@@ -1,13 +1,38 @@
 [
   {
-    "_id": "sub_kindergarten_100",
-    "category_id": "cat_hot",
-    "name": "100天100首古诗（超易背版）",
-    "intro": "幼儿园100天100首古诗清单，按10天一组编排，从最简单到收尾巩固。",
+    "_id": "sub_gaozhong2020_bixiu",
+    "category_id": "cat_gaozhong_2020",
+    "name": "文言文-必修（10篇）",
+    "intro": "普通高中语文课程标准2020年修订版·文言文必修10篇。",
     "sort": 1,
     "enabled": true,
-    "created_at": {
-      "$date": 1704067200000
-    }
+    "created_at": { "$date": 1704067200000 }
+  },
+  {
+    "_id": "sub_gaozhong2020_xuanze",
+    "category_id": "cat_gaozhong_2020",
+    "name": "文言文-选择性必修（10篇）",
+    "intro": "普通高中语文课程标准2020年修订版·文言文选择性必修10篇。",
+    "sort": 2,
+    "enabled": true,
+    "created_at": { "$date": 1704067200000 }
+  },
+  {
+    "_id": "sub_gaozhong2020_xiuxuan",
+    "category_id": "cat_gaozhong_2020",
+    "name": "文言文-选修（12篇）",
+    "intro": "普通高中语文课程标准2020年修订版·文言文选修12篇。",
+    "sort": 3,
+    "enabled": true,
+    "created_at": { "$date": 1704067200000 }
+  },
+  {
+    "_id": "sub_gaozhong2020_shici",
+    "category_id": "cat_gaozhong_2020",
+    "name": "诗词曲（40首）",
+    "intro": "普通高中语文课程标准2020年修订版·诗词曲40首。",
+    "sort": 4,
+    "enabled": true,
+    "created_at": { "$date": 1704067200000 }
   }
 ]
