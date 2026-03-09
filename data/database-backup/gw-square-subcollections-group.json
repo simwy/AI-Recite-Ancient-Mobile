@@ -1,0 +1,10 @@
+{"_id":"grp_100d_01","name":"第1～10天（最简单）","sort":1,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_02","name":"第11～20天","sort":2,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_03","name":"第21～30天","sort":3,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_04","name":"第31～40天","sort":4,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_05","name":"第41～50天","sort":5,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_06","name":"第51～60天","sort":6,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_07","name":"第61～70天","sort":7,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_08","name":"第71～80天","sort":8,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_09","name":"第81～90天","sort":9,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}
+{"_id":"grp_100d_10","name":"第91～100天（收尾巩固）","sort":10,"enabled":true,"created_at":{"$date":1704067200000},"subcollection_id":"sub_kindergarten_100"}

@@ -1,0 +1,23 @@
+{"_id":"sub_high_g1_s1","name":"高中一年级上册","sort":1,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_high_g1_s2","name":"高中一年级下册","sort":2,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_high_g2_s1","name":"高中二年级上册","sort":3,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_high_g2_s2","name":"高中二年级下册","sort":4,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_high_g3_s1","name":"高中三年级上册","sort":5,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_high_g3_s2","name":"高中三年级下册","sort":6,"enabled":true,"created_at":{"$date":1704067200000},"category_id":"cat_senior"}
+{"_id":"sub_junior_g7_s1","name":"初中七年级上册","sort":1,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_junior_g7_s2","name":"初中七年级下册","sort":2,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_junior_g8_s1","name":"初中八年级上册","sort":3,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_junior_g8_s2","name":"初中八年级下册","sort":4,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_junior_g9_s1","name":"初中九年级上册","sort":5,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_junior_g9_s2","name":"初中九年级下册","sort":6,"enabled":true,"category_id":"cat_junior"}
+{"_id":"sub_kindergarten_100","name":"幼儿园小朋友挑战 100天100首古诗","sort":1,"intro":"### 核心依据：《义务教育语文课程标准（2022 年版）》\n- 教育部发布，1-6 年级必背古诗文 75 首。\n- 我给的 100 首里，前 75 首全部来自这份官方推荐，是全国统一的“必背经典”。\n- 后 25 首是在 75 首基础上，补充的同难度、同风格经典，方便凑够 100 天挑战。\n\n### 适配幼儿园的筛选原则\n- 只选五言绝句、七言绝句，篇幅短、朗朗上口。\n- 内容贴近自然、童趣、简单情感（如《咏鹅》《春晓》《静夜思》）。\n- 避开生僻字、复杂典故，幼儿园孩子能听懂、能记住。\n\n### 与主流教材 / 机构一致\n- 与部编版小学语文教材一年级到三年级篇目高度重合。\n- 与宝宝巴士、喜马拉雅等主流国学启蒙内容一致。\n- 符合中国教育科学研究院、学前教育研究会推荐的幼儿古诗启蒙方向。","enabled":true,"created_at":"2024-01-01T00:00:00.000Z","category_id":"cat_hot"}
+{"_id":"sub_primary_g1_s1","name":"小学一年级上册","sort":1,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g1_s2","name":"小学一年级下册","sort":2,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g2_s1","name":"小学二年级上册","sort":3,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g2_s2","name":"小学二年级下册","sort":4,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g3_s1","name":"小学三年级上册","sort":5,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g3_s2","name":"小学三年级下册","sort":6,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g4_s1","name":"小学四年级上册","sort":7,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g4_s2","name":"小学四年级下册","sort":8,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g5_s1","name":"小学五年级上册","sort":9,"enabled":true,"category_id":"cat_primary"}
+{"_id":"sub_primary_g5_s2","name":"小学五年级下册","sort":10,"enabled":true,"category_id":"cat_primary"}
