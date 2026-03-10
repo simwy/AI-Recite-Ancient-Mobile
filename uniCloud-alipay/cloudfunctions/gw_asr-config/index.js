@@ -62,6 +62,7 @@ async function createNlsToken() {
   })
 
   const data = response.data
+  console.log('[asr-config] CreateToken response:', JSON.stringify(data))
   if (!data || !data.Token || !data.Token.Id) {
     const errMsg = (data && data.Message) || '获取 NLS Token 失败'
     throw new Error(errMsg)
@@ -76,6 +77,7 @@ async function createNlsToken() {
 exports.main = async (event = {}) => {
   try {
     const { token, expireTime } = await createNlsToken()
+    console.log('[asr-config] returning token length:', token ? token.length : 0, 'appkey:', nls.appkey ? nls.appkey.substring(0, 6) + '...' : 'EMPTY', 'wsUrl:', nls.wsUrl)
     return {
       code: 0,
       data: {
@@ -86,6 +88,7 @@ exports.main = async (event = {}) => {
       }
     }
   } catch (error) {
+    console.error('[asr-config] error:', error.message)
     return {
       code: -1,
       msg: error.message || '语音配置获取失败'

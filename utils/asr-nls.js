@@ -97,6 +97,7 @@ class NlsAsrClient {
       this._startResolver = resolve
       this._startRejector = reject
 
+      console.log('[NlsAsrClient] connecting to:', this._url ? this._url.substring(0, 80) + '...' : 'EMPTY URL')
       this._socketTask = uni.connectSocket({
         url: this._url,
         complete: () => {}
@@ -121,6 +122,7 @@ class NlsAsrClient {
       })
 
       this._socketTask.onError((err) => {
+        console.error('[NlsAsrClient] WebSocket error:', JSON.stringify(err))
         if (this._startRejector) {
           this._startRejector(err || new Error('WebSocket connection failed'))
           this._startResolver = null

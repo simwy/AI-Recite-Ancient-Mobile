@@ -16,3 +16,7 @@
 	
 ## 图标库
 [icon](https://www.iconfont.cn/collections/detail?spm=a313x.collections_index.i1.d9df05512.4d623a81LEafM6&cid=33)
+
+
+## 发布后常见的BUG
+- 无法录音或者无法播放，云config配置没有同步到云端
