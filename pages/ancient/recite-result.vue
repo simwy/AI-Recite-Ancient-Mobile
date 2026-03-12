@@ -285,7 +285,7 @@ export default {
     },
     goReciteAgain() {
       uni.redirectTo({
-        url: `/pages/ancient/recite?id=${this.id}`
+        url: `/pages/ancient/recite?id=${this.id}&autoStart=1`
       })
     },
     goCorrection() {

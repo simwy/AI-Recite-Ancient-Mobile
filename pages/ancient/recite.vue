@@ -20,6 +20,15 @@
       </view>
     </view>
 
+    <!-- 倒计时固定浮层：大字号 + 进场放大 -->
+    <view v-if="countdownMessage" class="countdown-overlay">
+      <text
+        class="countdown-num"
+        :class="{ 'countdown-go': countdownMessage === '开始背诵吧' }"
+        :key="countdownMessage"
+      >{{ countdownMessage }}</text>
+    </view>
+
     <!-- 录音状态 -->
     <view class="status-area">
       <view v-if="recording" class="recording-indicator">
@@ -57,11 +66,11 @@
       </view>
 
       <button
-        v-if="!started"
+        v-if="!started && !recording && !paused && !countdownMessage"
         type="primary"
         class="btn"
         :disabled="requestingPermission"
-        @click="startRecite"
+        @click="handleStartClick"
       >{{ requestingPermission ? '授权中...' : '开始背诵' }}</button>
 
       <template v-if="recording">
@@ -120,7 +129,12 @@ export default {
       paused: false,
       /** 静默检测：最后一次收到识别文本的时间戳 */
       lastSpeechTime: 0,
-      silenceTimer: null
+      silenceTimer: null,
+      /** 开始前倒计时文案（3、2、1、开始背诵吧） */
+      countdownMessage: '',
+      countdownTimer: null,
+      /** 是否从详情页「全文背诵」进入，自动触发倒计时 */
+      autoStartFromDetail: false
     }
   },
   computed: {
@@ -150,6 +164,7 @@ export default {
   },
   onLoad(options) {
     this.id = options.id || ''
+    this.autoStartFromDetail = options.autoStart === '1'
     const app = getApp()
     const currentText = app.globalData && app.globalData.currentText
     if (currentText && currentText._id === this.id) {
@@ -159,12 +174,20 @@ export default {
     this.initRecorder()
   },
   onReady() {
-    // 进入页面后自动开始背诵，无需再点击「开始背诵」
-    this.startRecite()
+    // 从详情页「全文背诵」进入时，自动启动倒计时与背诵
+    if (this.autoStartFromDetail) {
+      this.$nextTick(() => {
+        this.handleStartClick()
+      })
+    }
   },
   onUnload() {
     clearInterval(this.durationTimer)
     this.stopSilenceDetection()
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+      this.countdownTimer = null
+    }
     if (this.recording) {
       // #ifdef H5
       this.stopWebRecorder()
@@ -183,6 +206,36 @@ export default {
     }
   },
   methods: {
+    /** 点击「开始背诵」先执行 3-2-1-开始 的倒计时，引导后再真正开始录音 */
+    handleStartClick() {
+      if (this.recording || this.started || this.paused || this.countdownTimer) return
+      // 点击后先收起原文，专注倒计时与背诵
+      this.showArticleContent = false
+      const steps = ['3', '2', '1', '开始背诵吧', '']
+      let index = 0
+      this.countdownMessage = steps[index]
+      this.countdownTimer = setInterval(async () => {
+        index += 1
+        if (index >= steps.length) {
+          clearInterval(this.countdownTimer)
+          this.countdownTimer = null
+          this.countdownMessage = ''
+          return
+        }
+        this.countdownMessage = steps[index]
+        // 「开始背诵吧」这一拍出现时，真正启动录音
+        if (steps[index] === '开始背诵吧') {
+          try {
+            await this.startRecite()
+          } catch (e) {
+            console.error('开始背诵失败:', e)
+            clearInterval(this.countdownTimer)
+            this.countdownTimer = null
+            this.countdownMessage = ''
+          }
+        }
+      }, 700)
+    },
     async loadTextData() {
       if (this.textData && this.textData.content) return
       if (!this.id) return
@@ -779,6 +832,51 @@ export default {
   color: #333;
   line-height: 1.8;
 }
+/* 倒计时固定浮层：全屏、偏下、大字号、进场放大 */
+.countdown-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 18%;
+  pointer-events: none;
+}
+.countdown-num {
+  display: block;
+  width: 100%;
+  font-size: 200rpx;
+  font-weight: 800;
+  color: #4f46e5;
+  text-align: center;
+  text-shadow: 0 4rpx 24rpx rgba(79, 70, 229, 0.35);
+  animation: countdown-pop 0.5s ease-out;
+}
+/* 「开始背诵吧」单独小字号、多行居中 */
+.countdown-num.countdown-go {
+  font-size: 88rpx;
+  max-width: 85%;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+@keyframes countdown-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .status-area {
   text-align: center;
   margin-bottom: 60rpx;

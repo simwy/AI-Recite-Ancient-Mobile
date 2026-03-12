@@ -229,7 +229,7 @@ export default {
       getApp().globalData = getApp().globalData || {}
       getApp().globalData.currentText = this.detail
       uni.navigateTo({
-        url: `/pages/ancient/recite?id=${this.id}`
+        url: `/pages/ancient/recite?id=${this.id}&autoStart=1`
       })
     },
     goDictation() {
