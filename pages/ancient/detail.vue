@@ -8,14 +8,7 @@
             <text class="correction-text">纠错</text>
           </view>
         </view>
-        <view class="fav-icon-btn" @click.stop="toggleFavorite">
-          <uni-icons
-            :type="isFavorited ? 'star-filled' : 'star'"
-            size="16"
-            :color="isFavorited ? '#d97706' : '#b45309'"
-          />
-          <text class="fav-icon-text">{{ isFavorited ? '已在学习列表中' : '加入学习列表' }}</text>
-        </view>
+        <view class="header-right"></view>
       </view>
       <view class="title-row">
         <text class="title">{{ detail.title }}</text>
@@ -141,18 +134,21 @@
 
     <view class="action-bar">
       <view class="action-row">
-        <button class="action-btn btn-read" @click="goRead">
-          <uni-icons type="eye" size="18" color="#4f46e5" />
-          <text>跟读</text>
+        <button class="action-btn btn-fav" @click="toggleFavorite">
+          <view class="btn-fav-inner">
+            <uni-icons
+              :type="isFavorited ? 'star-filled' : 'star'"
+              size="22"
+              :color="isFavorited ? '#d97706' : '#666'"
+            />
+            <text class="btn-fav-label">{{ isFavorited ? '已加入' : '加入学习' }}</text>
+          </view>
         </button>
-        <button class="action-btn btn-recite" @click="goRecite">
-          <uni-icons type="mic" size="18" color="#0b57d0" />
-          <text>背诵</text>
-        </button>
-        <button class="action-btn btn-dictation" @click="goDictation">
-          <uni-icons type="compose" size="18" color="#2563eb" />
-          <text>默写</text>
-        </button>
+        <view class="action-group">
+          <button class="action-btn btn-read" @click="goRead">跟读</button>
+          <button class="action-btn btn-recite" @click="goRecite">背诵</button>
+          <button class="action-btn btn-dictation" @click="goDictation">默写</button>
+        </view>
       </view>
     </view>
   </view>
@@ -630,19 +626,8 @@ export default {
   margin-bottom: 40rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
-.fav-icon-btn {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 1rpx 10rpx;
-  border-radius: 18rpx;
-  background: #fffbeb;
-  border: 1rpx solid #fde68a;
-}
-.fav-icon-text {
-  font-size: 20rpx;
-  color: #b45309;
-  line-height: 1.2;
+.header-right {
+  width: 120rpx;
 }
 .content-inner {
   overflow: hidden;
@@ -777,18 +762,17 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20rpx 40rpx;
+  padding: 20rpx 24rpx;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 .action-row {
   display: flex;
-  gap: 20rpx;
+  align-items: stretch;
+  gap: 24rpx;
 }
 .action-btn {
-  flex: 1;
-  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -796,21 +780,63 @@ export default {
   font-size: 28rpx;
   padding: 0;
   line-height: 1;
-  height: 84rpx;
+  height: 100rpx;
+  border: none;
+  border-radius: 12rpx;
 }
+/* 左侧：加入学习（上 icon 下文案，与 69 的 icon 按钮结构一致） */
+.btn-fav {
+  flex-shrink: 0;
+  width: 120rpx;
+  min-width: 120rpx;
+  height: 100rpx;
+  min-height: 100rpx;
+  color: #666;
+  background: #f5f5f5;
+  border: 1rpx solid #e5e5e5;
+  padding: 12rpx 0;
+}
+.btn-fav .btn-fav-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+}
+.btn-fav .btn-fav-label {
+  font-size: 22rpx;
+  line-height: 1.2;
+}
+/* 右侧一组三按钮：与 list 页跟读/背诵/默写标记颜色一致 */
+.action-group {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+.action-group .action-btn {
+  flex: 1;
+  height: 100%;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0;
+}
+.action-group .action-btn:first-child {
+  border-radius: 12rpx 0 0 12rpx;
+}
+.action-group .action-btn:last-child {
+  border-radius: 0 12rpx 12rpx 0;
+}
+/* 右侧三按钮：通透渐变色，略透明更柔和 */
 .btn-read {
-  color: #4f46e5;
-  background: #eef2ff;
-  border: 2rpx solid #c7d2fe;
+  background: linear-gradient(135deg, rgba(56, 142, 60, 0.82) 0%, rgba(27, 94, 32, 0.88) 100%);
 }
 .btn-recite {
-  color: #0b57d0;
-  background: #e8f1ff;
-  border: 2rpx solid #bdd5ff;
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.82) 0%, rgba(13, 71, 161, 0.88) 100%);
 }
 .btn-dictation {
-  color: #2563eb;
-  background: #eef4ff;
-  border: 2rpx solid #c9dcff;
+  background: linear-gradient(135deg, rgba(239, 108, 0, 0.82) 0%, rgba(230, 81, 0, 0.88) 100%);
 }
 </style>
