@@ -4,7 +4,7 @@ const textsCollection = db.collection('gw-ancient-texts')
 const checksCollection = db.collection('gw-dictation-checks')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
-const { bailianVision } = require('config')
+const { ocr: ocrConfig } = require('config')
 
 /** 拍照默写保存后更新用户古文汇总表 */
 async function updateSummaryAfterDictation(uid, textId, textTitle, recordId, accuracy, createdAt) {
@@ -56,22 +56,6 @@ async function getAuthUid(event, context) {
     }
   }
   return uid
-}
-
-function safeJsonParse(text) {
-  try {
-    return JSON.parse(text)
-  } catch (e) {
-    const match = text.match(/\{[\s\S]*\}/)
-    if (match) {
-      try {
-        return JSON.parse(match[0])
-      } catch (e2) {
-        return null
-      }
-    }
-    return null
-  }
 }
 
 const PUNCTUATION_REG = /[，。、；：？！""''（）《》〈〉【】「」『』〔〕…—\s\n\r,.;:?!'"()\[\]{}]/
@@ -173,100 +157,78 @@ function calcAccuracy(diffResult) {
   return Math.round((correct / compareChars.length) * 100 * 10) / 10
 }
 
-// ---- 大模型调用 ----
+// ---- OCR 手写体识别 ----
 
-async function callVisionModel(imageBase64) {
-  if (!bailianVision || !bailianVision.apiKey) {
-    throw new Error('未配置视觉模型 API Key')
+const OcrApi = require('@alicloud/ocr-api20210707')
+const OpenApi = require('@alicloud/openapi-client')
+const Util = require('@alicloud/tea-util')
+
+function createOcrClient() {
+  const config = new OpenApi.Config({
+    accessKeyId: ocrConfig.accessKeyId,
+    accessKeySecret: ocrConfig.accessKeySecret,
+    endpoint: ocrConfig.endpoint || 'ocr-api.cn-hangzhou.aliyuncs.com'
+  })
+  return new OcrApi.default(config)
+}
+
+/**
+ * 从 OCR 全文中提取文章ID
+ * 默写纸上印刷格式为 “文章ID：xxxxxxxx”
+ */
+function extractArticleId(ocrText) {
+  const match = ocrText.match(/文章\s*ID[：:]\s*(\S+)/)
+  return match ? match[1].trim() : ''
+}
+
+/**
+ * 从 OCR 全文中提取手写正文内容
+ * 去掉印刷模板部分（标题、作者、文章ID、正文标签）
+ */
+function extractHandwrittenText(ocrText) {
+  const lines = ocrText.split(/\n/)
+  const filtered = lines.filter(line => {
+    const trimmed = line.trim()
+    if (!trimmed) return false
+    if (/^标题[：:]/.test(trimmed)) return false
+    if (/^作者[：:]/.test(trimmed)) return false
+    if (/^文章\s*ID[：:]/.test(trimmed)) return false
+    if (/^正文[：:]$/.test(trimmed)) return false
+    return true
+  })
+  return filtered.join('').replace(/\s+/g, '')
+}
+
+async function callOcrHandwriting(imageBase64) {
+  if (!ocrConfig || !ocrConfig.accessKeyId) {
+    throw new Error('未配置 OCR AccessKey')
   }
 
-  const endpoint = bailianVision.endpoint
-  const requestBody = {
-    model: bailianVision.model || 'qwen-vl-plus',
-    messages: [
-      {
-        role: 'system',
-        content:
-          '你是一个只会做图像文字识别的 OCR 工具。你的能力只有一件事：阅读图片中的像素和笔画，并把你看到的汉字原样写出来。\n\n' +
-          '你没有任何古诗文知识，也不知道课文的正确内容。你不能背诵《桃花源记》《出师表》等任何文章，也不能根据标题、文章ID、版式或上下文去“猜测”人类想写什么。\n\n' +
-          '【最重要的限制】：\n' +
-          '- 你只能根据“看得见的笔画”识别文字。\n' +
-          '- 纸上没有真正写字、只有下划线/空白/印刷模板的地方，禁止输出任何正文文字。\n' +
-          '- 不能用标题、作者、文章ID 或你记忆中的课文来补全缺失的句子或段落。\n' +
-          '- 如果某个字的字形像“小”，你必须输出“小”；即使你猜原文可能是“晓”，也绝对不能改成“晓”。\n' +
-          '- 如果某个位置没有清晰可见的笔画，你不能想象出一个字，只能认为这个位置是“空”或用“□”占位。\n\n' +
-          '你的全部工作就是：对图片做“机械式”的逐字识别，不做任何智能纠错、补全或润色。'
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: imageBase64
-            }
-          },
-          {
-            type: 'text',
-            text: `你是一个纯 OCR 工具。请对这张古文默写纸的照片进行文字识别。
+  // 去掉 data:image/xxx;base64, 前缀
+  const base64Body = imageBase64.replace(/^data:image\/\w+;base64,/, '')
 
-【任务】：
-1. 找到纸上印刷的「文章ID」，提取出它的值，原样输出。
-2. 只对手写的正文内容做逐字识别：
-   - 只看学生用笔写出来的字。
-   - 有下划线但上面没有任何笔画的格子，视为“未书写”，不能输出对应的文字。
-   - 不要把印刷体标题、作者、正文模板当成学生的书写内容。
-
-【最高优先级规则（违反即严重错误）】：
-- 你是 OCR 工具，只识别字形，不理解语义。
-- 绝对禁止根据标题、文章ID、版式或上下文猜测、补全或纠正文句。
-- 每个字必须独立地根据当前格子里的笔画来判断，不能参考前后文。
-- 如果手写的字形是「小」，输出必须是「小」，不能因为你猜原文是「晓」就输出「晓」。
-- 如果手写的字形是「以」，输出必须是「以」，不能因为你猜原文是「已」就输出「已」。
-- 如果某个位置没有清晰可见的笔画（学生没有写字，只是空的下划线），你不能输出任何真实汉字；如果必须占位，请用「□」。
-- 如果某个字完全无法辨认，用「□」替代。
-- 只识别汉字，忽略标点符号。
-
-【自我检查】：
-在给出最终答案前，请在心里检查一遍：我输出的每一个汉字，图片上是否真的能看到对应的笔画？如果你发现有哪一段内容其实是你“根据课文记忆补出来的”，请立刻删除那一段，而不要输出。
-
-请直接以 JSON 格式返回（不要包含 markdown 代码块标记），格式为：
-{"articleId": "识别到的文章ID", "handwrittenText": "按书写顺序拼接的手写汉字序列"}`
-          }
-        ]
-      }
-    ],
-    temperature: 0.1
-  }
-
-  const response = await uniCloud.httpclient.request(endpoint, {
-    method: 'POST',
-    timeout: Number(bailianVision.timeout || 60000),
-    headers: {
-      Authorization: `Bearer ${bailianVision.apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    dataType: 'json',
-    data: requestBody
+  const client = createOcrClient()
+  const request = new OcrApi.RecognizeHandwritingRequest({
+    body: require('stream').Readable.from(Buffer.from(base64Body, 'base64')),
+    needRotate: true,
+    outputCharInfo: false,
+    outputTable: false
+  })
+  const runtime = new Util.RuntimeOptions({
+    readTimeout: ocrConfig.timeout || 30000,
+    connectTimeout: 10000
   })
 
-  if (response.status !== 200 || !response.data) {
-    throw new Error('视觉模型调用失败: HTTP ' + response.status)
+  const response = await client.recognizeHandwritingWithOptions(request, runtime)
+  const body = response.body || {}
+  if (!body.data) {
+    throw new Error('OCR 识别返回为空，请求ID: ' + (body.requestId || ''))
   }
 
-  const choices = response.data.choices || []
-  const rawContent = (
-    choices[0] && choices[0].message && choices[0].message.content
-  ) || ''
-
-  const parsed = safeJsonParse(rawContent.trim())
-  if (!parsed || !parsed.articleId) {
-    throw new Error('视觉模型返回格式异常，无法解析识别结果')
-  }
-
+  const ocrText = typeof body.data === 'string' ? body.data : (body.data.content || '')
   return {
-    articleId: String(parsed.articleId).trim(),
-    handwrittenText: String(parsed.handwrittenText || '').trim()
+    articleId: extractArticleId(ocrText),
+    handwrittenText: extractHandwrittenText(ocrText)
   }
 }
 
@@ -278,8 +240,8 @@ async function handleCheck(uid, data) {
     return { code: -1, msg: '缺少图片数据' }
   }
 
-  // 1. 调用视觉模型识别（手写内容；若未传 articleId 则同时从照片识别文章ID）
-  const recognition = await callVisionModel(imageBase64)
+  // 1. 调用 OCR 手写体识别
+  const recognition = await callOcrHandwriting(imageBase64)
 
   // 2. 查询原文：优先使用调用方传入的 articleId（默写页用当前页ID），否则用照片识别的
   const articleId = (passedArticleId && String(passedArticleId).trim()) || recognition.articleId

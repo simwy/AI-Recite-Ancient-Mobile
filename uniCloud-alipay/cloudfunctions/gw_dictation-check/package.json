@@ -4,6 +4,9 @@
   "main": "index.js",
   "dependencies": {
     "config": "file:../common/config",
-    "uni-id-common": "file:../../../uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common"
+    "uni-id-common": "file:../../../uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common",
+    "@alicloud/ocr-api20210707": "^3.1.2",
+    "@alicloud/openapi-client": "^0.4.12",
+    "@alicloud/tea-util": "^1.4.9"
   }
 }

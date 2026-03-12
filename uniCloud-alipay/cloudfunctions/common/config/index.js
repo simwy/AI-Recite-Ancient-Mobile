@@ -59,5 +59,11 @@ module.exports = {
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-vl-plus',
     timeout: 60000
+  },
+  ocr: {
+    get accessKeyId() { return env('OCR_ACCESS_KEY_ID') || env('NLS_ACCESS_KEY_ID') },
+    get accessKeySecret() { return env('OCR_ACCESS_KEY_SECRET') || env('NLS_ACCESS_KEY_SECRET') },
+    endpoint: 'ocr-api.cn-hangzhou.aliyuncs.com',
+    timeout: 30000
   }
 }

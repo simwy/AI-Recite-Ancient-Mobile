@@ -8,7 +8,7 @@
   "passwordStrength": "medium", 
   "tokenSecret": "65f769ce7e1f70abea569b200f", 
   "requestAuthSecret": "", 
-  "tokenExpiresIn": 7200, 
+  "tokenExpiresIn": 604800, 
   "tokenExpiresThreshold": 3600,
   "maxTokenLength": 10, 
   "passwordErrorLimit": 6, 
