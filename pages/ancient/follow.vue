@@ -103,7 +103,10 @@
     <view v-if="finalStampVisible" class="follow-stamp-wrapper">
       <view class="follow-stamp">
         <text class="stamp-main-text">{{ finalStampMainText }}</text>
-        <text class="stamp-score-text">{{ finalStampScore }} 分</text>
+        <view class="stamp-score-row">
+          <text class="stamp-score-num">{{ finalStampScore }}</text>
+          <text class="stamp-score-unit">分</text>
+        </view>
       </view>
     </view>
 
@@ -997,37 +1000,50 @@ export default {
   pointer-events: none;
 }
 .follow-stamp {
-  width: 220rpx;
-  height: 220rpx;
+  width: 300rpx;
+  height: 300rpx;
   border-radius: 999rpx;
-  border: 4rpx solid #f97373;
+  border: 6rpx solid #f97373;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20rpx 48rpx rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   color: #f97373;
   transform-origin: center;
-  animation: stamp-pop 0.6s ease-out forwards;
+  animation: stamp-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 .stamp-main-text {
-  font-size: 40rpx;
+  font-size: 38rpx;
   font-weight: 800;
   letter-spacing: 6rpx;
 }
-.stamp-score-text {
+.stamp-score-row {
   margin-top: 12rpx;
-  font-size: 26rpx;
-  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+}
+.stamp-score-num {
+  font-size: 100rpx;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 4rpx 12rpx rgba(249, 115, 115, 0.35);
+}
+.stamp-score-unit {
+  margin-left: 6rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  opacity: 0.95;
 }
 @keyframes stamp-pop {
   0% {
-    transform: translateY(40rpx) scale(0.5) rotate(-10deg);
+    transform: translateY(60rpx) scale(0.35) rotate(-12deg);
     opacity: 0;
   }
-  60% {
-    transform: translateY(0) scale(1.05) rotate(-3deg);
+  55% {
+    transform: translateY(-8rpx) scale(1.1) rotate(-2deg);
     opacity: 1;
   }
   100% {

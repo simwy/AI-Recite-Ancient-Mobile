@@ -30,7 +30,7 @@
         <text>背诵已暂停 {{ formatTime(duration) }}</text>
       </view>
       <view v-else-if="!started" class="status-text">
-        <text>准备好后点击开始背诵</text>
+        <text>正在准备背诵...</text>
       </view>
       <view v-else class="status-text">
         <text>正在处理录音...</text>
@@ -157,6 +157,10 @@ export default {
     }
     this.loadTextData()
     this.initRecorder()
+  },
+  onReady() {
+    // 进入页面后自动开始背诵，无需再点击「开始背诵」
+    this.startRecite()
   },
   onUnload() {
     clearInterval(this.durationTimer)
