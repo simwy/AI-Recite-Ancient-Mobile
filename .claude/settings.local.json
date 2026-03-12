@@ -15,7 +15,8 @@
       "Bash(ls -la /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile/uniCloud-alipay/cloudfunctions/gw_*)",
       "WebFetch(domain:help.aliyun.com)",
       "Bash(cd /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile/uniCloud-alipay/cloudfunctions/gw_dictation-check && npm install)",
-      "Bash(git add docs/plans/2026-03-18-dictation-error-detail-design.md && git commit -m \"$\\(cat <<'EOF'\ndocs: 默写批改详情丰富错误分类设计文档\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git add docs/plans/2026-03-18-dictation-error-detail-design.md && git commit -m \"$\\(cat <<'EOF'\ndocs: 默写批改详情丰富错误分类设计文档\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git add:*)"
     ]
   }
 }
