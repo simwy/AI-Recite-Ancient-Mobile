@@ -41,12 +41,31 @@
     <!-- 逐字批改 -->
     <view class="section-card">
       <view class="section-label">批改详情</view>
-      <view class="diff-content">
+      <view class="detail-row" v-if="titleDiff.length">
+        <text class="detail-label">标题：</text>
         <text
-          v-for="(item, idx) in diffResult"
-          :key="idx"
+          v-for="(item, idx) in titleDiff"
+          :key="'t-' + idx"
           :class="['diff-char', 'diff-' + item.status]"
         >{{ item.status === 'missing' ? '＿' : item.char }}</text>
+      </view>
+      <view class="detail-row" v-if="authorDiff.length">
+        <text class="detail-label">朝代·作者：</text>
+        <text
+          v-for="(item, idx) in authorDiff"
+          :key="'a-' + idx"
+          :class="['diff-char', 'diff-' + item.status]"
+        >{{ item.status === 'missing' ? '＿' : item.char }}</text>
+      </view>
+      <view class="detail-row content-row" v-if="contentDiff.length">
+        <text class="detail-label">正文：</text>
+        <view class="diff-content">
+          <text
+            v-for="(item, idx) in contentDiff"
+            :key="'c-' + idx"
+            :class="['diff-char', 'diff-' + item.status]"
+          >{{ item.status === 'missing' ? '＿' : item.char }}</text>
+        </view>
       </view>
       <view class="legend">
         <text class="legend-correct">● 正确</text>
@@ -99,6 +118,27 @@ export default {
     }
   },
   computed: {
+    /** 原文中标题部分长度（去空格），用于拆分批改结果 */
+    titlePartLength() {
+      return (this.title || '').replace(/\s+/g, '').length
+    },
+    /** 原文中朝代·作者部分长度（去空格） */
+    authorPartLength() {
+      const s = this.dynasty && this.author ? (this.dynasty + '·' + this.author) : (this.author || this.dynasty || '')
+      return (s || '').replace(/\s+/g, '').length
+    },
+    /** 批改详情：仅标题部分 */
+    titleDiff() {
+      return this.diffResult.slice(0, this.titlePartLength)
+    },
+    /** 批改详情：仅朝代·作者部分 */
+    authorDiff() {
+      return this.diffResult.slice(this.titlePartLength, this.titlePartLength + this.authorPartLength)
+    },
+    /** 批改详情：仅正文部分 */
+    contentDiff() {
+      return this.diffResult.slice(this.titlePartLength + this.authorPartLength)
+    },
     wrongDetails() {
       return this.diffResult.filter(d => d.status === 'wrong' && d.recognized)
     }
@@ -274,6 +314,32 @@ export default {
   font-size: 26rpx;
   color: #999;
   margin-bottom: 16rpx;
+}
+.detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+.detail-label {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #999;
+  margin-right: 12rpx;
+  line-height: 2.4;
+}
+.detail-row .diff-char {
+  font-size: 36rpx;
+}
+.content-row {
+  display: block;
+}
+.content-row .detail-label {
+  display: block;
+  margin-bottom: 8rpx;
+}
+.content-row .diff-content {
+  margin-bottom: 0;
 }
 .photo-scroll {
   width: 100%;
