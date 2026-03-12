@@ -182,21 +182,32 @@ function extractArticleId(ocrText) {
 }
 
 /**
- * 从 OCR 全文中提取手写正文内容
- * 去掉印刷模板部分（标题、作者、文章ID、正文标签）
+ * 从 OCR 全文中提取手写内容（含标题、作者、正文），用于与原文逐字比对
+ * 默写纸格式：标题：xxx / 作者：xxx / 文章ID：xxx / 正文：xxx
  */
 function extractHandwrittenText(ocrText) {
   const lines = ocrText.split(/\n/)
-  const filtered = lines.filter(line => {
+  let titlePart = ''
+  let authorPart = ''
+  const bodyParts = []
+  for (const line of lines) {
     const trimmed = line.trim()
-    if (!trimmed) return false
-    if (/^标题[：:]/.test(trimmed)) return false
-    if (/^作者[：:]/.test(trimmed)) return false
-    if (/^文章\s*ID[：:]/.test(trimmed)) return false
-    if (/^正文[：:]$/.test(trimmed)) return false
-    return true
-  })
-  return filtered.join('').replace(/\s+/g, '')
+    if (!trimmed) continue
+    const titleMatch = trimmed.match(/^标题[：:]\s*(.*)$/)
+    if (titleMatch) {
+      titlePart = titleMatch[1].trim()
+      continue
+    }
+    const authorMatch = trimmed.match(/^作者[：:]\s*(.*)$/)
+    if (authorMatch) {
+      authorPart = authorMatch[1].trim()
+      continue
+    }
+    if (/^文章\s*ID[：:]/.test(trimmed)) continue
+    if (/^正文[：:]$/.test(trimmed)) continue
+    bodyParts.push(trimmed)
+  }
+  return (titlePart + authorPart + bodyParts.join('')).replace(/\s+/g, '')
 }
 
 async function callOcrHandwriting(imageBase64) {
@@ -225,7 +236,14 @@ async function callOcrHandwriting(imageBase64) {
     throw new Error('OCR 识别返回为空，请求ID: ' + (body.requestId || ''))
   }
 
-  const ocrText = typeof body.data === 'string' ? body.data : (body.data.content || '')
+  let ocrText = typeof body.data === 'string' ? body.data : (body.data.content || '')
+  // 若 OCR 返回的是 JSON 字符串（如 {"content":"识别的文字"}），则只取 content 参与提取与比对
+  if (typeof ocrText === 'string') {
+    try {
+      const parsed = JSON.parse(ocrText)
+      if (parsed && typeof parsed.content === 'string') ocrText = parsed.content
+    } catch (e) {}
+  }
   return {
     articleId: extractArticleId(ocrText),
     handwrittenText: extractHandwrittenText(ocrText)
@@ -260,8 +278,15 @@ async function handleCheck(uid, data) {
     }
   }
 
-  // 3. 逐字比对
-  const originalText = String(textDoc.content || '')
+  // 3. 逐字比对（原文包含标题、作者、正文，与默写纸手写内容一致）
+  const authorDisplay = textDoc.dynasty && textDoc.author
+    ? (String(textDoc.dynasty || '') + '·' + String(textDoc.author || ''))
+    : (String(textDoc.author || textDoc.dynasty || ''))
+  const originalText = (
+    (textDoc.title || '') +
+    authorDisplay +
+    (textDoc.content || '')
+  ).replace(/\s+/g, '')
   const recognizedText = recognition.handwrittenText
   const diffResult = diffChars(originalText, recognizedText)
   const accuracy = calcAccuracy(diffResult)

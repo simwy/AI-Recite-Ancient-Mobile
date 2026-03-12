@@ -119,13 +119,22 @@ export default {
     this.author = result.author || ''
     this.dynasty = result.dynasty || ''
     this.originalText = result.originalText || ''
-    this.recognizedText = result.recognizedText || ''
+    this.recognizedText = this.parseRecognizedText(result.recognizedText || '') || ''
     this.diffResult = result.diffResult || []
     this.accuracy = result.accuracy || 0
     this.imageUrl = result.imageUrl || ''
     this.articleId = result.articleId || ''
   },
   methods: {
+    /** 若识别结果为 JSON 字符串（如 {"content":"..."}），则解析并返回 content，否则返回原值 */
+    parseRecognizedText(val) {
+      if (val == null || typeof val !== 'string' || !val.trim()) return val
+      try {
+        const p = JSON.parse(val)
+        if (p && typeof p.content === 'string') return p.content
+      } catch (e) {}
+      return val
+    },
     goCorrection() {
       const id = this.articleId || ''
       const title = this.title || ''
@@ -148,7 +157,7 @@ export default {
         this.author = r.text_author || ''
         this.dynasty = r.text_dynasty || ''
         this.originalText = r.original_text || ''
-        this.recognizedText = r.recognized_text || ''
+        this.recognizedText = this.parseRecognizedText(r.recognized_text || '') || ''
         this.diffResult = Array.isArray(r.diff_result) ? r.diff_result : []
         this.accuracy = Number(r.accuracy) || 0
         this.imageUrl = r.image_url || ''

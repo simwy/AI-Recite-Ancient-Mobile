@@ -926,6 +926,41 @@ async function listExistingTitleAuthor() {
   return { code: 0, data: { list } }
 }
 
+/** 获取当前用户在 gw-user-text-summary 中的操作时间映射（用于列表“操作过的优先、按操作时间降序”） */
+async function getUserTextSummaryActivityMap(event, context) {
+  const uid = await getAuthUid(event, context)
+  if (!uid) {
+    return { code: 0, data: { list: [] } }
+  }
+  const res = await summaryCollection
+    .where({ user_id: uid })
+    .field({
+      text_id: true,
+      follow_last_at: true,
+      recite_last_at: true,
+      dictation_last_at: true,
+      updated_at: true
+    })
+    .limit(500)
+    .get()
+  const toMs = (v) => {
+    if (v == null) return 0
+    if (typeof v === 'number') return v
+    if (v && typeof v.getTime === 'function') return v.getTime()
+    return 0
+  }
+  const list = (res.data || []).map((doc) => {
+    const lastAt = Math.max(
+      toMs(doc.follow_last_at),
+      toMs(doc.recite_last_at),
+      toMs(doc.dictation_last_at),
+      toMs(doc.updated_at)
+    )
+    return { text_id: doc.text_id, last_operation_at: lastAt }
+  })
+  return { code: 0, data: { list } }
+}
+
 /** 批量获取当前用户对指定古文的最新跟读/背诵/默写分数（用于列表展示） */
 async function getUserTextSummaries(event, context) {
   const uid = await getAuthUid(event, context)
@@ -1040,6 +1075,8 @@ exports.main = async (event, context) => {
         return await listExistingTitleAuthor()
       case 'getUserTextSummaries':
         return await getUserTextSummaries(event, context)
+      case 'getUserTextSummaryActivityMap':
+        return await getUserTextSummaryActivityMap(event, context)
       case 'saveSearchLog':
         return await saveSearchLog(event, data, context)
       default:

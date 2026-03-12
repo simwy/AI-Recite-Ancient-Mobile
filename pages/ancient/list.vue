@@ -218,14 +218,13 @@ export default {
       if (cur.tokenExpired && cur.tokenExpired < Date.now()) return ''
       return cur.token
     },
-    /** 拉取最近学习记录（读过/背诵过/默写过），构建 text_id -> 最近时间 映射 */
+    /** 拉取用户操作记录（gw-user-text-summary：跟读/背诵/默写），构建 text_id -> 最近操作时间 映射，用于列表优先排序 */
     async loadRecentActivity() {
       try {
         const res = await uniCloud.callFunction({
-          name: 'gw_learning-records',
+          name: 'gw_ancient-search',
           data: {
-            action: 'list',
-            data: { page: 1, pageSize: 150 }
+            action: 'getUserTextSummaryActivityMap'
           }
         })
         const result = (res && res.result) || {}
@@ -238,7 +237,7 @@ export default {
         for (const item of list) {
           const id = item.text_id
           if (!id) continue
-          const t = item.created_at ? Number(item.created_at) : 0
+          const t = item.last_operation_at ? Number(item.last_operation_at) : 0
           if (t > (map[id] || 0)) map[id] = t
         }
         this.recentActivityMap = map
@@ -246,7 +245,7 @@ export default {
         this.recentActivityMap = {}
       }
     },
-    /** 按最近学习时间倒序把列表里“读过/背过/默写过的”排到前面 */
+    /** 按最近操作时间倒序把“操作过的”古文排到前面（有记录的在上面，同按操作时间降序） */
     applyRecentSort() {
       if (!this.list.length) return
       const map = this.recentActivityMap || {}
