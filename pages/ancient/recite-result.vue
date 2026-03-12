@@ -26,6 +26,7 @@
         <text class="diff-label">对比结果：</text>
         <view class="legend-inline">
           <text class="legend-correct">● 正确</text>
+          <text class="legend-fuzzy">● 近音</text>
           <text class="legend-missing">● 遗漏</text>
           <text class="legend-hinted">● 提醒</text>
         </view>
@@ -36,17 +37,29 @@
           class="sentence-block"
           :class="{ active: currentUnitIndex === gIdx, loading: loadingUnitIndex === gIdx }"
           @tap="onTapSentence(gIdx)">
-          <text v-for="(item, idx) in group" :key="idx"
-            :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']">{{ item.char }}</text>
+          <template v-for="(item, idx) in group" :key="idx">
+            <view v-if="item.status === 'fuzzy'" class="fuzzy-char-wrap">
+              <text class="fuzzy-pinyin">{{ item.origPinyin }}</text>
+              <text :class="['diff-char', 'diff-fuzzy', item.hinted ? 'diff-hinted' : '']">{{ item.char }}</text>
+              <text class="fuzzy-recog">{{ item.recogChar }}({{ item.recogPinyin }})</text>
+            </view>
+            <text v-else
+              :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']">{{ item.char }}</text>
+          </template>
           <text v-if="loadingUnitIndex === gIdx" class="sentence-tip">合成中...</text>
         </view>
       </view>
       <view class="diff-content" v-else>
-        <text
-          v-for="(item, idx) in diffResult"
-          :key="idx"
-          :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']"
-        >{{ item.char }}</text>
+        <template v-for="(item, idx) in diffResult" :key="idx">
+          <view v-if="item.status === 'fuzzy'" class="fuzzy-char-wrap">
+            <text class="fuzzy-pinyin">{{ item.origPinyin }}</text>
+            <text :class="['diff-char', 'diff-fuzzy', item.hinted ? 'diff-hinted' : '']">{{ item.char }}</text>
+            <text class="fuzzy-recog">{{ item.recogChar }}({{ item.recogPinyin }})</text>
+          </view>
+          <text v-else
+            :class="['diff-char', 'diff-' + item.status, item.hinted ? 'diff-hinted' : '']"
+          >{{ item.char }}</text>
+        </template>
       </view>
     </view>
 
@@ -411,6 +424,32 @@ export default {
 .legend-hinted {
   font-size: 22rpx;
   color: #ad4e00;
+}
+.legend-fuzzy {
+  font-size: 22rpx;
+  color: #fa8c16;
+}
+.diff-fuzzy {
+  color: #fa8c16;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+}
+.fuzzy-char-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 2rpx;
+  vertical-align: bottom;
+}
+.fuzzy-pinyin {
+  font-size: 20rpx;
+  color: #52c41a;
+  line-height: 1.2;
+}
+.fuzzy-recog {
+  font-size: 18rpx;
+  color: #fa8c16;
+  line-height: 1.2;
 }
 .recognized-area {
   background: #fff;

@@ -40,13 +40,69 @@ function getCharPinyinSet(char) {
   return list
 }
 
+// 模糊音：声母/韵母常见混淆对（语音识别高频错误）
+const FUZZY_INITIALS = [['l', 'r'], ['l', 'n'], ['z', 'zh'], ['c', 'ch'], ['s', 'sh'], ['f', 'h']]
+const FUZZY_FINALS = [['an', 'ang'], ['en', 'eng'], ['in', 'ing'], ['ian', 'iang'], ['uan', 'uang']]
+const INITIALS_LIST = ['zh', 'ch', 'sh', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'r', 'z', 'c', 's', 'y', 'w']
+
+function splitPinyin(py) {
+  for (const ini of INITIALS_LIST) {
+    if (py.startsWith(ini)) return [ini, py.slice(ini.length)]
+  }
+  return ['', py]
+}
+
+function fuzzyPartMatch(a, b, pairs) {
+  if (a === b) return true
+  return pairs.some(([x, y]) => (a === x && b === y) || (a === y && b === x))
+}
+
+function isFuzzyPinyinMatch(py1, py2) {
+  if (py1 === py2) return true
+  const [i1, f1] = splitPinyin(py1)
+  const [i2, f2] = splitPinyin(py2)
+  return fuzzyPartMatch(i1, i2, FUZZY_INITIALS) && fuzzyPartMatch(f1, f2, FUZZY_FINALS)
+}
+
 function isHomophone(a, b) {
   if (!a || !b) return false
   if (a === b) return true
   const aPySet = getCharPinyinSet(a)
   const bPySet = getCharPinyinSet(b)
   if (!aPySet.length || !bPySet.length) return false
-  return aPySet.some(py => bPySet.includes(py))
+  if (aPySet.some(py => bPySet.includes(py))) return true
+  return aPySet.some(ap => bPySet.some(bp => isFuzzyPinyinMatch(ap, bp)))
+}
+
+/**
+ * 判断两个字符的匹配类型
+ * @returns {'correct'|'fuzzy'|null} correct=同音/韵母模糊, fuzzy=声母不同(需标注拼音), null=不匹配
+ */
+function getMatchType(origChar, recogChar) {
+  if (!origChar || !recogChar) return null
+  if (origChar === recogChar) return 'correct'
+  const aPySet = getCharPinyinSet(origChar)
+  const bPySet = getCharPinyinSet(recogChar)
+  if (!aPySet.length || !bPySet.length) return null
+  if (aPySet.some(py => bPySet.includes(py))) return 'correct'
+  for (const ap of aPySet) {
+    for (const bp of bPySet) {
+      const [i1, f1] = splitPinyin(ap)
+      const [i2, f2] = splitPinyin(bp)
+      const initSame = i1 === i2
+      const finSame = f1 === f2
+      const initFuzzy = fuzzyPartMatch(i1, i2, FUZZY_INITIALS)
+      const finFuzzy = fuzzyPartMatch(f1, f2, FUZZY_FINALS)
+      if (initSame && finFuzzy) return 'correct'
+      if (initFuzzy && (finSame || finFuzzy)) return 'fuzzy'
+    }
+  }
+  return null
+}
+
+function getCharPinyinDisplay(char) {
+  if (!char) return ''
+  return pinyin(char, { toneType: 'symbol', type: 'string' }) || ''
 }
 
 /**
@@ -90,11 +146,13 @@ export function diffChars(original, recognized, options = {}) {
   let i = a.length
   let j = b.length
 
-  // 回溯 LCS
+  // 回溯 LCS，记录匹配对（原文索引 → 识别字符）
   const matchedOriginalIndexes = new Set()
+  const matchedPairs = new Map()
   while (i > 0 && j > 0) {
     if (isHomophone(a[i - 1].char, b[j - 1].char)) {
       matchedOriginalIndexes.add(a[i - 1].index)
+      matchedPairs.set(a[i - 1].index, b[j - 1].char)
       i--
       j--
     } else if (dp[i - 1][j] >= dp[i][j - 1]) {
@@ -105,7 +163,18 @@ export function diffChars(original, recognized, options = {}) {
   }
 
   source.chars.forEach((char, index) => {
-    if (!isPunctuation(char) && matchedOriginalIndexes.has(index)) {
+    if (isPunctuation(char) || !matchedOriginalIndexes.has(index)) return
+    const recogChar = matchedPairs.get(index)
+    const matchType = getMatchType(char, recogChar)
+    if (matchType === 'fuzzy') {
+      result[index] = {
+        char,
+        status: 'fuzzy',
+        origPinyin: getCharPinyinDisplay(char),
+        recogChar,
+        recogPinyin: getCharPinyinDisplay(recogChar)
+      }
+    } else {
       result[index] = { char, status: 'correct' }
     }
   })
@@ -136,6 +205,6 @@ export function calcAccuracy(diffResult) {
   if (!diffResult || diffResult.length === 0) return 0
   const compareChars = diffResult.filter(d => d.status !== 'punctuation' && d.status !== 'normal')
   if (compareChars.length === 0) return 0
-  const correct = compareChars.filter(d => d.status === 'correct').length
+  const correct = compareChars.filter(d => d.status === 'correct' || d.status === 'fuzzy').length
   return Math.round((correct / compareChars.length) * 100)
 }

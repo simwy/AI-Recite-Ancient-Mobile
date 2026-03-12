@@ -371,7 +371,10 @@ export default {
           this.lastSpeechTime = Date.now()
         },
         onSentenceEnd: (text) => {
-          this.finalSentences.push(text)
+          // 优先使用最后一次中间结果（原始转写），而非 SentenceEnd 的语言模型纠正结果
+          // 例：用户说"百里"，中间结果正确为"百里"，但 SentenceEnd 会纠正为"千里"
+          const rawText = this.partialSentence || text
+          this.finalSentences.push(rawText)
           this.partialSentence = ''
           this.realtimeText = this.finalSentences.join('')
           this.lastSpeechTime = Date.now()
