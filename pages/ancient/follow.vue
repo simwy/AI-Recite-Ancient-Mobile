@@ -100,8 +100,22 @@
       </scroll-view>
     </view>
 
+    <view v-if="finalStampVisible" class="follow-stamp-wrapper">
+      <view class="follow-stamp">
+        <text class="stamp-main-text">{{ finalStampMainText }}</text>
+        <text class="stamp-score-text">{{ finalStampScore }} 分</text>
+      </view>
+    </view>
+
     <view class="bottom-bar">
       <view class="action-row">
+        <view
+          class="score-btn"
+          :class="{ disabled: followFinished }"
+          @tap="onShowFinalScore"
+        >
+          <text class="score-btn-text">我已全部读完，给我打分</text>
+        </view>
         <view class="clear-btn" @tap="onClearReadProgress">
           <uni-icons type="reload" size="24" color="#4f46e5"></uni-icons>
         </view>
@@ -149,7 +163,11 @@ export default {
       realtimeText: '',
       followStartTime: 0,
       followRecordSaved: false,
-      requestingPermission: false
+      followFinished: false,
+      requestingPermission: false,
+      finalStampVisible: false,
+      finalStampScore: 0,
+      finalStampMainText: '跟读完成'
     }
   },
   onLoad(options) {
@@ -175,9 +193,7 @@ export default {
       try { this.audioContext.destroy() } catch (e) {}
       this.audioContext = null
     }
-    if (!this.followRecordSaved) {
-      this.saveFollowRecord()
-    }
+    // 卸载时不再自动保存，只有完成跟读后才记日志
   },
   methods: {
     maybeAutoStartRead() {
@@ -188,10 +204,18 @@ export default {
     onAudioEnded() {},
     onAudioError() {},
     onTapSentence(index) {
+      if (this.followFinished) {
+        uni.showToast({ title: '本次跟读已结束，如需重新练习请点击下方清空进度', icon: 'none' })
+        return
+      }
       if (index < 0 || index >= this.playUnits.length) return
       this.startFollowUnit(index)
     },
     goCorrection() {
+      if (this.followFinished) {
+        uni.showToast({ title: '本次跟读已结束，如需重新练习请点击下方清空进度', icon: 'none' })
+        return
+      }
       const id = this.id || (this.detail && this.detail._id) || ''
       const title = (this.detail && this.detail.title) || ''
       uni.navigateTo({ url: getFeedbackUrl({ id, title, type: 'follow' }) })
@@ -200,6 +224,11 @@ export default {
       this.abortCurrentFollowRecording()
       this.resetReadProgressState()
       this.followStates = {}
+      this.followStartTime = 0
+      this.followRecordSaved = false
+      this.finalStampVisible = false
+      this.finalStampScore = 0
+      this.followFinished = false
       uni.showToast({ title: '已清空跟读进度', icon: 'none' })
     },
     getFollowState(index) {
@@ -385,6 +414,9 @@ export default {
       }
     },
     async startFollowUnit(index) {
+      if (this.followFinished) {
+        return
+      }
       if (!this.followStartTime) { this.followStartTime = Date.now() }
       if (this.recording) { await this.stopFollowRecording(); return }
       this.abortCurrentFollowRecording()
@@ -510,7 +542,15 @@ export default {
         }
       }
       const doneCount = Object.values(this.followStates).filter(s => s.state === 'done').length
-      if (doneCount === this.playUnits.length) this.saveFollowRecord()
+      // 全部句子都已完成，且最后一句分数达到 80 分及以上时，自动完成本次跟读并打分
+      if (doneCount === this.playUnits.length) {
+        const lastIndex = this.playUnits.length - 1
+        const lastState = this.followStates[lastIndex] || {}
+        const lastAccuracy = typeof lastState.accuracy === 'number' ? lastState.accuracy : 0
+        if (lastAccuracy >= 80) {
+          this.finishFollow()
+        }
+      }
     },
     getUniIdToken() {
       const info = uniCloud.getCurrentUserInfo() || {}
@@ -544,6 +584,50 @@ export default {
       } catch (e) {
         console.error('[跟读] 保存记录失败:', e)
       }
+    },
+    finishFollow() {
+      if (this.followFinished) return
+      const totalScore = this.followTotalScore
+      if (totalScore <= 0) {
+        uni.showToast({ title: '暂无有效得分，请重试', icon: 'none' })
+        return
+      }
+      this.followFinished = true
+      // 跟读结束后，无论分数高低都展示最终打分印章
+      this.showFinalScoreStamp()
+      this.saveFollowRecord()
+    },
+    onShowFinalScore() {
+      // 用户主动结束本次跟读时，先停掉所有正在进行的播放/录音/识别状态
+      this.abortCurrentFollowRecording()
+      if (this.followFinished) {
+        uni.showToast({ title: '本次跟读已结束，如需重新练习请点击下方清空进度', icon: 'none' })
+        return
+      }
+      const totalUnits = this.playUnits.length
+      const doneCount = Object.values(this.followStates).filter(s => s.state === 'done').length
+      if (!totalUnits) {
+        uni.showToast({ title: '暂无可打分内容', icon: 'none' })
+        return
+      }
+      if (!doneCount) {
+        uni.showToast({ title: '请先完成一次跟读', icon: 'none' })
+        return
+      }
+      // 用户主动结束本次跟读（不要求全部句子完成）
+      this.finishFollow()
+    },
+    showFinalScoreStamp() {
+      const score = this.followTotalScore
+      this.finalStampScore = score
+      if (score >= 80) {
+        this.finalStampMainText = '跟读优秀'
+      } else if (score >= 60) {
+        this.finalStampMainText = '不错，继续巩固'
+      } else {
+        this.finalStampMainText = '请加油'
+      }
+      this.finalStampVisible = true
     }
   }
 }
@@ -814,6 +898,12 @@ export default {
   gap: 8rpx;
   margin-top: 8rpx;
 }
+.sentence-item.title-unit .follow-recording-hint,
+.sentence-item.meta-unit .follow-recording-hint {
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
 .recording-dot {
   color: #ff4d4f;
   font-size: 20rpx;
@@ -860,8 +950,33 @@ export default {
 .action-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 20rpx;
+}
+.score-btn {
+  flex: 1;
+  height: 72rpx;
+  border-radius: 36rpx;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 18rpx rgba(79, 70, 229, 0.35);
+}
+.score-btn:active {
+  opacity: 0.9;
+}
+.score-btn.disabled {
+  background: #e5e7eb;
+  box-shadow: none;
+}
+.score-btn.disabled:active {
+  opacity: 1;
+}
+.score-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
 }
 .clear-btn {
   width: 72rpx;
@@ -872,5 +987,52 @@ export default {
   justify-content: center;
   background: #eef2ff;
   border: 1rpx solid #c7d2fe;
+}
+.follow-stamp-wrapper {
+  position: fixed;
+  left: 50%;
+  bottom: 22vh;
+  transform: translateX(-50%);
+  z-index: 99;
+  pointer-events: none;
+}
+.follow-stamp {
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 999rpx;
+  border: 4rpx solid #f97373;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #f97373;
+  transform-origin: center;
+  animation: stamp-pop 0.6s ease-out forwards;
+}
+.stamp-main-text {
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 6rpx;
+}
+.stamp-score-text {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+@keyframes stamp-pop {
+  0% {
+    transform: translateY(40rpx) scale(0.5) rotate(-10deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0) scale(1.05) rotate(-3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(-3deg);
+    opacity: 1;
+  }
 }
 </style>

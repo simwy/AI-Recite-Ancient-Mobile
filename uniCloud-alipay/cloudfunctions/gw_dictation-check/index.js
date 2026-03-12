@@ -4,7 +4,7 @@ const textsCollection = db.collection('gw-ancient-texts')
 const checksCollection = db.collection('gw-dictation-checks')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
-const { ocr: ocrConfig } = require('config')
+const { ocr: ocrConfig, bailianDictationCheck } = require('config')
 
 /** 拍照默写保存后更新用户古文汇总表 */
 async function updateSummaryAfterDictation(uid, textId, textTitle, recordId, accuracy, createdAt) {
@@ -157,6 +157,107 @@ function calcAccuracy(diffResult) {
   return Math.round((correct / compareChars.length) * 100 * 10) / 10
 }
 
+// ---- 大模型校验 ----
+
+const LLM_SYSTEM_PROMPT = `你是古文默写批改专家。对比原文和学生默写内容，找出所有错误。
+
+重要规则：
+1. 标点符号忽略，不参与校验
+2. 古文通假字不算错误，标记为 tongjiazi
+3. 只返回错误部分，正确内容不要返回
+4. 输出严格 JSON 格式
+5. 【关键】如果学生完全没有默写某段原文内容（整句或整段缺失），必须将这些缺失的文字全部标记为 missing 错误。不能遗漏任何未默写的原文内容。
+6. 【关键】逐字检查原文中的每个字是否在学生默写中出现，未出现的必须标记为 missing。
+
+错误类型：
+- wrong：写错字（含 errorType: homophone 同音字 / similar 形近字 / other 其他）
+- missing：漏写（原文有但未写出）
+- extra：多写（写了原文没有的字句）
+- reversed：字句写反（前后顺序颠倒）
+- tongjiazi：通假字（不算错，但需标注）
+
+输出格式：
+{
+  "accuracy": 数字(0-100，正确字数/原文总字数*100，标点不计),
+  "errors": [
+    {"type":"wrong","original":"原字","context":"含原字的上下文片段","written":"实际写的字","errorType":"homophone|similar|other"},
+    {"type":"missing","original":"漏写的字","context":"含漏写字的上下文片段"},
+    {"type":"extra","written":"多写的字","afterOriginal":"在原文哪段文字之后出现","context":"附近的原文上下文"},
+    {"type":"reversed","original":"正确顺序","context":"含写反部分的上下文片段","written":"实际写的顺序"},
+    {"type":"tongjiazi","original":"原字","context":"上下文片段","written":"实际写的字","note":"通假说明"}
+  ]
+}
+
+注意：context 字段提供3-5个字的上下文片段，用于精确定位错误在原文中的位置。`
+
+async function callLLMCheck(originalText, recognizedText) {
+  if (!bailianDictationCheck || !bailianDictationCheck.apiKey) {
+    console.warn('[LLM批改] 未配置百炼默写校验 API Key，使用 fallback')
+    return { error: '未配置百炼默写校验 API Key' }
+  }
+
+  const endpoint = bailianDictationCheck.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  const requestBody = {
+    model: bailianDictationCheck.model || 'qwen3-max',
+    temperature: 0.1,
+    messages: [
+      { role: 'system', content: LLM_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `原文：${originalText}\n\n学生默写内容：${recognizedText}\n\n请对比并返回JSON格式的批改结果。注意：只输出JSON，不要输出任何其他文字。`
+      }
+    ]
+  }
+
+  let contentStr = ''
+  try {
+    console.log('[LLM批改] 开始调用, 模型:', requestBody.model, '端点:', endpoint)
+    console.log('[LLM批改] apiKey前8位:', String(bailianDictationCheck.apiKey).slice(0, 8))
+    const response = await uniCloud.httpclient.request(endpoint, {
+      method: 'POST',
+      timeout: Number(bailianDictationCheck.timeout || 30000),
+      headers: {
+        Authorization: `Bearer ${bailianDictationCheck.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      dataType: 'json',
+      data: requestBody
+    })
+
+    console.log('[LLM批改] 响应状态:', response.status)
+    if (response.status !== 200 || !response.data) {
+      const errMsg = '请求失败, status:' + response.status + ', data:' + JSON.stringify(response.data || '').slice(0, 500)
+      console.error('[LLM批改]', errMsg)
+      return { error: errMsg }
+    }
+
+    const choices = response.data.choices || []
+    const rawContent = (choices[0] && choices[0].message && choices[0].message.content) || ''
+    contentStr = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent)
+    // 去除可能的 markdown 代码块包裹
+    contentStr = contentStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+    // 去除 Qwen3.5 思考模式的 <think>...</think> 标签
+    contentStr = contentStr.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+
+    const parsed = JSON.parse(contentStr)
+    if (typeof parsed.accuracy !== 'number' || !Array.isArray(parsed.errors)) {
+      const errMsg = '返回格式异常:' + contentStr.slice(0, 500)
+      console.error('[LLM批改]', errMsg)
+      return { error: errMsg }
+    }
+
+    console.log('[LLM批改] 模型:', requestBody.model)
+    console.log('[LLM批改] 输入原文:', originalText)
+    console.log('[LLM批改] 识别文本:', recognizedText)
+    console.log('[LLM批改] 返回结果:', JSON.stringify(parsed))
+    return parsed
+  } catch (e) {
+    const errMsg = '调用异常:' + (e.message || e) + ', 原始返回:' + (contentStr || '无')
+    console.error('[LLM批改]', errMsg)
+    return { error: errMsg }
+  }
+}
+
 // ---- OCR 手写体识别 ----
 
 const OcrApi = require('@alicloud/ocr-api20210707')
@@ -288,13 +389,33 @@ async function handleCheck(uid, data) {
     (textDoc.content || '')
   ).replace(/\s+/g, '')
   const recognizedText = recognition.handwrittenText
-  const diffResult = diffChars(originalText, recognizedText)
-  const accuracy = calcAccuracy(diffResult)
 
-  // 4. 提取错字列表
-  const wrongChars = diffResult
-    .filter(d => d.status === 'wrong' || d.status === 'missing')
-    .map(d => d.recognized || d.char)
+  // 优先使用大模型校验，失败时 fallback 到 LCS diff
+  let diffResult, accuracy, wrongChars
+  let llmModel = '', llmRawResult = null, llmError = ''
+  const llmResult = await callLLMCheck(originalText, recognizedText)
+  if (llmResult && !llmResult.error && Array.isArray(llmResult.errors)) {
+    diffResult = { errors: llmResult.errors, version: 2 }
+    accuracy = llmResult.accuracy
+    wrongChars = llmResult.errors
+      .filter(e => e.type === 'wrong' || e.type === 'missing')
+      .map(e => e.written || e.original)
+    llmModel = bailianDictationCheck.model || 'qwen-plus'
+    llmRawResult = llmResult
+  } else {
+    // 记录大模型错误信息
+    if (llmResult && llmResult.error) {
+      llmError = llmResult.error
+      llmModel = bailianDictationCheck.model || 'qwen-plus'
+      console.error('[LLM批改] fallback到LCS, 错误:', llmError)
+    }
+    const oldDiff = diffChars(originalText, recognizedText)
+    diffResult = oldDiff
+    accuracy = calcAccuracy(oldDiff)
+    wrongChars = oldDiff
+      .filter(d => d.status === 'wrong' || d.status === 'missing')
+      .map(d => d.recognized || d.char)
+  }
 
   // 5. 上传图片到云存储
   let imageFileId = ''
@@ -328,6 +449,9 @@ async function handleCheck(uid, data) {
     diff_result: diffResult,
     accuracy,
     wrong_chars: wrongChars,
+    llm_model: llmModel,
+    llm_raw_result: llmRawResult,
+    llm_error: llmError || '',
     image_file_id: imageFileId,
     image_url: imageUrl,
     created_at: Date.now()

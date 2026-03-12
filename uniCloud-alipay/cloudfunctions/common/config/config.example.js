@@ -57,6 +57,12 @@ module.exports = {
     model: 'qwen-vl-plus',
     timeout: 60000
   },
+  bailianDictationCheck: {
+    apiKey: 'YOUR_BAILIAN_API_KEY',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    model: 'qwen3-max',
+    timeout: 30000
+  },
   ocr: {
     accessKeyId: 'YOUR_ALIYUN_ACCESS_KEY_ID',
     accessKeySecret: 'YOUR_ALIYUN_ACCESS_KEY_SECRET',

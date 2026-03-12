@@ -46,16 +46,7 @@
       "description": "难度等级（junior/middle/advanced）"
     },
     "diff_result": {
-      "bsonType": "array",
-      "description": "逐字比对结果",
-      "items": {
-        "bsonType": "object",
-        "properties": {
-          "char": { "bsonType": "string" },
-          "status": { "bsonType": "string" },
-          "recognized": { "bsonType": "string" }
-        }
-      }
+      "description": "比对结果（v1为逐字数组，v2为含errors的对象）"
     },
     "accuracy": {
       "bsonType": "double",
@@ -75,6 +66,17 @@
     "image_url": {
       "bsonType": "string",
       "description": "图片临时访问URL"
+    },
+    "llm_model": {
+      "bsonType": "string",
+      "description": "大模型名称"
+    },
+    "llm_raw_result": {
+      "description": "大模型原始返回结果"
+    },
+    "llm_error": {
+      "bsonType": "string",
+      "description": "大模型调用错误信息（用于调试）"
     },
     "created_at": {
       "bsonType": "timestamp",
