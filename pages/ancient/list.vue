@@ -264,7 +264,8 @@ export default {
             action: 'search',
             keyword: this.keyword,
             page: this.page,
-            pageSize: 20
+            pageSize: 20,
+            uniIdToken: this.getUniIdToken()
           }
         })
         const { list, total } = res.result.data

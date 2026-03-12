@@ -60,17 +60,43 @@ export default {
       }
     },
 
-    // ===== playUnits 构建 =====
+    // ===== playUnits 构建（含标题、作者朝代 + 正文句） =====
     rebuildPlayUnits() {
       const rawContent = String((this.detail && this.detail.content) || '').replace(/\r\n/g, '\n')
-      const units = buildPlayUnitsFromContent(rawContent)
-      this.playUnits = units.map((item, index) => ({
+      const contentUnits = buildPlayUnitsFromContent(rawContent)
+      const headerUnits = []
+      const title = String((this.detail && this.detail.title) || '').trim()
+      if (title) {
+        headerUnits.push({
+          unitId: `${this.id || 'text'}-title-${this.createStableHash(title)}`,
+          text: title,
+          mainIndex: -1,
+          subIndex: 0,
+          hash: this.buildUnitHash(title),
+          isTitle: true
+        })
+      }
+      const dynasty = String((this.detail && this.detail.dynasty) || '').trim()
+      const author = String((this.detail && this.detail.author) || '').trim()
+      const metaText = [dynasty, author].filter(Boolean).join(' · ')
+      if (metaText) {
+        headerUnits.push({
+          unitId: `${this.id || 'text'}-meta-${this.createStableHash(metaText)}`,
+          text: metaText,
+          mainIndex: -1,
+          subIndex: 1,
+          hash: this.buildUnitHash(metaText),
+          isMeta: true
+        })
+      }
+      const bodyUnits = contentUnits.map((item, index) => ({
         unitId: `${this.id || 'text'}-${index}-${this.createStableHash(item.text)}`,
         text: item.text,
         mainIndex: item.mainIndex,
         subIndex: item.subIndex,
         hash: this.buildUnitHash(item.text)
       }))
+      this.playUnits = [...headerUnits, ...bodyUnits]
       this.resetReadProgressState()
       this.syncSentenceSnapshot(rawContent)
     },
@@ -89,7 +115,8 @@ export default {
     // ===== 快照同步 =====
     buildSnapshotSentences() {
       const grouped = {}
-      this.playUnits.forEach((unit) => {
+      // 只对正文句做快照，排除标题/作者朝代单元（mainIndex < 0）
+      this.playUnits.filter((u) => (u.mainIndex ?? 0) >= 0).forEach((unit) => {
         const idx = Number(unit.mainIndex || 0)
         if (!grouped[idx]) {
           grouped[idx] = {

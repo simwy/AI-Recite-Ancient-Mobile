@@ -199,7 +199,40 @@ async function requestPoemsFromBailian(title, author) {
   return candidates
 }
 
-async function searchList(keyword, page, pageSize) {
+/** 获取当前用户最近操作过的 text_id 列表，按操作时间降序（用于列表“最近优先”合并） */
+async function getRecentTextIdsOrdered(uid) {
+  if (!uid) return []
+  const res = await summaryCollection
+    .where({ user_id: uid })
+    .field({
+      text_id: true,
+      follow_last_at: true,
+      recite_last_at: true,
+      dictation_last_at: true,
+      updated_at: true
+    })
+    .limit(500)
+    .get()
+  const toMs = (v) => {
+    if (v == null) return 0
+    if (typeof v === 'number') return v
+    if (v && typeof v.getTime === 'function') return v.getTime()
+    return 0
+  }
+  const list = (res.data || []).map((doc) => ({
+    text_id: doc.text_id,
+    last_operation_at: Math.max(
+      toMs(doc.follow_last_at),
+      toMs(doc.recite_last_at),
+      toMs(doc.dictation_last_at),
+      toMs(doc.updated_at)
+    )
+  }))
+  list.sort((a, b) => (b.last_operation_at || 0) - (a.last_operation_at || 0))
+  return list.map((x) => x.text_id)
+}
+
+async function searchList(keyword, page, pageSize, event, context) {
   const safePage = Number(page) > 0 ? Number(page) : 1
   const safePageSize = Number(pageSize) > 0 ? Number(pageSize) : 20
   const skip = (safePage - 1) * safePageSize
@@ -222,13 +255,49 @@ async function searchList(keyword, page, pageSize) {
   }
 
   const countRes = await collection.where(where).count()
-  const listRes = await collection.where(where).skip(skip).limit(safePageSize).get()
+  const total = countRes.total || 0
 
+  // 无关键词且已登录时：第一页优先返回“最近操作”的古文（按 gw-user-text-summary 操作时间降序），再补足其余
+  const uid = event && context ? await getAuthUid(event, context) : ''
+  if (!normalizedKeyword && uid && total > 0) {
+    const recentIdsOrdered = await getRecentTextIdsOrdered(uid)
+    const R = recentIdsOrdered.length
+    const part1Ids = recentIdsOrdered.slice(skip, skip + safePageSize)
+    let part1List = []
+    if (part1Ids.length > 0) {
+      const inRes = await collection.where({ _id: db.command.in(part1Ids) }).get()
+      const docMap = {}
+      ;(inRes.data || []).forEach((d) => { docMap[d._id] = d })
+      part1List = part1Ids.map((id) => docMap[id]).filter(Boolean)
+    }
+    const needFill = safePageSize - part1List.length
+    if (needFill > 0) {
+      const part2Skip = Math.max(0, skip - R)
+      const restRes = await collection
+        .where(R > 0 ? { _id: db.command.nin(recentIdsOrdered) } : where)
+        .orderBy('_id', 'asc')
+        .skip(part2Skip)
+        .limit(needFill)
+        .get()
+      part1List = part1List.concat(restRes.data || [])
+    }
+    return {
+      code: 0,
+      data: {
+        list: part1List,
+        total,
+        page: safePage,
+        pageSize: safePageSize
+      }
+    }
+  }
+
+  const listRes = await collection.where(where).skip(skip).limit(safePageSize).get()
   return {
     code: 0,
     data: {
       list: listRes.data,
-      total: countRes.total,
+      total,
       page: safePage,
       pageSize: safePageSize
     }
@@ -1048,7 +1117,7 @@ exports.main = async (event, context) => {
   try {
     switch (action) {
       case 'search':
-        return await searchList(keyword, page, pageSize)
+        return await searchList(keyword, page, pageSize, raw, context)
       case 'aiSearch':
         return await aiSearch(event, data, context)
       case 'getSquareCategories':

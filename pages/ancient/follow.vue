@@ -19,11 +19,6 @@
     </view>
 
     <view class="article-card">
-      <view class="header">
-        <text class="title">{{ detail.title || '未命名文章' }}</text>
-        <text class="meta">{{ detail.dynasty || '' }}{{ detail.dynasty && detail.author ? ' · ' : '' }}{{ detail.author || '' }}</text>
-      </view>
-
       <scroll-view class="content-area" :class="`font-${fontSize}`" scroll-y scroll-with-animation :scroll-into-view="scrollIntoViewId">
         <view
           v-for="(unit, index) in playUnits"
@@ -31,6 +26,8 @@
           :key="unit.unitId"
           class="sentence-item"
           :class="{
+            'title-unit': unit.isTitle,
+            'meta-unit': unit.isMeta,
             active: currentUnitIndex === index,
             loading: loadingUnitIndex === index,
             preparing: getFollowState(index) === 'preparing',
@@ -629,26 +626,44 @@ export default {
   margin-bottom: 20rpx;
   box-sizing: border-box;
 }
-.header {
-  text-align: center;
-  margin-bottom: 20rpx;
-}
-.title {
-  display: block;
-  font-size: 40rpx;
-  color: #1f2937;
-  font-weight: 700;
-  margin-bottom: 10rpx;
-}
-.meta {
-  display: block;
-  font-size: 24rpx;
-  color: #667085;
-}
 .content-area {
   border-top: 1rpx solid #eef2f7;
   padding-top: 16rpx;
   height: 68vh;
+}
+.sentence-item.title-unit {
+  text-align: center;
+  background: transparent;
+  border: none;
+  padding-bottom: 8rpx;
+}
+.sentence-item.title-unit .sentence-text {
+  font-size: 40rpx;
+  color: #1f2937;
+  font-weight: 700;
+}
+.sentence-item.meta-unit {
+  text-align: center;
+  background: transparent;
+  border: none;
+  margin-bottom: 16rpx;
+  padding-top: 0;
+}
+.sentence-item.meta-unit .sentence-text {
+  font-size: 24rpx;
+  color: #667085;
+}
+.content-area.font-small .sentence-item.title-unit .sentence-text {
+  font-size: 36rpx;
+}
+.content-area.font-small .sentence-item.meta-unit .sentence-text {
+  font-size: 22rpx;
+}
+.content-area.font-large .sentence-item.title-unit .sentence-text {
+  font-size: 44rpx;
+}
+.content-area.font-large .sentence-item.meta-unit .sentence-text {
+  font-size: 26rpx;
 }
 .sentence-item {
   margin-bottom: 12rpx;

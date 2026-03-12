@@ -145,9 +145,9 @@
           </view>
         </button>
         <view class="action-group">
-          <button class="action-btn btn-read" @click="goRead">跟读</button>
-          <button class="action-btn btn-recite" @click="goRecite">背诵</button>
-          <button class="action-btn btn-dictation" @click="goDictation">默写</button>
+          <button class="action-btn btn-read" @click="goRead">预习跟读</button>
+          <button class="action-btn btn-recite" @click="goRecite">全文背诵</button>
+          <button class="action-btn btn-dictation" @click="goDictation">默写检查</button>
         </view>
       </view>
     </view>
