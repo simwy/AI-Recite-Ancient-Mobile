@@ -42,80 +42,48 @@
     <view class="section-card">
       <view class="section-label">批改详情</view>
 
-      <!-- 新版：双行对照（version 2） -->
-      <template v-if="diffVersion === 2">
-        <view class="detail-row" v-if="renderTitleList.length">
+      <!-- 双行对照 -->
+        <view class="detail-row" v-if="renderTitleList.length" @tap="onTapTitle">
           <text class="detail-label">标题：</text>
-          <view class="dual-row-grid">
+          <view :class="['dual-row-grid', playingIndex === -1 ? 'sentence-playing' : '', loadingIndex === -1 ? 'sentence-loading' : '']">
             <view class="char-col" v-for="(item, idx) in renderTitleList" :key="'rt-' + idx">
               <text :class="['row-original', 'diff-' + item.status]">{{ item.char || '\u3000' }}</text>
-              <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '']">{{ item.written || '\u3000' }}</text>
+              <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '', (item.status === 'wrong' || item.status === 'extra') && item.written ? 'row-actual-strikethrough' : '']">{{ item.written || '\u3000' }}</text>
             </view>
           </view>
         </view>
-        <view class="detail-row" v-if="renderAuthorList.length">
+        <view class="detail-row" v-if="renderAuthorList.length" @tap="onTapAuthor">
           <text class="detail-label">朝代·作者：</text>
-          <view class="dual-row-grid">
+          <view :class="['dual-row-grid', playingIndex === -2 ? 'sentence-playing' : '', loadingIndex === -2 ? 'sentence-loading' : '']">
             <view class="char-col" v-for="(item, idx) in renderAuthorList" :key="'ra-' + idx">
               <text :class="['row-original', 'diff-' + item.status]">{{ item.char || '\u3000' }}</text>
-              <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '']">{{ item.written || '\u3000' }}</text>
+              <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '', (item.status === 'wrong' || item.status === 'extra') && item.written ? 'row-actual-strikethrough' : '']">{{ item.written || '\u3000' }}</text>
             </view>
           </view>
         </view>
-        <view class="detail-row content-row" v-if="renderContentList.length">
+        <view class="content-row" v-if="sentenceGroups.length">
           <text class="detail-label">正文：</text>
-          <view class="dual-row-grid">
-            <view class="char-col" v-for="(item, idx) in renderContentList" :key="'rc-' + idx">
-              <text :class="['row-original', 'diff-' + item.status]">{{ item.char || '\u3000' }}</text>
-              <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '']">{{ item.written || '\u3000' }}</text>
+          <view
+            v-for="(group, gi) in sentenceGroups"
+            :key="'sg-' + gi"
+            :class="['sentence-group', playingIndex === gi ? 'sentence-playing' : '', loadingIndex === gi ? 'sentence-loading' : '']"
+            @tap="onTapSentence(gi)"
+          >
+            <view class="dual-row-grid">
+              <view class="char-col" v-for="(item, idx) in group.chars" :key="'rc-' + gi + '-' + idx">
+                <text :class="['row-original', 'diff-' + item.status]">{{ item.char || '\u3000' }}</text>
+                <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '', (item.status === 'wrong' || item.status === 'extra') && item.written ? 'row-actual-strikethrough' : '']">{{ item.written || '\u3000' }}</text>
+              </view>
             </view>
           </view>
         </view>
-      </template>
-
-      <!-- 旧版：标题/作者/正文（version 1） -->
-      <template v-else>
-        <view class="detail-row" v-if="titleDiff.length">
-          <text class="detail-label">标题：</text>
-          <text
-            v-for="(item, idx) in titleDiff"
-            :key="'t-' + idx"
-            :class="['diff-char', 'diff-' + item.status]"
-          >{{ item.status === 'missing' ? '＿' : item.char }}</text>
-        </view>
-        <view class="detail-row" v-if="authorDiff.length">
-          <text class="detail-label">朝代·作者：</text>
-          <text
-            v-for="(item, idx) in authorDiff"
-            :key="'a-' + idx"
-            :class="['diff-char', 'diff-' + item.status]"
-          >{{ item.status === 'missing' ? '＿' : item.char }}</text>
-        </view>
-        <view class="detail-row content-row" v-if="contentDiff.length">
-          <text class="detail-label">正文：</text>
-          <view class="diff-content">
-            <text
-              v-for="(item, idx) in contentDiff"
-              :key="'c-' + idx"
-              :class="['diff-char', 'diff-' + item.status]"
-            >{{ item.status === 'missing' ? '＿' : item.char }}</text>
-          </view>
-        </view>
-      </template>
 
       <!-- 图例 -->
-      <view class="legend" v-if="diffVersion === 2">
+      <view class="legend">
         <text class="legend-correct">● 正确</text>
-        <text class="legend-wrong">● 写错</text>
+        <text class="legend-wrong">● 错别字</text>
         <text class="legend-missing">● 漏写</text>
-        <text class="legend-reversed">● 写反</text>
         <text class="legend-extra">● 多写</text>
-        <text class="legend-tongjiazi">● 通假字</text>
-      </view>
-      <view class="legend" v-else>
-        <text class="legend-correct">● 正确</text>
-        <text class="legend-wrong">● 错误</text>
-        <text class="legend-missing">● 漏写</text>
       </view>
     </view>
 
@@ -127,7 +95,6 @@
           <text class="wrong-original">{{ item.char }}</text>
           <text class="wrong-arrow">→</text>
           <text class="wrong-written">{{ item.recognized }}</text>
-          <text class="wrong-type" v-if="diffVersion === 2 && item.errorType">{{ errorTypeLabel(item.errorType) }}</text>
         </view>
       </view>
     </view>
@@ -148,6 +115,8 @@
 
 <script>
 import { getFeedbackUrl } from '@/common/feedbackHelper.js'
+import { buildPlayUnits } from '@/common/playUnits.js'
+import ttsService from '@/common/ttsService.js'
 
 export default {
   data() {
@@ -155,16 +124,20 @@ export default {
       title: '',
       author: '',
       dynasty: '',
+      content: '',
       originalText: '',
       recognizedText: '',
-      diffResult: [],
       accuracy: 0,
       imageUrl: '',
       articleId: '',
-      diffVersion: 1,
       renderTitleList: [],
       renderAuthorList: [],
-      renderContentList: []
+      renderContentList: [],
+      sentenceGroups: [],
+      playingIndex: -1,
+      loadingIndex: -1,
+      audioContext: null,
+      audioPlayResolver: null
     }
   },
   computed: {
@@ -177,29 +150,12 @@ export default {
       const s = this.dynasty && this.author ? (this.dynasty + '·' + this.author) : (this.author || this.dynasty || '')
       return (s || '').replace(/\s+/g, '').length
     },
-    /** 批改详情：仅标题部分 */
-    titleDiff() {
-      return this.diffResult.slice(0, this.titlePartLength)
-    },
-    /** 批改详情：仅朝代·作者部分 */
-    authorDiff() {
-      return this.diffResult.slice(this.titlePartLength, this.titlePartLength + this.authorPartLength)
-    },
-    /** 批改详情：仅正文部分 */
-    contentDiff() {
-      return this.diffResult.slice(this.titlePartLength + this.authorPartLength)
-    },
     wrongDetails() {
-      if (this.diffVersion === 2) {
-        const errors = (this.diffResult && this.diffResult.errors) || []
-        return errors.filter(e => e.type === 'wrong' && e.written).map(e => ({
-          char: e.original,
-          recognized: e.written,
-          errorType: e.errorType || 'other',
-          note: e.note || ''
-        }))
-      }
-      return this.diffResult.filter(d => d.status === 'wrong' && d.recognized)
+      const all = [...this.renderTitleList, ...this.renderAuthorList, ...this.renderContentList]
+      return all.filter(d => d.status === 'wrong' && d.written).map(d => ({
+        char: d.char,
+        recognized: d.written
+      }))
     }
   },
   onLoad(options) {
@@ -217,13 +173,20 @@ export default {
     this.title = result.title || ''
     this.author = result.author || ''
     this.dynasty = result.dynasty || ''
+    this.content = result.content || ''
     this.originalText = result.originalText || ''
     this.recognizedText = this.parseRecognizedText(result.recognizedText || '') || ''
-    this.diffResult = result.diffResult || []
-    this.accuracy = result.accuracy || 0
     this.imageUrl = result.imageUrl || ''
     this.articleId = result.articleId || ''
-    this.initDiffVersion()
+    this.initAudioContext()
+    this.runCompare()
+  },
+  onUnload() {
+    this.stopAudio()
+    if (this.audioContext) {
+      this.audioContext.destroy()
+      this.audioContext = null
+    }
   },
   methods: {
     /** 若识别结果为 JSON 字符串（如 {"content":"..."}），则解析并返回 content，否则返回原值 */
@@ -256,13 +219,13 @@ export default {
         this.title = r.text_title || ''
         this.author = r.text_author || ''
         this.dynasty = r.text_dynasty || ''
+        this.content = r.text_content || ''
         this.originalText = r.original_text || ''
         this.recognizedText = this.parseRecognizedText(r.recognized_text || '') || ''
-        this.diffResult = r.diff_result || (Array.isArray(r.diff_result) ? r.diff_result : [])
-        this.accuracy = Number(r.accuracy) || 0
         this.imageUrl = r.image_url || ''
         this.articleId = r.article_id || ''
-        this.initDiffVersion()
+        this.initAudioContext()
+        this.runCompare()
       } catch (e) {
         uni.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })
         setTimeout(() => uni.navigateBack(), 1500)
@@ -285,143 +248,240 @@ export default {
       const map = { homophone: '同音字', similar: '形近字', other: '写错' }
       return map[type] || '写错'
     },
-    /** 判断 diff 版本并生成渲染列表 */
-    initDiffVersion() {
-      if (this.diffResult && this.diffResult.version === 2) {
-        this.diffVersion = 2
-        const fullList = this.buildRenderList(this.originalText, this.diffResult.errors || [])
-        // 按标题、作者、正文拆分
-        const titleLen = this.titlePartLength
-        const authorLen = this.authorPartLength
-        this.renderTitleList = fullList.slice(0, titleLen)
-        this.renderAuthorList = fullList.slice(titleLen, titleLen + authorLen)
-        this.renderContentList = fullList.slice(titleLen + authorLen)
-      } else {
-        this.diffVersion = 1
-        if (!Array.isArray(this.diffResult)) {
-          this.diffResult = []
+    /** 标点/间隔符判断 */
+    isPunct(ch) {
+      return /[，。、；：？！""''（）《》〈〉【】「」『』〔〕…—\-·\u00B7\u3000-\u303f\u2000-\u206f\s]/.test(ch)
+    },
+    /** 前端 LCS 比较并生成渲染列表 */
+    runCompare() {
+      const orig = (this.originalText || '').split('')
+      const rec = (this.recognizedText || '').replace(/[\s]/g, '').split('')
+      // 过滤标点
+      const a = [], aIdx = []
+      orig.forEach((ch, i) => { if (!this.isPunct(ch)) { a.push(ch); aIdx.push(i) } })
+      const b = [], bIdx = []
+      rec.forEach((ch, i) => { if (!this.isPunct(ch)) { b.push(ch); bIdx.push(i) } })
+      // LCS DP
+      const m = a.length, n = b.length
+      const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1))
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
         }
       }
+      // 回溯生成 diff 操作序列
+      const ops = []
+      let i = m, j = n
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+          ops.push({ type: 'match', oi: aIdx[i-1], ri: bIdx[j-1] })
+          i--; j--
+        } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+          ops.push({ type: 'extra', ri: bIdx[j-1] })
+          j--
+        } else {
+          ops.push({ type: 'delete', oi: aIdx[i-1] })
+          i--
+        }
+      }
+      ops.reverse()
+      this.buildFromOps(orig, rec, ops)
     },
-    /** 构建双行对照渲染数组 */
-    buildRenderList(originalText, errors) {
-      const fullText = originalText || ''
-      const recognized = (this.recognizedText || '').replace(/[\u00B7\s\u3000-\u303f\uff00-\uffef\u2000-\u206f，。！？；：、·""''（）《》【】]/g, '')
+    /** 从 diff ops 构建渲染列表 */
+    buildFromOps(orig, rec, ops) {
       const list = []
-      // 逐字初始化
-      for (let i = 0; i < fullText.length; i++) {
-        const ch = fullText[i]
-        const isPunct = /[\u00B7\u3000-\u303f\uff00-\uffef\u2000-\u206f，。！？；：、·""''（）《》【】\s]/.test(ch)
-        list.push({
-          char: ch,
-          status: isPunct ? 'punctuation' : 'correct',
-          written: '',
-          errorType: '',
-          note: '',
-          isGroupStart: false
-        })
-      }
-      // 遍历错误，定位并标记
-      if (Array.isArray(errors)) {
-        for (const err of errors) {
-          if (err.type === 'extra') {
-            const insertIdx = this.findInsertPosition(list, fullText, err)
-            const extraChars = (err.written || '').split('')
-            for (let i = 0; i < extraChars.length; i++) {
-              list.splice(insertIdx + i, 0, {
-                char: null,
-                status: 'extra',
-                written: extraChars[i],
-                errorType: '',
-                note: err.note || '多写',
-                isGroupStart: i === 0
-              })
-            }
-            continue
+      // 收集连续 delete 和 extra，尝试配对为 wrong
+      let di = 0
+      while (di < ops.length) {
+        const op = ops[di]
+        if (op.type === 'match') {
+          list.push({ char: orig[op.oi], status: 'correct', written: '' })
+          di++
+        } else if (op.type === 'delete') {
+          // 收集连续 delete
+          const deletes = []
+          while (di < ops.length && ops[di].type === 'delete') {
+            deletes.push(ops[di]); di++
           }
-          const pos = this.findErrorPosition(fullText, err)
-          if (pos < 0) continue
-          const origChars = (err.original || '').split('')
-          for (let i = 0; i < origChars.length; i++) {
-            const idx = pos + i
-            if (idx >= list.length) break
-            list[idx].status = err.type
-            list[idx].isGroupStart = i === 0
-            if (i === 0) {
-              list[idx].written = err.written || ''
-              list[idx].errorType = err.errorType || ''
-              list[idx].note = err.note || ''
-            }
+          // 收集紧跟的连续 extra
+          const extras = []
+          while (di < ops.length && ops[di].type === 'extra') {
+            extras.push(ops[di]); di++
           }
+          // 配对：min(deletes, extras) 为 wrong，剩余为 missing 或 extra
+          const pairs = Math.min(deletes.length, extras.length)
+          for (let k = 0; k < pairs; k++) {
+            list.push({ char: orig[deletes[k].oi], status: 'wrong', written: rec[extras[k].ri] })
+          }
+          for (let k = pairs; k < deletes.length; k++) {
+            list.push({ char: orig[deletes[k].oi], status: 'missing', written: '' })
+          }
+          for (let k = pairs; k < extras.length; k++) {
+            list.push({ char: '', status: 'extra', written: rec[extras[k].ri] })
+          }
+        } else if (op.type === 'extra') {
+          // 独立的 extra（前面没有 delete）
+          const extras = []
+          while (di < ops.length && ops[di].type === 'extra') {
+            extras.push(ops[di]); di++
+          }
+          for (const e of extras) {
+            list.push({ char: '', status: 'extra', written: rec[e.ri] })
+          }
+        } else {
+          di++
         }
       }
-      // 兜底：用字频校验，防止大模型漏判 missing
-      if (recognized) {
-        // 统计识别文本中每个字的出现次数
-        const recognizedFreq = {}
-        for (const ch of recognized) {
-          recognizedFreq[ch] = (recognizedFreq[ch] || 0) + 1
-        }
-        // 扣除大模型已标记的 wrong/reversed 中 written 的字（这些字占用了识别文本的频次）
-        for (const item of list) {
-          if ((item.status === 'wrong' || item.status === 'reversed' || item.status === 'tongjiazi') && item.written) {
-            for (const ch of item.written) {
-              if (recognizedFreq[ch]) recognizedFreq[ch]--
-            }
-          }
-        }
-        // 统计原文中被标为 correct 的每个字的次数
-        const correctChars = []
-        for (let i = 0; i < list.length; i++) {
-          if (list[i].status === 'correct' && list[i].char) {
-            correctChars.push(i)
-          }
-        }
-        // 按字分组，检查 correct 数量是否超过识别文本中的剩余出现次数
-        const correctFreq = {}
-        for (const idx of correctChars) {
-          const ch = list[idx].char
-          correctFreq[ch] = (correctFreq[ch] || 0) + 1
-          if (correctFreq[ch] > (recognizedFreq[ch] || 0)) {
-            list[idx].status = 'missing'
-          }
+      // 插回标点
+      const fullList = []
+      let li = 0
+      for (let oi = 0; oi < orig.length; oi++) {
+        if (this.isPunct(orig[oi])) {
+          fullList.push({ char: orig[oi], status: 'punctuation', written: '' })
+        } else if (li < list.length) {
+          fullList.push(list[li]); li++
         }
       }
-      return list
+      // 剩余 extra 追加到末尾
+      while (li < list.length) { fullList.push(list[li]); li++ }
+      // 计算准确率
+      const total = fullList.filter(d => d.status !== 'punctuation' && d.status !== 'extra').length
+      const correct = fullList.filter(d => d.status === 'correct').length
+      this.accuracy = total > 0 ? Math.round((correct / total) * 1000) / 10 : 0
+      // 拆分标题、作者、正文
+      const titleLen = this.titlePartLength
+      const authorLen = this.authorPartLength
+      this.renderTitleList = fullList.slice(0, titleLen)
+      this.renderAuthorList = fullList.slice(titleLen, titleLen + authorLen)
+      this.renderContentList = fullList.slice(titleLen + authorLen)
+      // 按句子分组
+      this.buildSentenceGroups()
     },
-    /** 通过 context 在原文中定位错误位置 */
-    findErrorPosition(fullText, err) {
-      const original = err.original || ''
-      const context = err.context || ''
-      if (!original) return -1
-      // 优先用 context 定位
-      if (context) {
-        const ctxIdx = fullText.indexOf(context)
-        if (ctxIdx >= 0) {
-          const relIdx = context.indexOf(original)
-          if (relIdx >= 0) return ctxIdx + relIdx
-        }
+    /** 根据 buildPlayUnits 的句子边界，将 renderContentList 分组 */
+    buildSentenceGroups() {
+      const units = buildPlayUnits(this.content)
+      if (!units.length) {
+        this.sentenceGroups = [{ text: '', chars: this.renderContentList, unitIndex: 0 }]
+        return
       }
-      // fallback：直接搜索 original
-      return fullText.indexOf(original)
-    },
-    /** 找到多写内容的插入位置 */
-    findInsertPosition(list, fullText, err) {
-      const after = err.afterOriginal || ''
-      const context = err.context || ''
-      if (after) {
-        if (context) {
-          const ctxIdx = fullText.indexOf(context)
-          if (ctxIdx >= 0) {
-            const relIdx = context.indexOf(after)
-            if (relIdx >= 0) return ctxIdx + relIdx + after.length
+      const groups = []
+      let charIdx = 0
+      for (let ui = 0; ui < units.length; ui++) {
+        const unitText = units[ui].text
+        const unitCharsNoPunct = unitText.replace(/[\s，。、；：？！""''（）《》〈〉【】「」『』〔〕…—·\u3000-\u303f\u2000-\u206f]/g, '').length
+        // 从 renderContentList 中取出对应数量的字符（含标点）
+        let consumedNoPunct = 0
+        const chars = []
+        while (charIdx < this.renderContentList.length && consumedNoPunct < unitCharsNoPunct) {
+          const item = this.renderContentList[charIdx]
+          chars.push(item)
+          charIdx++
+          if (item.status !== 'punctuation') {
+            consumedNoPunct++
           }
         }
-        const idx = fullText.indexOf(after)
-        if (idx >= 0) return idx + after.length
+        // 继续吃掉紧跟的标点
+        while (charIdx < this.renderContentList.length && this.renderContentList[charIdx].status === 'punctuation') {
+          chars.push(this.renderContentList[charIdx])
+          charIdx++
+        }
+        groups.push({ text: unitText, chars, unitIndex: ui })
       }
-      // fallback：插在末尾
-      return list.length
+      // 剩余字符（extra等）追加到最后一组
+      if (charIdx < this.renderContentList.length) {
+        const last = groups.length ? groups[groups.length - 1] : { text: '', chars: [], unitIndex: 0 }
+        while (charIdx < this.renderContentList.length) {
+          last.chars.push(this.renderContentList[charIdx])
+          charIdx++
+        }
+        if (!groups.length) groups.push(last)
+      }
+      this.sentenceGroups = groups
+    },
+    /** 初始化音频上下文 */
+    initAudioContext() {
+      if (typeof uni.createInnerAudioContext !== 'function') return
+      this.audioContext = uni.createInnerAudioContext()
+      this.audioContext.onEnded(() => {
+        this.playingIndex = -1
+        if (typeof this.audioPlayResolver === 'function') {
+          this.audioPlayResolver()
+          this.audioPlayResolver = null
+        }
+      })
+      this.audioContext.onError(() => {
+        this.playingIndex = -1
+        this.loadingIndex = -1
+        if (typeof this.audioPlayResolver === 'function') {
+          this.audioPlayResolver()
+          this.audioPlayResolver = null
+        }
+      })
+    },
+    /** 点击句子播放 TTS */
+    async onTapSentence(groupIndex) {
+      const group = this.sentenceGroups[groupIndex]
+      if (!group || !group.text || !this.audioContext) return
+      // 如果正在播放同一句，停止
+      if (this.playingIndex === groupIndex) {
+        this.stopAudio()
+        return
+      }
+      this.stopAudio()
+      this.loadingIndex = groupIndex
+      try {
+        const unit = {
+          text: group.text,
+          hash: ttsService.buildUnitHash(group.text)
+        }
+        const audioSrc = await ttsService.ensureUnitAudio(unit)
+        this.loadingIndex = -1
+        this.playingIndex = groupIndex
+        this.audioContext.src = audioSrc
+        this.audioContext.play()
+      } catch (err) {
+        this.loadingIndex = -1
+        this.playingIndex = -1
+        uni.showToast({ title: err.message || '语音播放失败', icon: 'none' })
+      }
+    },
+    /** 点击标题播放 */
+    onTapTitle() {
+      if (!this.title || !this.audioContext) return
+      this.onTapCustomText(this.title, -1)
+    },
+    /** 点击作者播放 */
+    onTapAuthor() {
+      const metaText = this.dynasty && this.author ? (this.dynasty + ' · ' + this.author) : (this.author || this.dynasty || '')
+      if (!metaText || !this.audioContext) return
+      this.onTapCustomText(metaText, -2)
+    },
+    async onTapCustomText(text, index) {
+      if (this.playingIndex === index) {
+        this.stopAudio()
+        return
+      }
+      this.stopAudio()
+      this.loadingIndex = index
+      try {
+        const unit = { text, hash: ttsService.buildUnitHash(text) }
+        const audioSrc = await ttsService.ensureUnitAudio(unit)
+        this.loadingIndex = -1
+        this.playingIndex = index
+        this.audioContext.src = audioSrc
+        this.audioContext.play()
+      } catch (err) {
+        this.loadingIndex = -1
+        this.playingIndex = -1
+        uni.showToast({ title: err.message || '语音播放失败', icon: 'none' })
+      }
+    },
+    stopAudio() {
+      if (this.audioContext) {
+        try { this.audioContext.stop() } catch (e) {}
+      }
+      this.playingIndex = -1
+      this.loadingIndex = -1
     }
   }
 }
@@ -609,32 +669,38 @@ export default {
 }
 .row-original.diff-missing {
   color: #f5222d;
-  text-decoration: underline;
-}
-.row-original.diff-reversed {
-  color: #fa8c16;
 }
 .row-original.diff-extra {
   color: transparent;
 }
-.row-original.diff-tongjiazi {
-  color: #1890ff;
-}
 .row-original.diff-punctuation {
-  color: #333;
+  color: #999;
 }
 /* 实际行颜色 */
 .diff-actual-wrong {
   color: #f5222d;
 }
-.diff-actual-reversed {
-  color: #fa8c16;
-}
 .diff-actual-extra {
   color: #f5222d;
 }
-.diff-actual-tongjiazi {
-  color: #1890ff;
+/* 第二行删除线（错别字、多写） */
+.row-actual-strikethrough {
+  text-decoration: line-through;
+}
+/* 句子分组样式 */
+.sentence-group {
+  padding: 8rpx 4rpx;
+  border-radius: 8rpx;
+  margin-bottom: 8rpx;
+}
+.sentence-group:active {
+  background: #f0f0f0;
+}
+.sentence-playing {
+  background: #e6f7ff;
+}
+.sentence-loading {
+  opacity: 0.6;
 }
 .legend {
   display: flex;
@@ -654,17 +720,9 @@ export default {
   font-size: 24rpx;
   color: #f5222d;
 }
-.legend-reversed {
-  font-size: 24rpx;
-  color: #fa8c16;
-}
 .legend-extra {
   font-size: 24rpx;
   color: #f5222d;
-}
-.legend-tongjiazi {
-  font-size: 24rpx;
-  color: #1890ff;
 }
 .wrong-type {
   font-size: 22rpx;

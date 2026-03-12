@@ -4,7 +4,7 @@ const textsCollection = db.collection('gw-ancient-texts')
 const checksCollection = db.collection('gw-dictation-checks')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
-const { ocr: ocrConfig, bailianDictationCheck } = require('config')
+const { ocr: ocrConfig } = require('config')
 
 /** 拍照默写保存后更新用户古文汇总表 */
 async function updateSummaryAfterDictation(uid, textId, textTitle, recordId, accuracy, createdAt) {
@@ -58,205 +58,7 @@ async function getAuthUid(event, context) {
   return uid
 }
 
-const PUNCTUATION_REG = /[，。、；：？！""''（）《》〈〉【】「」『』〔〕…—\s\n\r,.;:?!'"()\[\]{}]/
-
-function isPunctuation(char) {
-  return PUNCTUATION_REG.test(char)
-}
-
-/**
- * 逐字比对原文和识别文字（LCS 算法）
- */
-function diffChars(original, recognized) {
-  function normalize(text) {
-    const chars = String(text || '').split('')
-    const filtered = []
-    chars.forEach((char, index) => {
-      if (!isPunctuation(char)) {
-        filtered.push({ char, index })
-      }
-    })
-    return { chars, filtered }
-  }
-
-  const source = normalize(original)
-  const target = normalize(recognized)
-  const a = source.filtered
-  const b = target.filtered
-
-  const m = a.length
-  const n = b.length
-  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (a[i - 1].char === b[j - 1].char) {
-        dp[i][j] = dp[i - 1][j - 1] + 1
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
-      }
-    }
-  }
-
-  const result = source.chars.map(char => ({
-    char,
-    status: isPunctuation(char) ? 'punctuation' : 'missing'
-  }))
-
-  let i = m
-  let j = n
-  const matchedOriginal = new Set()
-  const matchedTarget = new Set()
-  while (i > 0 && j > 0) {
-    if (a[i - 1].char === b[j - 1].char) {
-      matchedOriginal.add(a[i - 1].index)
-      matchedTarget.add(b[j - 1].index)
-      i--
-      j--
-    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
-      i--
-    } else {
-      j--
-    }
-  }
-
-  source.chars.forEach((char, index) => {
-    if (!isPunctuation(char) && matchedOriginal.has(index)) {
-      result[index] = { char, status: 'correct' }
-    }
-  })
-
-  // 收集识别文字中不在 LCS 里的字符（写错的字）
-  const wrongChars = []
-  b.forEach((item) => {
-    if (!matchedTarget.has(item.index)) {
-      wrongChars.push(item.char)
-    }
-  })
-
-  // 为 missing 的字匹配对应的错字
-  let wrongIdx = 0
-  result.forEach((item, idx) => {
-    if (item.status === 'missing' && wrongIdx < wrongChars.length) {
-      result[idx] = {
-        char: item.char,
-        status: 'wrong',
-        recognized: wrongChars[wrongIdx]
-      }
-      wrongIdx++
-    }
-  })
-
-  return result
-}
-
-function calcAccuracy(diffResult) {
-  if (!diffResult || diffResult.length === 0) return 0
-  const compareChars = diffResult.filter(d => d.status !== 'punctuation')
-  if (compareChars.length === 0) return 0
-  const correct = compareChars.filter(d => d.status === 'correct').length
-  return Math.round((correct / compareChars.length) * 100 * 10) / 10
-}
-
-// ---- 大模型校验 ----
-
-const LLM_SYSTEM_PROMPT = `你是古文默写批改专家。对比原文和学生默写内容，找出所有错误。
-
-重要规则：
-1. 标点符号忽略，不参与校验
-2. 古文通假字不算错误，标记为 tongjiazi
-3. 只返回错误部分，正确内容不要返回
-4. 输出严格 JSON 格式
-5. 【关键】如果学生完全没有默写某段原文内容（整句或整段缺失），必须将这些缺失的文字全部标记为 missing 错误。不能遗漏任何未默写的原文内容。
-6. 【关键】逐字检查原文中的每个字是否在学生默写中出现，未出现的必须标记为 missing。
-
-错误类型：
-- wrong：写错字（含 errorType: homophone 同音字 / similar 形近字 / other 其他）
-- missing：漏写（原文有但未写出）
-- extra：多写（写了原文没有的字句）
-- reversed：字句写反（前后顺序颠倒）
-- tongjiazi：通假字（不算错，但需标注）
-
-输出格式：
-{
-  "accuracy": 数字(0-100，正确字数/原文总字数*100，标点不计),
-  "errors": [
-    {"type":"wrong","original":"原字","context":"含原字的上下文片段","written":"实际写的字","errorType":"homophone|similar|other"},
-    {"type":"missing","original":"漏写的字","context":"含漏写字的上下文片段"},
-    {"type":"extra","written":"多写的字","afterOriginal":"在原文哪段文字之后出现","context":"附近的原文上下文"},
-    {"type":"reversed","original":"正确顺序","context":"含写反部分的上下文片段","written":"实际写的顺序"},
-    {"type":"tongjiazi","original":"原字","context":"上下文片段","written":"实际写的字","note":"通假说明"}
-  ]
-}
-
-注意：context 字段提供3-5个字的上下文片段，用于精确定位错误在原文中的位置。`
-
-async function callLLMCheck(originalText, recognizedText) {
-  if (!bailianDictationCheck || !bailianDictationCheck.apiKey) {
-    console.warn('[LLM批改] 未配置百炼默写校验 API Key，使用 fallback')
-    return { error: '未配置百炼默写校验 API Key' }
-  }
-
-  const endpoint = bailianDictationCheck.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
-  const requestBody = {
-    model: bailianDictationCheck.model || 'qwen3-max',
-    temperature: 0.1,
-    messages: [
-      { role: 'system', content: LLM_SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `原文：${originalText}\n\n学生默写内容：${recognizedText}\n\n请对比并返回JSON格式的批改结果。注意：只输出JSON，不要输出任何其他文字。`
-      }
-    ]
-  }
-
-  let contentStr = ''
-  try {
-    console.log('[LLM批改] 开始调用, 模型:', requestBody.model, '端点:', endpoint)
-    console.log('[LLM批改] apiKey前8位:', String(bailianDictationCheck.apiKey).slice(0, 8))
-    const response = await uniCloud.httpclient.request(endpoint, {
-      method: 'POST',
-      timeout: Number(bailianDictationCheck.timeout || 30000),
-      headers: {
-        Authorization: `Bearer ${bailianDictationCheck.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      dataType: 'json',
-      data: requestBody
-    })
-
-    console.log('[LLM批改] 响应状态:', response.status)
-    if (response.status !== 200 || !response.data) {
-      const errMsg = '请求失败, status:' + response.status + ', data:' + JSON.stringify(response.data || '').slice(0, 500)
-      console.error('[LLM批改]', errMsg)
-      return { error: errMsg }
-    }
-
-    const choices = response.data.choices || []
-    const rawContent = (choices[0] && choices[0].message && choices[0].message.content) || ''
-    contentStr = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent)
-    // 去除可能的 markdown 代码块包裹
-    contentStr = contentStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
-    // 去除 Qwen3.5 思考模式的 <think>...</think> 标签
-    contentStr = contentStr.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
-
-    const parsed = JSON.parse(contentStr)
-    if (typeof parsed.accuracy !== 'number' || !Array.isArray(parsed.errors)) {
-      const errMsg = '返回格式异常:' + contentStr.slice(0, 500)
-      console.error('[LLM批改]', errMsg)
-      return { error: errMsg }
-    }
-
-    console.log('[LLM批改] 模型:', requestBody.model)
-    console.log('[LLM批改] 输入原文:', originalText)
-    console.log('[LLM批改] 识别文本:', recognizedText)
-    console.log('[LLM批改] 返回结果:', JSON.stringify(parsed))
-    return parsed
-  } catch (e) {
-    const errMsg = '调用异常:' + (e.message || e) + ', 原始返回:' + (contentStr || '无')
-    console.error('[LLM批改]', errMsg)
-    return { error: errMsg }
-  }
-}
+// 工具函数已移至前端（LCS 比较在前端执行）
 
 // ---- OCR 手写体识别 ----
 
@@ -390,32 +192,7 @@ async function handleCheck(uid, data) {
   ).replace(/\s+/g, '')
   const recognizedText = recognition.handwrittenText
 
-  // 优先使用大模型校验，失败时 fallback 到 LCS diff
-  let diffResult, accuracy, wrongChars
-  let llmModel = '', llmRawResult = null, llmError = ''
-  const llmResult = await callLLMCheck(originalText, recognizedText)
-  if (llmResult && !llmResult.error && Array.isArray(llmResult.errors)) {
-    diffResult = { errors: llmResult.errors, version: 2 }
-    accuracy = llmResult.accuracy
-    wrongChars = llmResult.errors
-      .filter(e => e.type === 'wrong' || e.type === 'missing')
-      .map(e => e.written || e.original)
-    llmModel = bailianDictationCheck.model || 'qwen-plus'
-    llmRawResult = llmResult
-  } else {
-    // 记录大模型错误信息
-    if (llmResult && llmResult.error) {
-      llmError = llmResult.error
-      llmModel = bailianDictationCheck.model || 'qwen-plus'
-      console.error('[LLM批改] fallback到LCS, 错误:', llmError)
-    }
-    const oldDiff = diffChars(originalText, recognizedText)
-    diffResult = oldDiff
-    accuracy = calcAccuracy(oldDiff)
-    wrongChars = oldDiff
-      .filter(d => d.status === 'wrong' || d.status === 'missing')
-      .map(d => d.recognized || d.char)
-  }
+  // 前端负责比较，云函数只做 OCR + 存储
 
   // 5. 上传图片到云存储
   let imageFileId = ''
@@ -443,32 +220,15 @@ async function handleCheck(uid, data) {
     text_title: textDoc.title || '',
     text_author: textDoc.author || '',
     text_dynasty: textDoc.dynasty || '',
+    text_content: textDoc.content || '',
     original_text: originalText,
     recognized_text: recognizedText,
     difficulty: difficulty || '',
-    diff_result: diffResult,
-    accuracy,
-    wrong_chars: wrongChars,
-    llm_model: llmModel,
-    llm_raw_result: llmRawResult,
-    llm_error: llmError || '',
     image_file_id: imageFileId,
     image_url: imageUrl,
     created_at: Date.now()
   }
   const addRes = await checksCollection.add(record)
-  try {
-    await updateSummaryAfterDictation(
-      uid,
-      articleId,
-      record.text_title,
-      addRes.id,
-      accuracy,
-      record.created_at
-    )
-  } catch (e) {
-    console.error('gw_dictation-check updateSummaryAfterDictation error:', e)
-  }
 
   return {
     code: 0,
@@ -478,11 +238,9 @@ async function handleCheck(uid, data) {
       title: textDoc.title || '',
       author: textDoc.author || '',
       dynasty: textDoc.dynasty || '',
+      content: textDoc.content || '',
       originalText,
       recognizedText,
-      diffResult,
-      accuracy,
-      wrongChars,
       imageUrl
     }
   }
