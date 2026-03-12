@@ -37,17 +37,20 @@
           @tap="onTapSentence(index)"
         >
           <!-- 跟读完成：逐字着色 -->
-          <view v-if="getFollowState(index) === 'done'" class="sentence-text diff-text">
+          <view v-if="getFollowState(index) === 'done'" class="sentence-text diff-text" :class="{ 'diff-keep-style': unit.isTitle || unit.isMeta, 'diff-title-size': unit.isTitle, 'diff-meta-size': unit.isMeta }">
             <text
               v-for="(ch, ci) in getFollowDiffResult(index)"
               :key="ci"
-              :class="{
-                'diff-correct': ch.status === 'correct' || ch.status === 'homophone',
-                'diff-wrong': ch.status === 'wrong' || ch.status === 'missing',
-                'diff-punctuation': ch.status === 'punctuation'
-              }"
+              :class="[
+                unit.isTitle ? 'diff-title-size' : (unit.isMeta ? 'diff-meta-size' : ''),
+                {
+                  'diff-correct': ch.status === 'correct' || ch.status === 'homophone' || ch.status === 'fuzzy',
+                  'diff-wrong': ch.status === 'wrong' || ch.status === 'missing',
+                  'diff-punctuation': ch.status === 'punctuation'
+                }
+              ]"
             >{{ ch.char }}</text>
-            <text class="follow-accuracy">{{ getFollowAccuracy(index) }}%</text>
+            <text class="follow-accuracy" :class="unit.isTitle ? 'diff-title-size' : (unit.isMeta ? 'diff-meta-size' : '')">{{ getFollowAccuracy(index) }}%</text>
             <view v-if="getFollowAccuracy(index) < 80" class="follow-retry-hint">
               <text class="retry-hint-text">请重新朗读</text>
               <view class="follow-retry-btn" @tap.stop="startFollowUnit(index)">
@@ -490,11 +493,10 @@ export default {
       const unit = this.playUnits[index]
       if (!unit) return
       const originalText = unit.text
-      if (!recognizedText || !recognizedText.trim()) {
-        this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult: [], accuracy: 0 } }
-        return
-      }
-      const diffResult = diffChars(originalText, recognizedText)
+      // 识别为空时也生成 diffResult，用于显示原文并全部标红
+      const diffResult = (!recognizedText || !recognizedText.trim())
+        ? diffChars(originalText, '')
+        : diffChars(originalText, recognizedText)
       const accuracy = calcAccuracy(diffResult)
       this.followStates = { ...this.followStates, [index]: { state: 'done', diffResult, accuracy } }
       this.resetRealtimeState()
@@ -665,6 +667,55 @@ export default {
 .content-area.font-large .sentence-item.meta-unit .sentence-text {
   font-size: 26rpx;
 }
+/* 跟读完成后标题/作者朝代：保持居中、字号与字重，仅颜色由 diff 控制 */
+.sentence-item.title-unit .sentence-text.diff-text.diff-keep-style,
+.sentence-item.meta-unit .sentence-text.diff-text.diff-keep-style {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+.sentence-text.diff-text.diff-keep-style {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: inherit;
+}
+.sentence-item.meta-unit .sentence-text.diff-text.diff-keep-style {
+  font-size: 24rpx;
+  font-weight: normal;
+}
+.content-area.font-small .sentence-item.title-unit .sentence-text.diff-text.diff-keep-style {
+  font-size: 36rpx;
+}
+.content-area.font-small .sentence-item.meta-unit .sentence-text.diff-keep-style {
+  font-size: 22rpx;
+}
+.content-area.font-large .sentence-item.title-unit .sentence-text.diff-keep-style {
+  font-size: 44rpx;
+}
+.content-area.font-large .sentence-item.meta-unit .sentence-text.diff-keep-style {
+  font-size: 26rpx;
+}
+/* 跟读完成后标题/作者朝代内文字字号（确保在 text 节点上生效） */
+.diff-title-size {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+.diff-meta-size {
+  font-size: 24rpx;
+  font-weight: normal;
+}
+.content-area.font-small .diff-title-size {
+  font-size: 36rpx;
+}
+.content-area.font-small .diff-meta-size {
+  font-size: 22rpx;
+}
+.content-area.font-large .diff-title-size {
+  font-size: 44rpx;
+}
+.content-area.font-large .diff-meta-size {
+  font-size: 26rpx;
+}
 .sentence-item {
   margin-bottom: 12rpx;
   padding: 16rpx;
@@ -690,6 +741,13 @@ export default {
 .sentence-item.follow-done {
   border-left: 6rpx solid #52c41a;
   background: #f6ffed;
+}
+/* 标题、作者朝代跟读完成后保留原有样式，仅文字按对错标红/绿 */
+.sentence-item.title-unit.follow-done,
+.sentence-item.meta-unit.follow-done {
+  background: transparent;
+  border: none;
+  border-left: none;
 }
 .sentence-text {
   color: #111827;

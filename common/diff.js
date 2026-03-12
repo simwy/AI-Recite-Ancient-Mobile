@@ -3,7 +3,8 @@
  */
 import { pinyin } from 'pinyin-pro'
 
-const PUNCTUATION_REG = /[，。、；：？！“”‘’（）《》〈〉【】「」『』〔〕…—\s\n\r,.;:?!'"()\[\]{}]/
+// 标点（含朝代·作者中间的 ·）不参与对比、不要求读出
+const PUNCTUATION_REG = /[，。、；：？！“”‘’（）《》〈〉【】「」『』〔〕…—·\s\n\r,.;:?!'"()\[\]{}]/
 const pinyinCache = new Map()
 
 function isPunctuation(char) {

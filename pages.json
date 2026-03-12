@@ -283,12 +283,12 @@
 			"pagePath": "pages/ancient/list",
 			"iconPath": "static/tabbar/tabbar-1.png",
 			"selectedIconPath": "static/tabbar/tabbar-1-a.png",
-			"text": "古文"
+			"text": "首页"
 		}, {
 			"pagePath": "pages/square/index",
 			"iconPath": "static/tabbar/tabbar-2.png",
 			"selectedIconPath": "static/tabbar/tabbar-2-a.png",
-			"text": "广场"
+			"text": "文库"
 		}, {
 			"pagePath": "pages/review/index",
 			"iconPath": "static/tabbar/tabbar-3.png",
