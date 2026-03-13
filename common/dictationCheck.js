@@ -14,10 +14,10 @@ function compressImageApp(filePath) {
   return new Promise((resolve) => {
     uni.compressImage({
       src: filePath,
-      quality: 65,
+      quality: 88,
       width: 'auto',
       height: 'auto',
-      compressedWidth: 1080,
+      compressedWidth: 1600,
       rotate: 0,
       success: (res) => resolve(res.tempFilePath),
       fail: () => resolve(filePath)
@@ -30,7 +30,7 @@ function compressImageH5(filePath) {
     const img = new Image()
     img.onload = () => {
       let { width, height } = img
-      const maxSide = 1080
+      const maxSide = 1600
       if (width > maxSide || height > maxSide) {
         if (width >= height) {
           height = Math.round(height * maxSide / width)
@@ -45,7 +45,7 @@ function compressImageH5(filePath) {
       canvas.height = height
       const ctx = canvas.getContext('2d')
       ctx.drawImage(img, 0, 0, width, height)
-      resolve(canvas.toDataURL('image/jpeg', 0.65))
+      resolve(canvas.toDataURL('image/jpeg', 0.88))
     }
     img.onerror = reject
     img.src = filePath
@@ -141,7 +141,7 @@ export function runDictationCheck(options = {}) {
   uni.chooseImage({
     count: 1,
     sourceType: ['camera', 'album'],
-    sizeType: ['compressed'],
+    sizeType: ['original', 'compressed'],
     success: (res) => {
       const tempFilePath = res.tempFilePaths[0]
       compressAndCheck(tempFilePath, options)
