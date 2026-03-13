@@ -855,7 +855,7 @@ export default {
   color: #999;
 }
 .row-original.diff-tongjiazi {
-  color: #1890ff;
+  color: #f5222d;
 }
 /* 实际行颜色 */
 .diff-actual-wrong {
@@ -865,7 +865,7 @@ export default {
   color: #f5222d;
 }
 .diff-actual-tongjiazi {
-  color: #1890ff;
+  color: #f5222d;
 }
 /* 第二行删除线（错别字、多写） */
 .row-actual-strikethrough {
@@ -910,7 +910,7 @@ export default {
 }
 .legend-tongjiazi {
   font-size: 24rpx;
-  color: #1890ff;
+  color: #f5222d;
 }
 .wrong-type {
   font-size: 22rpx;

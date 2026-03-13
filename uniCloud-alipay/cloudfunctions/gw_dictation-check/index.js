@@ -110,7 +110,12 @@ function extractHandwrittenText(ocrText) {
     if (/^正文[：:]$/.test(trimmed)) continue
     bodyParts.push(trimmed)
   }
-  return (titlePart + authorPart + bodyParts.join('')).replace(/\s+/g, '')
+  return {
+    title: titlePart.replace(/\s+/g, ''),
+    author: authorPart.replace(/\s+/g, ''),
+    body: bodyParts.join('').replace(/\s+/g, ''),
+    full: (titlePart + authorPart + bodyParts.join('')).replace(/\s+/g, '')
+  }
 }
 
 async function callOcrHandwriting(imageBase64) {
@@ -147,9 +152,10 @@ async function callOcrHandwriting(imageBase64) {
       if (parsed && typeof parsed.content === 'string') ocrText = parsed.content
     } catch (e) {}
   }
+  const handwritten = extractHandwrittenText(ocrText)
   return {
     articleId: extractArticleId(ocrText),
-    handwrittenText: extractHandwrittenText(ocrText)
+    handwrittenText: handwritten.full
   }
 }
 
@@ -158,17 +164,19 @@ async function callOcrHandwriting(imageBase64) {
 const LLM_SYSTEM_PROMPT = `你是古文默写批改助手。根据原文句子列表和用户默写文本，逐句匹配默写情况。
 
 规则：
-1. 将默写文本按顺序拆分匹配到对应的原文句子
-2. 每个原文句子对应一个结果，status 为 correct/wrong/missing/extra
-3. correct：默写与原文完全一致（忽略标点差异）
-4. wrong：默写了但有错误（含部分错误）
-5. missing：整句未默写（recite 为空字符串）
-6. extra：用户多写了原文没有的内容（index 为 -1）
-7. 识别通假字（古文中的通假现象），通假字不算错误，tongjiazi 数组记录
-8. recite 字段填写用户实际默写的对应文本，保留用户原始书写
-9. 标点符号差异不影响 status 判断
-10. 严格按照提供的句子列表顺序输出，不要遗漏任何句子
-11. 返回纯 JSON，不要包含任何其他文字`
+1. 用户默写文本中可能包含标题和朝代·作者，请先识别出来填入 title_recite 和 author_recite，剩余部分作为正文匹配
+2. sentence_results 只匹配正文句子，不要将标题或作者内容混入
+3. 将正文按顺序拆分匹配到对应的原文句子，每个原文句子对应一个结果
+4. status 为 correct/wrong/missing/extra
+5. correct：默写与原文完全一致（忽略标点差异）
+6. wrong：默写了但有错误（含部分错误）
+7. missing：整句未默写（recite 为空字符串）
+8. extra：用户多写了原文没有的内容（index 为 -1）
+9. 识别通假字（古文中的通假现象），通假字不算错误，tongjiazi 数组记录
+10. recite 字段填写用户实际默写的对应文本，保留用户原始书写
+11. 标点符号差异不影响 status 判断
+12. 严格按照提供的句子列表顺序输出，不要遗漏任何句子
+13. 返回纯 JSON，不要包含任何其他文字`
 
 function buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedText) {
   const sentenceList = snapshotSentences
@@ -180,9 +188,11 @@ function buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedT
 原文句子列表：
 ${sentenceList}
 
-用户默写文本（OCR识别）：
+用户默写文本（OCR识别，可能包含标题和作者）：
 ${recognizedText}
 
+请从默写文本中识别出标题部分填入 title_recite，识别出朝代·作者部分填入 author_recite，剩余的正文部分按句子列表逐句匹配填入 sentence_results。
+注意：不要将标题或作者内容混入 sentence_results 中。
 请返回 JSON 格式结果，结构如下：
 {
   "title_recite": "用户默写的标题（无则空字符串）",
@@ -302,7 +312,7 @@ async function handleCheck(uid, data) {
     const snapData = snapRes.result && snapRes.result.data
     if (snapData && Array.isArray(snapData.sentences) && snapData.sentences.length > 0) {
       snapshotSentences = snapData.sentences
-      // 5. 调用 LLM 句子级匹配
+      // 5. 调用 LLM 句子级匹配（传完整 OCR 文本，由 LLM 分离标题/作者/正文）
       const llmResult = await callLLMSentenceMatch(
         textDoc.title || '',
         authorDisplay,
