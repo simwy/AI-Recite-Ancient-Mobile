@@ -4,7 +4,7 @@ const textsCollection = db.collection('gw-ancient-texts')
 const checksCollection = db.collection('gw-dictation-checks')
 const summaryCollection = db.collection('gw-user-text-summary')
 const uniID = require('uni-id-common')
-const { ocr: ocrConfig } = require('config')
+const { ocr: ocrConfig, bailianDictationCheck } = require('config')
 
 /** 拍照默写保存后更新用户古文汇总表 */
 async function updateSummaryAfterDictation(uid, textId, textTitle, recordId, accuracy, createdAt) {
@@ -153,6 +153,102 @@ async function callOcrHandwriting(imageBase64) {
   }
 }
 
+// ---- LLM 句子级匹配 ----
+
+const LLM_SYSTEM_PROMPT = `你是古文默写批改助手。根据原文句子列表和用户默写文本，逐句匹配默写情况。
+
+规则：
+1. 将默写文本按顺序拆分匹配到对应的原文句子
+2. 每个原文句子对应一个结果，status 为 correct/wrong/missing/extra
+3. correct：默写与原文完全一致（忽略标点差异）
+4. wrong：默写了但有错误（含部分错误）
+5. missing：整句未默写（recite 为空字符串）
+6. extra：用户多写了原文没有的内容（index 为 -1）
+7. 识别通假字（古文中的通假现象），通假字不算错误，tongjiazi 数组记录
+8. recite 字段填写用户实际默写的对应文本，保留用户原始书写
+9. 标点符号差异不影响 status 判断
+10. 严格按照提供的句子列表顺序输出，不要遗漏任何句子
+11. 返回纯 JSON，不要包含任何其他文字`
+
+function buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedText) {
+  const sentenceList = snapshotSentences
+    .map((s, i) => `[${i}] ${s.text}`)
+    .join('\n')
+  return `标题：${title}
+朝代·作者：${authorDisplay}
+
+原文句子列表：
+${sentenceList}
+
+用户默写文本（OCR识别）：
+${recognizedText}
+
+请返回 JSON 格式结果，结构如下：
+{
+  "title_recite": "用户默写的标题（无则空字符串）",
+  "author_recite": "用户默写的朝代·作者（无则空字符串）",
+  "sentence_results": [
+    {
+      "index": 句子序号,
+      "original": "原文句子",
+      "recite": "用户默写的对应句子（无则空字符串）",
+      "status": "correct/wrong/missing/extra",
+      "tongjiazi": [{"original":"原字","written":"通假字"}]
+    }
+  ]
+}`
+}
+
+async function callLLMSentenceMatch(title, authorDisplay, snapshotSentences, recognizedText) {
+  if (!bailianDictationCheck || !bailianDictationCheck.apiKey) {
+    throw new Error('未配置百炼默写批改 API Key')
+  }
+
+  const endpoint = bailianDictationCheck.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  const requestBody = {
+    model: bailianDictationCheck.model || 'qwen3-max',
+    temperature: 0.1,
+    response_format: { type: 'json_object' },
+    extra_body: {"enable_thinking":false},
+    messages: [
+      { role: 'system', content: LLM_SYSTEM_PROMPT },
+      { role: 'user', content: buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedText) }
+    ]
+  }
+
+  const response = await uniCloud.httpclient.request(endpoint, {
+    method: 'POST',
+    timeout: Number(bailianDictationCheck.timeout || 30000),
+    headers: {
+      Authorization: `Bearer ${bailianDictationCheck.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    dataType: 'json',
+    data: requestBody
+  })
+
+  if (response.status !== 200 || !response.data) {
+    throw new Error('百炼默写批改请求失败，HTTP ' + (response.status || 'unknown'))
+  }
+
+  const choices = response.data.choices || []
+  const rawContent = (choices[0] && choices[0].message && choices[0].message.content) || ''
+  const contentStr = typeof rawContent === 'string' ? rawContent : (Array.isArray(rawContent) ? rawContent.map(c => (c && c.text) || '').join('') : '')
+
+  let parsed
+  try {
+    parsed = JSON.parse(contentStr.trim())
+  } catch (e) {
+    throw new Error('LLM 返回的 JSON 解析失败: ' + contentStr.slice(0, 200))
+  }
+
+  if (!parsed || !Array.isArray(parsed.sentence_results)) {
+    throw new Error('LLM 返回格式不符，缺少 sentence_results 数组')
+  }
+
+  return parsed
+}
+
 // ---- action 处理 ----
 
 async function handleCheck(uid, data) {
@@ -181,7 +277,7 @@ async function handleCheck(uid, data) {
     }
   }
 
-  // 3. 逐字比对（原文包含标题、作者、正文，与默写纸手写内容一致）
+  // 3. 构建原文信息
   const authorDisplay = textDoc.dynasty && textDoc.author
     ? (String(textDoc.dynasty || '') + '·' + String(textDoc.author || ''))
     : (String(textDoc.author || textDoc.dynasty || ''))
@@ -192,7 +288,37 @@ async function handleCheck(uid, data) {
   ).replace(/\s+/g, '')
   const recognizedText = recognition.handwrittenText
 
-  // 前端负责比较，云函数只做 OCR + 存储
+  // 4. 查询 snapshot 句子切分
+  let snapshotSentences = null
+  let sentenceResults = null
+  let titleRecite = ''
+  let authorRecite = ''
+  let llmVersion = null
+  try {
+    const snapRes = await uniCloud.callFunction({
+      name: 'gw_sentence-snapshot',
+      data: { action: 'get', data: { text_id: articleId } }
+    })
+    const snapData = snapRes.result && snapRes.result.data
+    if (snapData && Array.isArray(snapData.sentences) && snapData.sentences.length > 0) {
+      snapshotSentences = snapData.sentences
+      // 5. 调用 LLM 句子级匹配
+      const llmResult = await callLLMSentenceMatch(
+        textDoc.title || '',
+        authorDisplay,
+        snapshotSentences,
+        recognizedText
+      )
+      sentenceResults = llmResult.sentence_results
+      titleRecite = llmResult.title_recite || ''
+      authorRecite = llmResult.author_recite || ''
+      llmVersion = 'v3'
+    }
+  } catch (e) {
+    console.error('LLM 句子匹配失败:', e.message || e)
+    // LLM 失败不做 fallback，直接抛错
+    return { code: -1, msg: 'LLM 批改失败: ' + (e.message || '未知错误') }
+  }
 
   // 5. 上传图片到云存储
   let imageFileId = ''
@@ -213,7 +339,7 @@ async function handleCheck(uid, data) {
     console.error('图片上传失败:', e)
   }
 
-  // 6. 存入数据库
+  // 7. 存入数据库
   const record = {
     user_id: uid,
     article_id: articleId,
@@ -228,21 +354,37 @@ async function handleCheck(uid, data) {
     image_url: imageUrl,
     created_at: Date.now()
   }
+  if (sentenceResults) {
+    record.sentence_results = sentenceResults
+    record.snapshot_sentences = snapshotSentences
+    record.title_recite = titleRecite
+    record.author_recite = authorRecite
+    record.llm_version = llmVersion
+  }
   const addRes = await checksCollection.add(record)
+
+  const resultData = {
+    recordId: addRes.id,
+    articleId,
+    title: textDoc.title || '',
+    author: textDoc.author || '',
+    dynasty: textDoc.dynasty || '',
+    content: textDoc.content || '',
+    originalText,
+    recognizedText,
+    imageUrl
+  }
+  if (sentenceResults) {
+    resultData.sentenceResults = sentenceResults
+    resultData.snapshotSentences = snapshotSentences
+    resultData.titleRecite = titleRecite
+    resultData.authorRecite = authorRecite
+    resultData.llmVersion = llmVersion
+  }
 
   return {
     code: 0,
-    data: {
-      recordId: addRes.id,
-      articleId,
-      title: textDoc.title || '',
-      author: textDoc.author || '',
-      dynasty: textDoc.dynasty || '',
-      content: textDoc.content || '',
-      originalText,
-      recognizedText,
-      imageUrl
-    }
+    data: resultData
   }
 }
 
@@ -294,6 +436,29 @@ async function handleDetail(uid, data) {
   return { code: 0, data: record }
 }
 
+async function handleUpdateAccuracy(uid, data) {
+  if (!data.id || data.accuracy == null) {
+    return { code: -1, msg: '缺少记录ID或准确率' }
+  }
+  const res = await checksCollection.doc(data.id).get()
+  const record = res.data && res.data[0]
+  if (!record || record.user_id !== uid) {
+    return { code: -1, msg: '记录不存在' }
+  }
+  const accuracy = Number(data.accuracy) || 0
+  await checksCollection.doc(data.id).update({ accuracy })
+  // 更新用户汇总表
+  await updateSummaryAfterDictation(
+    uid,
+    record.article_id,
+    record.text_title,
+    data.id,
+    accuracy,
+    record.created_at || Date.now()
+  )
+  return { code: 0 }
+}
+
 // ---- 主入口 ----
 
 exports.main = async (event, context) => {
@@ -320,6 +485,8 @@ exports.main = async (event, context) => {
         return await handleList(uid, data)
       case 'detail':
         return await handleDetail(uid, data)
+      case 'updateAccuracy':
+        return await handleUpdateAccuracy(uid, data)
       default:
         return { code: -1, msg: '未知操作' }
     }

@@ -72,7 +72,7 @@
             <view class="dual-row-grid">
               <view class="char-col" v-for="(item, idx) in group.chars" :key="'rc-' + gi + '-' + idx">
                 <text :class="['row-original', 'diff-' + item.status]">{{ item.char || '\u3000' }}</text>
-                <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '', (item.status === 'wrong' || item.status === 'extra') && item.written ? 'row-actual-strikethrough' : '']">{{ item.written || '\u3000' }}</text>
+                <text :class="['row-actual', item.written ? ('diff-actual-' + item.status) : '', (item.status === 'wrong' || item.status === 'extra') && item.written && item.status !== 'tongjiazi' ? 'row-actual-strikethrough' : '']">{{ item.written || '\u3000' }}</text>
               </view>
             </view>
           </view>
@@ -84,6 +84,7 @@
         <text class="legend-wrong">● 错别字</text>
         <text class="legend-missing">● 漏写</text>
         <text class="legend-extra">● 多写</text>
+        <text class="legend-tongjiazi">● 通假字</text>
       </view>
     </view>
 
@@ -179,7 +180,11 @@ export default {
     this.imageUrl = result.imageUrl || ''
     this.articleId = result.articleId || ''
     this.initAudioContext()
-    this.runCompare()
+    if (result.sentenceResults && result.snapshotSentences) {
+      this.runSentenceMatch(result.sentenceResults, result.snapshotSentences, result.titleRecite || '', result.authorRecite || '')
+    } else {
+      this.runCompare()
+    }
   },
   onUnload() {
     this.stopAudio()
@@ -225,7 +230,11 @@ export default {
         this.imageUrl = r.image_url || ''
         this.articleId = r.article_id || ''
         this.initAudioContext()
-        this.runCompare()
+        if (r.sentence_results && r.snapshot_sentences) {
+          this.runSentenceMatch(r.sentence_results, r.snapshot_sentences, r.title_recite || '', r.author_recite || '')
+        } else {
+          this.runCompare()
+        }
       } catch (e) {
         uni.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })
         setTimeout(() => uni.navigateBack(), 1500)
@@ -357,6 +366,99 @@ export default {
       // 按句子分组
       this.buildSentenceGroups()
     },
+    /** 句子级 LCS diff：对单句原文和默写做逐字比对 */
+    lcsDiffSentence(original, recite, tongjiazi) {
+      const origChars = (original || '').split('')
+      const recChars = (recite || '').split('')
+      // 过滤标点
+      const a = [], aIdx = []
+      origChars.forEach((ch, i) => { if (!this.isPunct(ch)) { a.push(ch); aIdx.push(i) } })
+      const b = [], bIdx = []
+      recChars.forEach((ch, i) => { if (!this.isPunct(ch)) { b.push(ch); bIdx.push(i) } })
+      // 通假字映射: original -> written
+      const tjMap = {}
+      if (Array.isArray(tongjiazi)) {
+        tongjiazi.forEach(t => { if (t.original && t.written) tjMap[t.original] = t.written })
+      }
+      // LCS DP（通假字视为匹配）
+      const m = a.length, n = b.length
+      const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1))
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const isMatch = a[i-1] === b[j-1] || (tjMap[a[i-1]] && tjMap[a[i-1]] === b[j-1])
+          dp[i][j] = isMatch ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
+        }
+      }
+      // 回溯
+      const ops = []
+      let i = m, j = n
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0) {
+          const isMatch = a[i-1] === b[j-1] || (tjMap[a[i-1]] && tjMap[a[i-1]] === b[j-1])
+          if (isMatch) {
+            const isTj = a[i-1] !== b[j-1] && tjMap[a[i-1]] === b[j-1]
+            ops.push({ type: 'match', oi: aIdx[i-1], ri: bIdx[j-1], tongjiazi: isTj })
+            i--; j--; continue
+          }
+        }
+        if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+          ops.push({ type: 'extra', ri: bIdx[j-1] }); j--
+        } else {
+          ops.push({ type: 'delete', oi: aIdx[i-1] }); i--
+        }
+      }
+      ops.reverse()
+      return this.buildSentenceDiffList(origChars, recChars, ops)
+    },
+    /** 从句子 diff ops 构建渲染列表 */
+    buildSentenceDiffList(origChars, recChars, ops) {
+      const list = []
+      let di = 0
+      while (di < ops.length) {
+        const op = ops[di]
+        if (op.type === 'match') {
+          if (op.tongjiazi) {
+            list.push({ char: origChars[op.oi], status: 'tongjiazi', written: recChars[op.ri] })
+          } else {
+            list.push({ char: origChars[op.oi], status: 'correct', written: '' })
+          }
+          di++
+        } else if (op.type === 'delete') {
+          const deletes = []
+          while (di < ops.length && ops[di].type === 'delete') { deletes.push(ops[di]); di++ }
+          const extras = []
+          while (di < ops.length && ops[di].type === 'extra') { extras.push(ops[di]); di++ }
+          const pairs = Math.min(deletes.length, extras.length)
+          for (let k = 0; k < pairs; k++) {
+            list.push({ char: origChars[deletes[k].oi], status: 'wrong', written: recChars[extras[k].ri] })
+          }
+          for (let k = pairs; k < deletes.length; k++) {
+            list.push({ char: origChars[deletes[k].oi], status: 'missing', written: '' })
+          }
+          for (let k = pairs; k < extras.length; k++) {
+            list.push({ char: '', status: 'extra', written: recChars[extras[k].ri] })
+          }
+        } else if (op.type === 'extra') {
+          const extras = []
+          while (di < ops.length && ops[di].type === 'extra') { extras.push(ops[di]); di++ }
+          for (const e of extras) {
+            list.push({ char: '', status: 'extra', written: recChars[e.ri] })
+          }
+        } else { di++ }
+      }
+      // 插回标点
+      const fullList = []
+      let li = 0
+      for (let oi = 0; oi < origChars.length; oi++) {
+        if (this.isPunct(origChars[oi])) {
+          fullList.push({ char: origChars[oi], status: 'punctuation', written: '' })
+        } else if (li < list.length) {
+          fullList.push(list[li]); li++
+        }
+      }
+      while (li < list.length) { fullList.push(list[li]); li++ }
+      return fullList
+    },
     /** 根据 buildPlayUnits 的句子边界，将 renderContentList 分组 */
     buildSentenceGroups() {
       const units = buildPlayUnits(this.content)
@@ -397,6 +499,82 @@ export default {
         if (!groups.length) groups.push(last)
       }
       this.sentenceGroups = groups
+    },
+    /** 句子级匹配：用 LLM 结果 + 前端 LCS 逐字 diff */
+    runSentenceMatch(sentenceResults, snapshotSentences, titleRecite, authorRecite) {
+      // 标题 diff
+      if (this.title) {
+        this.renderTitleList = this.lcsDiffSentence(this.title, titleRecite || '', [])
+      }
+      // 作者 diff
+      const authorDisplay = this.dynasty && this.author ? (this.dynasty + '·' + this.author) : (this.author || this.dynasty || '')
+      if (authorDisplay) {
+        this.renderAuthorList = this.lcsDiffSentence(authorDisplay, authorRecite || '', [])
+      }
+      // 正文：按 snapshot 句子逐句处理
+      const groups = []
+      const contentChars = [] // 用于 wrongDetails 和准确率
+      for (let si = 0; si < snapshotSentences.length; si++) {
+        const snap = snapshotSentences[si]
+        const sr = sentenceResults.find(r => r.index === si)
+        const origText = snap.text || ''
+        let chars = []
+        if (!sr || sr.status === 'missing') {
+          // 整句漏写：每个非标点字标红
+          chars = origText.split('').map(ch => {
+            if (this.isPunct(ch)) return { char: ch, status: 'punctuation', written: '' }
+            return { char: ch, status: 'missing', written: '' }
+          })
+        } else if (sr.status === 'correct') {
+          // 整句正确：每个非标点字标绿
+          chars = origText.split('').map(ch => {
+            if (this.isPunct(ch)) return { char: ch, status: 'punctuation', written: '' }
+            return { char: ch, status: 'correct', written: '' }
+          })
+        } else if (sr.status === 'wrong') {
+          // 有错误：用 LCS 逐字 diff
+          chars = this.lcsDiffSentence(origText, sr.recite || '', sr.tongjiazi || [])
+        } else {
+          // 其他状态按 wrong 处理
+          chars = this.lcsDiffSentence(origText, sr.recite || '', sr.tongjiazi || [])
+        }
+        groups.push({ text: origText, chars, unitIndex: si })
+        contentChars.push(...chars)
+      }
+      // 处理 extra 句子（index === -1）
+      sentenceResults.filter(r => r.index === -1 || r.status === 'extra').forEach(sr => {
+        const recText = sr.recite || ''
+        const chars = recText.split('').map(ch => {
+          if (this.isPunct(ch)) return { char: ch, status: 'punctuation', written: '' }
+          return { char: '', status: 'extra', written: ch }
+        })
+        groups.push({ text: '', chars, unitIndex: -1 })
+        contentChars.push(...chars)
+      })
+      this.sentenceGroups = groups
+      this.renderContentList = contentChars
+      // 计算准确率
+      const allChars = [...this.renderTitleList, ...this.renderAuthorList, ...contentChars]
+      const total = allChars.filter(d => d.status !== 'punctuation' && d.status !== 'extra').length
+      const correct = allChars.filter(d => d.status === 'correct' || d.status === 'tongjiazi').length
+      this.accuracy = total > 0 ? Math.round((correct / total) * 1000) / 10 : 0
+      // 回写准确率到云函数
+      this.updateAccuracyToCloud()
+    },
+    /** 回写准确率到云端 */
+    async updateAccuracyToCloud() {
+      const app = getApp()
+      const result = app.globalData && app.globalData.dictationCheckResult
+      const recordId = (result && result.recordId) || ''
+      if (!recordId || !this.accuracy) return
+      try {
+        await uniCloud.callFunction({
+          name: 'gw_dictation-check',
+          data: { action: 'updateAccuracy', data: { id: recordId, accuracy: this.accuracy } }
+        })
+      } catch (e) {
+        console.error('回写准确率失败:', e)
+      }
     },
     /** 初始化音频上下文 */
     initAudioContext() {
@@ -676,12 +854,18 @@ export default {
 .row-original.diff-punctuation {
   color: #999;
 }
+.row-original.diff-tongjiazi {
+  color: #1890ff;
+}
 /* 实际行颜色 */
 .diff-actual-wrong {
   color: #f5222d;
 }
 .diff-actual-extra {
   color: #f5222d;
+}
+.diff-actual-tongjiazi {
+  color: #1890ff;
 }
 /* 第二行删除线（错别字、多写） */
 .row-actual-strikethrough {
@@ -723,6 +907,10 @@ export default {
 .legend-extra {
   font-size: 24rpx;
   color: #f5222d;
+}
+.legend-tongjiazi {
+  font-size: 24rpx;
+  color: #1890ff;
 }
 .wrong-type {
   font-size: 22rpx;

@@ -20,7 +20,8 @@
       "Bash(git -C /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile log --oneline -10)",
       "Bash(git -C /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile show 2ec6b1e --stat)",
       "WebSearch",
-      "WebFetch(domain:bbs.fit2cloud.com)"
+      "WebFetch(domain:bbs.fit2cloud.com)",
+      "Bash(grep -r \"gw-ancient-sentence-snapshots\\\\|sentence.snapshot\" /Users/chensm/Desktop/my-source/github.com/simwy/AI-Recite-Ancient-Mobile --include=\"*.js\" --include=\"*.vue\" --include=\"*.json\" 2>/dev/null | head -20)"
     ]
   }
 }
