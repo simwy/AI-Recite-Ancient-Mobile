@@ -418,9 +418,9 @@ export default {
         const op = ops[di]
         if (op.type === 'match') {
           if (op.tongjiazi) {
-            list.push({ char: origChars[op.oi], status: 'tongjiazi', written: recChars[op.ri] })
+            list.push({ char: origChars[op.oi], status: 'tongjiazi', written: recChars[op.ri], oi: op.oi })
           } else {
-            list.push({ char: origChars[op.oi], status: 'correct', written: '' })
+            list.push({ char: origChars[op.oi], status: 'correct', written: '', oi: op.oi })
           }
           di++
         } else if (op.type === 'delete') {
@@ -430,32 +430,39 @@ export default {
           while (di < ops.length && ops[di].type === 'extra') { extras.push(ops[di]); di++ }
           const pairs = Math.min(deletes.length, extras.length)
           for (let k = 0; k < pairs; k++) {
-            list.push({ char: origChars[deletes[k].oi], status: 'wrong', written: recChars[extras[k].ri] })
+            list.push({ char: origChars[deletes[k].oi], status: 'wrong', written: recChars[extras[k].ri], oi: deletes[k].oi })
           }
           for (let k = pairs; k < deletes.length; k++) {
-            list.push({ char: origChars[deletes[k].oi], status: 'missing', written: '' })
+            list.push({ char: origChars[deletes[k].oi], status: 'missing', written: '', oi: deletes[k].oi })
           }
           for (let k = pairs; k < extras.length; k++) {
-            list.push({ char: '', status: 'extra', written: recChars[extras[k].ri] })
+            list.push({ char: '', status: 'extra', written: recChars[extras[k].ri], oi: -1 })
           }
         } else if (op.type === 'extra') {
           const extras = []
           while (di < ops.length && ops[di].type === 'extra') { extras.push(ops[di]); di++ }
           for (const e of extras) {
-            list.push({ char: '', status: 'extra', written: recChars[e.ri] })
+            list.push({ char: '', status: 'extra', written: recChars[e.ri], oi: -1 })
           }
         } else { di++ }
       }
-      // 插回标点
+      // 按原文位置插回标点
       const fullList = []
       let li = 0
       for (let oi = 0; oi < origChars.length; oi++) {
         if (this.isPunct(origChars[oi])) {
           fullList.push({ char: origChars[oi], status: 'punctuation', written: '' })
-        } else if (li < list.length) {
-          fullList.push(list[li]); li++
+        } else {
+          // 先插入该位置之前的 extra（oi === -1 且紧邻当前位置）
+          while (li < list.length && list[li].oi === -1) {
+            fullList.push(list[li]); li++
+          }
+          if (li < list.length && list[li].oi === oi) {
+            fullList.push(list[li]); li++
+          }
         }
       }
+      // 剩余 extra 追加到末尾
       while (li < list.length) { fullList.push(list[li]); li++ }
       return fullList
     },
