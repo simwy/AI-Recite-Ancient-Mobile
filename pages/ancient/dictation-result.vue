@@ -558,7 +558,37 @@ export default {
         groups.push({ text: '', chars, unitIndex: -1 })
         contentChars.push(...chars)
       })
-      this.sentenceGroups = groups
+      // 按原文段落分组（而非按 snapshot 句子分组）
+      const paragraphs = (this.content || '').split(/\n/)
+      const finalGroups = []
+      let charIdx = 0
+      for (let pi = 0; pi < paragraphs.length; pi++) {
+        const paraText = paragraphs[pi].trim()
+        if (!paraText) continue
+        const paraNoPunct = paraText.replace(/[\s，。、；：？！""''（）《》〈〉【】「」『』〔〕…—·\u3000-\u303f\u2000-\u206f]/g, '').length
+        let consumed = 0
+        const paraChars = []
+        while (charIdx < contentChars.length && consumed < paraNoPunct) {
+          const item = contentChars[charIdx]
+          paraChars.push(item)
+          charIdx++
+          if (item.status !== 'punctuation') consumed++
+        }
+        while (charIdx < contentChars.length && contentChars[charIdx].status === 'punctuation') {
+          paraChars.push(contentChars[charIdx])
+          charIdx++
+        }
+        finalGroups.push({ text: paraText, chars: paraChars, unitIndex: pi })
+      }
+      if (charIdx < contentChars.length) {
+        const last = finalGroups.length ? finalGroups[finalGroups.length - 1] : { text: '', chars: [], unitIndex: 0 }
+        while (charIdx < contentChars.length) {
+          last.chars.push(contentChars[charIdx])
+          charIdx++
+        }
+        if (!finalGroups.length) finalGroups.push(last)
+      }
+      this.sentenceGroups = finalGroups
       this.renderContentList = contentChars
       // 计算准确率
       const allChars = [...this.renderTitleList, ...this.renderAuthorList, ...contentChars]
