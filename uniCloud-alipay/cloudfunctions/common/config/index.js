@@ -64,7 +64,9 @@ module.exports = {
     get apiKey() { return env('BAILIAN_API_KEY') },
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-plus',
-    timeout: 60000
+    timeout: 60000,
+    /** 长文默写批改 JSON 输出较长，默认 8192 避免被截断 */
+    maxTokens: 8192
   },
   ocr: {
     get accessKeyId() { return env('OCR_ACCESS_KEY_ID') || env('NLS_ACCESS_KEY_ID') },

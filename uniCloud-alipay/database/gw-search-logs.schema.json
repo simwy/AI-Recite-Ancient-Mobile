@@ -9,46 +9,56 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "content": {
       "bsonType": "string",
       "description": "搜索关键词",
+      "label": "搜索关键词",
       "trim": "both"
     },
     "scene": {
       "bsonType": "string",
       "description": "搜索场景：ancient_list=古文列表，square_subcollection=广场子合集内",
+      "label": "搜索场景",
       "enum": ["ancient_list", "square_subcollection"]
     },
     "user_id": {
       "bsonType": "string",
       "description": "用户ID，登录时写入",
+      "label": "用户ID",
       "foreignKey": "uni-id-users._id"
     },
     "device_id": {
       "bsonType": "string",
-      "description": "设备标识，未登录时可选"
+      "description": "设备标识，未登录时可选",
+      "label": "设备标识"
     },
     "category_id": {
       "bsonType": "string",
-      "description": "广场分类ID，仅 scene=square_subcollection 时有值"
+      "description": "广场分类ID，仅 scene=square_subcollection 时有值",
+      "label": "广场分类ID"
     },
     "subcollection_id": {
       "bsonType": "string",
-      "description": "子合集ID，仅 scene=square_subcollection 时有值"
+      "description": "子合集ID，仅 scene=square_subcollection 时有值",
+      "label": "子合集ID"
     },
     "category_name": {
       "bsonType": "string",
-      "description": "分类名称，便于统计"
+      "description": "分类名称，便于统计",
+      "label": "分类名称"
     },
     "subcollection_name": {
       "bsonType": "string",
-      "description": "子合集名称，便于统计"
+      "description": "子合集名称，便于统计",
+      "label": "子合集名称"
     },
     "create_date": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }

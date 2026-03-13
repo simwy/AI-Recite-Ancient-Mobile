@@ -14,73 +14,88 @@
     "user_id": {
       "bsonType": "string",
       "description": "用户ID",
+      "label": "用户ID",
       "foreignKey": "uni-id-users._id"
     },
     "article_id": {
       "bsonType": "string",
       "description": "古文ID",
+      "label": "古文ID",
       "foreignKey": "gw-ancient-texts._id"
     },
     "text_title": {
       "bsonType": "string",
-      "description": "古文标题"
+      "description": "古文标题",
+      "label": "古文标题"
     },
     "text_author": {
       "bsonType": "string",
-      "description": "作者"
+      "description": "作者",
+      "label": "作者"
     },
     "text_dynasty": {
       "bsonType": "string",
-      "description": "朝代"
+      "description": "朝代",
+      "label": "朝代"
     },
     "original_text": {
       "bsonType": "string",
-      "description": "原文内容"
+      "description": "原文内容",
+      "label": "原文内容"
     },
     "recognized_text": {
       "bsonType": "string",
-      "description": "识别的手写文字"
+      "description": "识别的手写文字",
+      "label": "识别的文字"
     },
     "difficulty": {
       "bsonType": "string",
-      "description": "难度等级（junior/middle/advanced）"
+      "description": "难度等级（junior/middle/advanced）",
+      "label": "难度等级"
     },
     "diff_result": {
       "description": "比对结果（v1为逐字数组，v2为含errors的对象）"
     },
     "accuracy": {
       "bsonType": "double",
-      "description": "准确率"
+      "description": "准确率",
+      "label": "准确率"
     },
     "wrong_chars": {
       "bsonType": "array",
       "description": "错字列表",
+      "label": "错字列表",
       "items": {
         "bsonType": "string"
       }
     },
     "image_file_id": {
       "bsonType": "string",
-      "description": "图片云存储文件ID"
+      "description": "图片云存储文件ID",
+      "label": "作答图片文件"
     },
     "image_url": {
       "bsonType": "string",
-      "description": "图片临时访问URL"
+      "description": "图片临时访问URL",
+      "label": "图片访问URL"
     },
     "llm_model": {
       "bsonType": "string",
-      "description": "大模型名称"
+      "description": "大模型名称",
+      "label": "大模型名称"
     },
     "llm_raw_result": {
       "description": "大模型原始返回结果"
     },
     "llm_error": {
       "bsonType": "string",
-      "description": "大模型调用错误信息（用于调试）"
+      "description": "大模型调用错误信息（用于调试）",
+      "label": "大模型错误信息"
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }

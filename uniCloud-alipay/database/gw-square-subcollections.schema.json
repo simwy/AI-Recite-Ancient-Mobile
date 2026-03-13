@@ -8,36 +8,43 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "category_id": {
       "bsonType": "string",
       "description": "分类ID",
+      "label": "分类ID",
       "trim": "both"
     },
     "name": {
       "bsonType": "string",
       "description": "子合集名称",
+      "label": "子合集名称",
       "trim": "both"
     },
     "intro": {
       "bsonType": "string",
       "description": "子合集介绍，有值时列表页顶部显示「介绍」与「列表」tab",
+      "label": "子合集介绍",
       "trim": "both"
     },
     "sort": {
       "bsonType": "int",
       "description": "排序",
+      "label": "排序",
       "defaultValue": 0
     },
     "enabled": {
       "bsonType": "bool",
       "description": "是否启用",
+      "label": "是否启用",
       "defaultValue": true
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }

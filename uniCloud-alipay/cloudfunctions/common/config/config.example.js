@@ -61,7 +61,9 @@ module.exports = {
     apiKey: 'YOUR_BAILIAN_API_KEY',
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen3-max',
-    timeout: 30000
+    timeout: 30000,
+    /** 长文默写批改 JSON 输出较长，建议 >= 8192 避免被截断 */
+    maxTokens: 8192
   },
   ocr: {
     accessKeyId: 'YOUR_ALIYUN_ACCESS_KEY_ID',

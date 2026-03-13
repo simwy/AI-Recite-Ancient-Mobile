@@ -40,7 +40,15 @@
 
     <!-- 逐字批改 -->
     <view class="section-card">
-      <view class="section-label">批改详情</view>
+      <view class="section-header-row">
+        <text class="section-label">批改详情</text>
+        <view class="legend">
+          <text class="legend-correct">● 正确</text>
+          <text class="legend-wrong">● 错别字</text>
+          <text class="legend-missing">● 漏写</text>
+          <text class="legend-extra">● 多写</text>
+        </view>
+      </view>
 
       <!-- 双行对照 -->
         <view class="detail-row" v-if="renderTitleList.length" @tap="onTapTitle">
@@ -77,27 +85,6 @@
             </view>
           </view>
         </view>
-
-      <!-- 图例 -->
-      <view class="legend">
-        <text class="legend-correct">● 正确</text>
-        <text class="legend-wrong">● 错别字</text>
-        <text class="legend-missing">● 漏写</text>
-        <text class="legend-extra">● 多写</text>
-        <text class="legend-tongjiazi">● 通假字</text>
-      </view>
-    </view>
-
-    <!-- 错字详情 -->
-    <view class="section-card" v-if="wrongDetails.length > 0">
-      <view class="section-label">错字详情</view>
-      <view class="wrong-list">
-        <view class="wrong-item" v-for="(item, idx) in wrongDetails" :key="idx">
-          <text class="wrong-original">{{ item.char }}</text>
-          <text class="wrong-arrow">→</text>
-          <text class="wrong-written">{{ item.recognized }}</text>
-        </view>
-      </view>
     </view>
 
     <!-- 识别文字 -->
@@ -150,13 +137,6 @@ export default {
     authorPartLength() {
       const s = this.dynasty && this.author ? (this.dynasty + '·' + this.author) : (this.author || this.dynasty || '')
       return (s || '').replace(/\s+/g, '').length
-    },
-    wrongDetails() {
-      const all = [...this.renderTitleList, ...this.renderAuthorList, ...this.renderContentList]
-      return all.filter(d => d.status === 'wrong' && d.written).map(d => ({
-        char: d.char,
-        recognized: d.written
-      }))
     }
   },
   onLoad(options) {
@@ -520,7 +500,7 @@ export default {
       }
       // 正文：按 snapshot 句子逐句处理
       const groups = []
-      const contentChars = [] // 用于 wrongDetails 和准确率
+      const contentChars = [] // 用于准确率
       for (let si = 0; si < snapshotSentences.length; si++) {
         const snap = snapshotSentences[si]
         const sr = sentenceResults.find(r => r.index === si)
@@ -793,6 +773,16 @@ export default {
   color: #999;
   margin-bottom: 16rpx;
 }
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.section-header-row .section-label {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
 .detail-row {
   display: flex;
   flex-wrap: wrap;
@@ -925,64 +915,24 @@ export default {
 }
 .legend {
   display: flex;
-  gap: 30rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid #f0f0f0;
+  flex-wrap: wrap;
+  gap: 6rpx 20rpx;
+  justify-content: flex-end;
+  align-items: center;
+}
+.legend-correct,
+.legend-wrong,
+.legend-missing,
+.legend-extra {
+  font-size: 22rpx;
 }
 .legend-correct {
-  font-size: 24rpx;
   color: #52c41a;
 }
-.legend-wrong {
-  font-size: 24rpx;
-  color: #f5222d;
-}
-.legend-missing {
-  font-size: 24rpx;
-  color: #f5222d;
-}
+.legend-wrong,
+.legend-missing,
 .legend-extra {
-  font-size: 24rpx;
   color: #f5222d;
-}
-.legend-tongjiazi {
-  font-size: 24rpx;
-  color: #f5222d;
-}
-.wrong-type {
-  font-size: 22rpx;
-  color: #999;
-  margin-left: 8rpx;
-  background: #f5f5f5;
-  padding: 2rpx 8rpx;
-  border-radius: 4rpx;
-}
-.wrong-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20rpx;
-}
-.wrong-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 8rpx 16rpx;
-  background: #fff2f0;
-  border-radius: 8rpx;
-}
-.wrong-original {
-  font-size: 30rpx;
-  color: #52c41a;
-  font-weight: bold;
-}
-.wrong-arrow {
-  font-size: 24rpx;
-  color: #999;
-}
-.wrong-written {
-  font-size: 30rpx;
-  color: #f5222d;
-  font-weight: bold;
 }
 .recognized-text {
   font-size: 28rpx;

@@ -9,36 +9,43 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
+      "label": "古文ID",
       "trim": "both"
     },
     "subcollection_id": {
       "bsonType": "string",
       "description": "子合集ID",
+      "label": "子合集ID",
       "trim": "both"
     },
     "group_id": {
       "bsonType": "string",
       "description": "分组ID，参考gw-square-subcollections-group._id，为空表示未分组",
+      "label": "分组ID",
       "trim": "both"
     },
     "sort": {
       "bsonType": "int",
       "description": "排序",
+      "label": "排序",
       "defaultValue": 0
     },
     "enabled": {
       "bsonType": "bool",
       "description": "是否启用",
+      "label": "是否启用",
       "defaultValue": true
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }

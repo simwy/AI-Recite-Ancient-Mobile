@@ -9,45 +9,54 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "title": {
       "bsonType": "string",
       "description": "标题",
+      "label": "标题",
       "trim": "both"
     },
     "author": {
       "bsonType": "string",
       "description": "作者",
+      "label": "作者",
       "trim": "both"
     },
     "dynasty": {
       "bsonType": "string",
       "description": "朝代",
+      "label": "朝代",
       "trim": "both"
     },
     "content": {
       "bsonType": "string",
-      "description": "全文内容"
+      "description": "全文内容",
+      "label": "全文内容"
     },
     "intro": {
       "bsonType": "string",
       "description": "简介",
+      "label": "简介",
       "trim": "both"
     },
     "is_hot": {
       "bsonType": "bool",
       "description": "是否热门",
+      "label": "是否热门",
       "defaultValue": false
     },
     "created_by": {
       "bsonType": "string",
       "description": "添加用户ID",
+      "label": "添加用户ID",
       "trim": "both"
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "添加时间",
+      "label": "添加时间",
       "defaultValue": {
         "$env": "now"
       }
@@ -55,6 +64,7 @@
     "source": {
       "bsonType": "string",
       "description": "来源标记",
+      "label": "来源标记",
       "trim": "both"
     }
   }

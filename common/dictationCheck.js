@@ -3,6 +3,44 @@
  * - 首页 list：不传 articleId，云函数从照片识别文章ID
  * - 默写页 dictation：传 articleId 为当前页古文ID，不从照片取
  */
+// 模拟阶段文案与进度（方案 A）
+const STAGES = [
+  { text: 'OCR 识别中...', progress: 12 },
+  { text: '识别完成，大模型批改中...', progress: 35 },
+  { text: '大模型批改中...', progress: 58 },
+  { text: '即将完成...', progress: 82 }
+]
+const STAGE_INTERVAL = 2600
+const PROGRESS_CAP = 90
+
+/** 是否正在用原生 uni.showLoading 兜底（自定义浮层未就绪时） */
+let useNativeLoading = false
+
+function updateProgress(visible, stageText, progress) {
+  const app = getApp()
+  if (app && typeof app.dictationProgressUpdater === 'function') {
+    app.dictationProgressUpdater({ visible, stageText, progress })
+  }
+}
+
+function showProgress() {
+  const app = getApp()
+  if (app && typeof app.dictationProgressUpdater === 'function') {
+    updateProgress(true, STAGES[0].text, STAGES[0].progress)
+  } else {
+    useNativeLoading = true
+    uni.showLoading({ title: 'AI批改中...', mask: true })
+  }
+}
+
+function hideProgress() {
+  if (useNativeLoading) {
+    useNativeLoading = false
+    uni.hideLoading()
+  }
+  updateProgress(false, '', 0)
+}
+
 function getUniIdToken() {
   const currentUserInfo = uniCloud.getCurrentUserInfo() || {}
   if (!currentUserInfo.token) return ''
@@ -59,13 +97,13 @@ function readAndUpload(filePath, options, callCheck) {
       const reader = new plus.io.FileReader()
       reader.onloadend = (e) => callCheck(e.target.result)
       reader.onerror = () => {
-        uni.hideLoading()
+        hideProgress()
         uni.showToast({ title: '读取图片失败', icon: 'none' })
       }
       reader.readAsDataURL(file)
     })
   }, () => {
-    uni.hideLoading()
+    hideProgress()
     uni.showToast({ title: '读取图片失败', icon: 'none' })
   })
   // #endif
@@ -77,7 +115,7 @@ function readAndUpload(filePath, options, callCheck) {
   // #endif
 }
 
-async function callCheck(imageBase64, options) {
+async function callCheck(imageBase64, options, onSuccess, onFail) {
   try {
     const uniIdToken = getUniIdToken()
     const data = {
@@ -95,37 +133,60 @@ async function callCheck(imageBase64, options) {
         data
       }
     })
-    uni.hideLoading()
     const result = (res && res.result) || {}
     if (result.code !== 0) {
+      if (onFail) onFail()
       uni.showToast({ title: result.msg || '批改失败', icon: 'none' })
       return
     }
     const app = getApp()
     app.globalData = app.globalData || {}
     app.globalData.dictationCheckResult = result.data
+    if (onSuccess) onSuccess()
     uni.navigateTo({ url: '/pages/ancient/dictation-result' })
   } catch (e) {
-    uni.hideLoading()
+    if (onFail) onFail()
     console.error('拍照检查失败:', e)
     uni.showToast({ title: '批改服务异常', icon: 'none' })
   }
 }
 
 function compressAndCheck(filePath, options) {
-  uni.showLoading({ title: 'AI批改中...', mask: true })
-  const doCallCheck = (base64) => callCheck(base64, options)
+  showProgress()
+  let stageIndex = 0
+  let currentProgress = STAGES[0].progress
+
+  const timer = setInterval(() => {
+    stageIndex = Math.min(stageIndex + 1, STAGES.length - 1)
+    const stage = STAGES[stageIndex]
+    currentProgress = Math.min(PROGRESS_CAP, currentProgress + 12)
+    updateProgress(true, stage.text, currentProgress)
+  }, STAGE_INTERVAL)
+
+  const doCallCheck = (base64) => {
+    callCheck(base64, options, () => {
+      clearInterval(timer)
+      updateProgress(true, '批改完成，正在跳转...', 100)
+      setTimeout(hideProgress, 400)
+    }, () => {
+      clearInterval(timer)
+      hideProgress()
+    })
+  }
+
   // #ifdef APP-PLUS || MP-WEIXIN || MP-ALIPAY
   compressImageApp(filePath).then((compressedPath) => {
     readAndUpload(compressedPath, options, doCallCheck)
   }).catch(() => {
-    uni.hideLoading()
+    clearInterval(timer)
+    hideProgress()
     uni.showToast({ title: '图片压缩失败', icon: 'none' })
   })
   // #endif
   // #ifdef H5
   compressImageH5(filePath).then(doCallCheck).catch(() => {
-    uni.hideLoading()
+    clearInterval(timer)
+    hideProgress()
     uni.showToast({ title: '图片压缩失败', icon: 'none' })
   })
   // #endif

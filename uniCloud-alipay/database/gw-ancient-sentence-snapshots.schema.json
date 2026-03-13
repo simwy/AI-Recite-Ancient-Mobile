@@ -9,27 +9,32 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
+      "label": "古文ID",
       "foreignKey": "gw-ancient-texts._id",
       "trim": "both"
     },
     "split_version": {
       "bsonType": "string",
       "description": "分句规则版本，如v1",
+      "label": "分句规则版本",
       "trim": "both"
     },
     "content_hash": {
       "bsonType": "string",
       "description": "原文哈希",
+      "label": "原文哈希",
       "trim": "both"
     },
     "sentences": {
       "bsonType": "array",
       "description": "主句与播放子句快照（有序）",
+      "label": "主句与播放子句快照（有序）",
       "items": {
         "bsonType": "object",
         "required": ["index", "sentence_id", "text"],
@@ -86,6 +91,7 @@
     "created_at": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }
@@ -93,6 +99,7 @@
     "updated_at": {
       "bsonType": "timestamp",
       "description": "更新时间",
+      "label": "更新时间",
       "defaultValue": {
         "$env": "now"
       }

@@ -215,16 +215,27 @@ async function callLLMSentenceMatch(title, authorDisplay, snapshotSentences, rec
   }
 
   const endpoint = bailianDictationCheck.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  // 长文默写（如桃花源记）的 sentence_results 很多，需足够 max_tokens 避免返回被截断导致 JSON 解析失败
+  const maxTokens = Number(bailianDictationCheck.maxTokens) || 8192
+  const userContent = buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedText)
   const requestBody = {
-    model: bailianDictationCheck.model || 'qwen3-max',
+    model: bailianDictationCheck.model || 'qwen-plus',
+    max_tokens: maxTokens,
     temperature: 0.1,
     response_format: { type: 'json_object' },
     extra_body: {"enable_thinking":false},
     messages: [
       { role: 'system', content: LLM_SYSTEM_PROMPT },
-      { role: 'user', content: buildLLMUserPrompt(title, authorDisplay, snapshotSentences, recognizedText) }
+      { role: 'user', content: userContent }
     ]
   }
+
+  // 后台打印：模型名与输入参数，便于排查截断等问题
+  console.log('[dictation-check LLM] model:', requestBody.model)
+  console.log('[dictation-check LLM] max_tokens:', requestBody.max_tokens)
+  console.log('[dictation-check LLM] temperature:', requestBody.temperature)
+  console.log('[dictation-check LLM] user prompt length:', userContent.length)
+  console.log('[dictation-check LLM] user prompt preview:', userContent.slice(0, 600) + (userContent.length > 600 ? '...' : ''))
 
   const response = await uniCloud.httpclient.request(endpoint, {
     method: 'POST',
@@ -245,11 +256,20 @@ async function callLLMSentenceMatch(title, authorDisplay, snapshotSentences, rec
   const rawContent = (choices[0] && choices[0].message && choices[0].message.content) || ''
   const contentStr = typeof rawContent === 'string' ? rawContent : (Array.isArray(rawContent) ? rawContent.map(c => (c && c.text) || '').join('') : '')
 
+  // 打印返回长度与 usage，便于确认是否因 output 超 max_tokens 被截断
+  console.log('[dictation-check LLM] response content length:', contentStr.length)
+  const usage = response.data.usage
+  if (usage) {
+    console.log('[dictation-check LLM] usage:', JSON.stringify(usage))
+  }
+
   let parsed
   try {
     parsed = JSON.parse(contentStr.trim())
   } catch (e) {
-    throw new Error('LLM 返回的 JSON 解析失败: ' + contentStr.slice(0, 200))
+    const preview = contentStr.slice(0, 300)
+    const hint = contentStr.length > 500 ? '（可能因输出过长被截断，请稍后重试）' : ''
+    throw new Error('LLM 返回的 JSON 解析失败' + hint + ': ' + preview)
   }
 
   if (!parsed || !Array.isArray(parsed.sentence_results)) {

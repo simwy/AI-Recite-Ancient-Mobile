@@ -9,11 +9,13 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "user_id": {
       "bsonType": "string",
       "description": "用户ID",
+      "label": "用户ID",
       "forceDefaultValue": {
         "$env": "uid"
       },
@@ -22,23 +24,28 @@
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
+      "label": "古文ID",
       "foreignKey": "gw-ancient-texts._id"
     },
     "text_title": {
       "bsonType": "string",
-      "description": "古文标题"
+      "description": "古文标题",
+      "label": "古文标题"
     },
     "text_author": {
       "bsonType": "string",
-      "description": "古文作者"
+      "description": "古文作者",
+      "label": "古文作者"
     },
     "text_dynasty": {
       "bsonType": "string",
-      "description": "古文朝代"
+      "description": "古文朝代",
+      "label": "古文朝代"
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "收藏时间",
+      "label": "收藏时间",
       "defaultValue": {
         "$env": "now"
       }

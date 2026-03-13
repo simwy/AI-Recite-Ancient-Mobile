@@ -9,44 +9,53 @@
   },
   "properties": {
     "_id": {
-      "description": "ID"
+      "description": "ID",
+      "label": "ID"
     },
     "user_id": {
       "bsonType": "string",
       "description": "用户ID",
+      "label": "用户ID",
       "foreignKey": "uni-id-users._id"
     },
     "text_id": {
       "bsonType": "string",
       "description": "古文ID",
+      "label": "古文ID",
       "foreignKey": "gw-ancient-texts._id"
     },
     "text_title": {
       "bsonType": "string",
-      "description": "古文标题"
+      "description": "古文标题",
+      "label": "古文标题"
     },
     "hint_count": {
       "bsonType": "int",
       "description": "提示次数",
+      "label": "提示次数",
       "defaultValue": 0
     },
     "duration_seconds": {
       "bsonType": "int",
       "description": "背诵时长（秒）",
+      "label": "背诵时长（秒）",
       "defaultValue": 0
     },
     "recognized_text": {
       "bsonType": "string",
-      "description": "语音识别文字"
+      "description": "语音识别文字",
+      "label": "语音识别文字"
     },
     "practice_mode": {
       "bsonType": "string",
       "description": "练习模式（recite/read）",
+      "label": "练习模式",
       "defaultValue": "recite"
     },
     "diff_result": {
       "bsonType": "array",
       "description": "逐字对比结果",
+      "label": "逐字对比结果",
       "items": {
         "bsonType": "object",
         "properties": {
@@ -57,23 +66,28 @@
     },
     "accuracy": {
       "bsonType": "double",
-      "description": "正确率"
+      "description": "正确率",
+      "label": "正确率"
     },
     "sentence_index": {
       "bsonType": "int",
-      "description": "匹配句索引，-1 表示整篇"
+      "description": "匹配句索引，-1 表示整篇",
+      "label": "匹配句索引"
     },
     "sentence_text": {
       "bsonType": "string",
-      "description": "匹配句内容"
+      "description": "匹配句内容",
+      "label": "匹配句内容"
     },
     "sentence_accuracy": {
       "bsonType": "double",
-      "description": "句子级准确率"
+      "description": "句子级准确率",
+      "label": "句子级准确率"
     },
     "wrong_chars": {
       "bsonType": "array",
       "description": "读错的字",
+      "label": "读错的字",
       "items": {
         "bsonType": "string"
       }
@@ -81,6 +95,7 @@
     "sentence_details": {
       "bsonType": "array",
       "description": "跟读模式逐句结果",
+      "label": "跟读模式逐句结果",
       "items": {
         "bsonType": "object",
         "properties": {
@@ -108,11 +123,13 @@
     },
     "attempt_no": {
       "bsonType": "int",
-      "description": "第几遍"
+      "description": "第几遍",
+      "label": "第几遍"
     },
     "created_at": {
       "bsonType": "timestamp",
       "description": "创建时间",
+      "label": "创建时间",
       "defaultValue": {
         "$env": "now"
       }

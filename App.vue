@@ -1,3 +1,9 @@
+<template>
+	<view>
+		<dictation-check-progress />
+	</view>
+</template>
+
 <script>
 	import initApp from '@/common/appInit.js';
 	import openApp from '@/common/openApp.js';
@@ -6,7 +12,11 @@
 	// #endif
 	import checkIsAgree from '@/pages/uni-agree/utils/uni-agree.js';
 	import uniIdPageInit from '@/uni_modules/uni-id-pages/init.js';
+	import DictationCheckProgress from '@/components/dictation-check-progress/dictation-check-progress.vue';
 	export default {
+		components: {
+			DictationCheckProgress
+		},
 		globalData: {
 			searchText: '',
 			appVersion: {},
