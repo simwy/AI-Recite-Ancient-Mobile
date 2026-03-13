@@ -91,8 +91,20 @@
 
     <view class="action-bar">
       <view class="action-row">
-        <button class="btn-print" @tap="printDictationPaper">打印默写纸</button>
-        <button class="btn-capture" @tap="openPhotoEntry">拍照检查</button>
+        <view class="action-group">
+          <button class="action-btn btn-print" @tap="printDictationPaper">
+            <image
+              class="icon-printer"
+              :src="printerIconDataUri"
+              mode="aspectFit"
+            />
+            <text class="btn-text">打印默写纸</text>
+          </button>
+          <button class="action-btn btn-capture" @tap="openPhotoEntry">
+            <uni-icons type="camera" size="22" color="#fff" />
+            <text class="btn-text">拍照检查</text>
+          </button>
+        </view>
       </view>
     </view>
   </view>
@@ -108,6 +120,9 @@ export default {
     return {
       id: '',
       detail: {},
+      printerIconDataUri: 'data:image/svg+xml,' + encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 6 2 18 2 18 9'/><path d='M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2'/><rect x='6' y='14' width='12' height='8'/></svg>"
+      ),
       selectedDifficulty: 'advanced',
       selectedFontSize: 'medium',
       difficultyOptions: [
@@ -581,29 +596,59 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 18rpx 24rpx;
-  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 .action-row {
   display: flex;
-  gap: 16rpx;
+  align-items: stretch;
+  gap: 24rpx;
+}
+.action-group {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+.action-group .action-btn {
+  flex: 1;
+  height: 100%;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  height: 100rpx;
+}
+.action-group .btn-text {
+  line-height: 1.2;
+}
+.action-group .action-btn:first-child {
+  border-radius: 12rpx 0 0 12rpx;
+}
+.action-group .action-btn:last-child {
+  border-radius: 0 12rpx 12rpx 0;
+}
+/* 打印机图标（uni-icons 无 printer，用 SVG data URI） */
+.icon-printer {
+  width: 44rpx;
+  height: 44rpx;
+  flex-shrink: 0;
 }
 .btn-print {
-  flex: 1;
-  border-radius: 12rpx;
-  background: #fff;
-  color: #2f6fff;
-  border: 1rpx solid #2f6fff;
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.9) 0%, rgba(75, 85, 99, 0.95) 100%);
 }
 .btn-capture {
-  flex: 1;
-  width: auto;
-  border-radius: 12rpx;
-}
-.btn-capture {
-  background: #2f6fff;
-  color: #fff;
+  background: linear-gradient(135deg, rgba(239, 108, 0, 0.82) 0%, rgba(230, 81, 0, 0.88) 100%);
 }
 </style>
