@@ -864,6 +864,10 @@ export default {
   line-height: 1.4;
   text-align: center;
   min-height: 36rpx;
+  background: #fffbe6;
+  padding: 2rpx 4rpx;
+  border-radius: 4rpx;
+  box-sizing: border-box;
 }
 /* 原文行颜色 */
 .row-original.diff-correct {
