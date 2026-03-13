@@ -5,6 +5,7 @@ const TE = require('./lib/art-template.js');
 // 标准语法的界定符规则
 TE.defaults.openTag = '{@'
 TE.defaults.closeTag = '@}'
+TE.defaults.escape = false
 
 const success = {
 	success: true
@@ -16,12 +17,27 @@ const fail = {
 async function translateTCB(_fileList = []) {
 	if (!_fileList.length) return _fileList
 	// 腾讯云和阿里云下载链接不同，需要处理一下，阿里云会原样返回
-	const {
-		fileList
-	} = await uniCloud.getTempFileURL({
-		fileList: _fileList
-	});
-	return fileList.map((item, index) => item.tempFileURL ? item.tempFileURL : _fileList[index])
+  const translateUrl = []
+  const translateUrlIndex = [] // 确保处理过后位置不变
+  _fileList.forEach((item, index) => {
+    if (/^cloud:\/\//.test(item)) {
+      translateUrl.push(item)
+      translateUrlIndex.push(index)
+    }
+  })
+  if (translateUrl.length) {
+    const {
+      fileList
+    } = await uniCloud.getTempFileURL({
+      fileList: translateUrl
+    });
+    fileList.forEach((item, index) => {
+      if (item.tempFileURL) {
+        _fileList.splice(translateUrlIndex[index], 1, item.tempFileURL)
+      }
+    })
+  }
+	return _fileList
 }
 
 function hasValue(value) {
@@ -146,10 +162,21 @@ module.exports = async function(id) {
 			} else {
 				defaultOptions.android_url = ''
 			}
-			if (defaultOptions.hasApp && appInfo.app_ios && appInfo.app_ios.url) {
-				defaultOptions.ios_url = appInfo.app_ios.url
+			if (defaultOptions.hasApp && appInfo.app_ios) {
+				if (appInfo.app_ios.url) {
+					defaultOptions.ios_url = appInfo.app_ios.url
+				}
+				if (appInfo.app_ios.abm_url) {
+					defaultOptions.ios_abm_url = appInfo.app_ios.abm_url
+				}
 			} else {
 				defaultOptions.ios_url = ''
+				defaultOptions.ios_abm_url = ''
+			}
+			if (defaultOptions.hasApp && appInfo.app_harmony && appInfo.app_harmony.url) {
+				defaultOptions.harmony_url = appInfo.app_harmony.url
+			} else {
+				defaultOptions.harmony_url = ''
 			}
 
 			// mp
@@ -157,8 +184,6 @@ module.exports = async function(id) {
 				return key.indexOf('mp') !== -1 && hasValue(appInfo[key])
 			})
 		}
-
-		const html = TE.render(templatePage)(Object.assign({}, appInfo, defaultOptions));
 
 		if (!(defaultOptions.hasApp || defaultOptions.hasH5 || defaultOptions.hasMP || defaultOptions
 				.hasQuickApp)) {
@@ -168,6 +193,8 @@ module.exports = async function(id) {
 				errMsg: '缺少应用信息，App、小程序、H5、快应用请至少填写一项'
 			}
 		}
+
+		const html = TE.render(templatePage)(Object.assign({}, appInfo, defaultOptions));
 
 		return {
 			...success,

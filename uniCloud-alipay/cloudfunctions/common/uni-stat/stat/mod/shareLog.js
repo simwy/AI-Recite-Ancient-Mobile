@@ -5,6 +5,7 @@ const BaseMod = require('./base')
 const Platform = require('./platform')
 const Channel = require('./channel')
 const SessionLog = require('./sessionLog')
+const PageDetail = require('./pageDetail')
 const {
 	DateTime
 } = require('../lib')
@@ -26,9 +27,10 @@ module.exports = class ShareLog extends BaseMod {
 		const platform = new Platform()
 		const dateTime = new DateTime()
 		const channel = new Channel()
+		const pageDetail = new PageDetail()
 		for (const rk in reportParams) {
 			params = reportParams[rk]
-			
+
 			//暂存下会话数据，减少读库
 			sessionKey = params.ak + params.did + params.p
 			if (!sessionLogData[sessionKey]) {
@@ -45,6 +47,17 @@ module.exports = class ShareLog extends BaseMod {
 				sessionLogInfo = sessionLogData[sessionKey]
 			}
 
+			let pageDetailInfo
+			if(this.getConfig('pageDetailStat')) {
+				pageDetailInfo = await pageDetail.getPageDetailByPageRules({
+					appid: params.ak,
+					pageUrl: params.url,
+					pageTitle: params.ttpj,
+					pageId: sessionLogInfo.data.pageId,
+					pageRules: sessionLogInfo.data.pageRules
+				})
+			}
+
 			// 填充数据
 			fillParams.push({
 				appid: params.ak,
@@ -55,6 +68,7 @@ module.exports = class ShareLog extends BaseMod {
 				uid: params.uid ? params.uid : '',
 				session_id: sessionLogInfo.data.sessionLogId,
 				page_id: sessionLogInfo.data.pageId,
+				page_detail_id: (pageDetailInfo && pageDetailInfo._id) || undefined,
 				create_time: dateTime.getTime()
 			})
 		}
@@ -85,17 +99,17 @@ module.exports = class ShareLog extends BaseMod {
 	 * @param {Number} days 保留天数
 	 */
 	async clean(days) {
+		if(days === 0) {
+			return false;
+		}
 		days = Math.max(parseInt(days), 1)
 		console.log('clean share logs - day:', days)
-
 		const dateTime = new DateTime()
-
 		const res = await this.delete(this.tableName, {
 			create_time: {
 				$lt: dateTime.getTimeBySetDays(0 - days)
 			}
 		})
-
 		if (!res.code) {
 			console.log('clean share log:', res)
 		}

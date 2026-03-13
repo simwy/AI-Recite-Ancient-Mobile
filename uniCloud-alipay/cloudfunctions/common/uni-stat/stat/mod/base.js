@@ -151,6 +151,10 @@ module.exports = class BaseMod {
 		return await this.redis.del(key)
 	}
 
+	getCacheKeyByParams(params) {
+		return Object.keys(params).map((key) => key + ':' + params[key]).join('-')
+	}
+
 	/**
 	 * 通过数据表主键（_id）获取数据
 	 * @param {String} tab 表名
@@ -207,8 +211,8 @@ module.exports = class BaseMod {
 	 * @param {Boolean} useDBPre 是否使用数据表前缀
 	 */
 	async batchInsert(tab, data, useDBPre = true) {
-		let batchInsertNum = this.getConfig('batchInsertNum') || 3000
-		batchInsertNum = Math.min(batchInsertNum, 5000)
+		let batchInsertNum = this.getConfig('batchInsertNum') || 1000
+		batchInsertNum = Math.min(batchInsertNum, 1000) // 兼容支付宝云最大1000
 		const insertNum = Math.ceil(data.length / batchInsertNum)
 		let start;
 		let end;
@@ -395,14 +399,14 @@ module.exports = class BaseMod {
 		useDBPre = (useDBPre !== null && useDBPre !== undefined) ? useDBPre : true
 		const query = this.getCollection(tab, useDBPre).aggregate()
 
-		//设置返回字段
-		if (project) {
-			query.project(project)
-		}
-
 		//设置匹配条件
 		if (match) {
 			query.match(match)
+		}
+
+		//设置返回字段
+		if (project) {
+			query.project(project)
 		}
 
 		//数据表关联

@@ -69,6 +69,16 @@ module.exports = class EventLog extends BaseMod {
 			// 事件
 			const eventInfo = await event.getEventAndCreate(params.ak, params.e_n)
 
+			//事件参数，尝试转为object类型
+			let eventParam = ''
+			if(params.e_v) {
+				try {
+					eventParam = JSON.parse(params.e_v)
+				} catch(e) {
+					eventParam = params.e_v
+				}
+			}
+
 			// 填充数据
 			fillParams.push({
 				appid: params.ak,
@@ -80,7 +90,7 @@ module.exports = class EventLog extends BaseMod {
 				session_id: sessionLogInfo.data.sessionLogId,
 				page_id: sessionLogInfo.data.pageId,
 				event_key: eventInfo.event_key,
-				param: params.e_v ? params.e_v : '',
+				param: eventParam,
 				// 版本
 				sdk_version: params.mpsdk ? params.mpsdk : '',
 				platform_version: params.mpv ? params.mpv : '',
@@ -137,7 +147,12 @@ module.exports = class EventLog extends BaseMod {
 	 * @param {Number} days 保留天数
 	 */
 	async clean(days) {
+		if(days === 0) {
+			return false;
+		}
+
 		days = Math.max(parseInt(days), 1)
+
 		console.log('clean event logs - day:', days)
 
 		const dateTime = new DateTime()

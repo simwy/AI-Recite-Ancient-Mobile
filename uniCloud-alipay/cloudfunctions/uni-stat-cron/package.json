@@ -19,13 +19,13 @@
             {
                 "name": "uni-stat-cron",
                 "type": "timer",
-                "config": "0 0 * * * * *"
+                "config": "19 19 * * * * *"
             }
         ]
     },
     "extensions": {},
-    "origin-plugin-dev-name": "uni-starter",
-    "origin-plugin-version": "2.2.14",
-    "plugin-dev-name": "uni-starter",
-    "plugin-version": "2.2.14"
+    "origin-plugin-dev-name": "uni-template-admin",
+    "origin-plugin-version": "2.5.13",
+    "plugin-dev-name": "uni-template-admin",
+    "plugin-version": "2.5.13"
 }

@@ -23,13 +23,15 @@ const {
 	ActiveDevices,
 	ActiveUsers,
 	PageResult,
+	PageDetailResult,
 	EventResult,
 	ErrorResult,
 	Loyalty,
 	RunErrors,
 	UserSessionLog,
 	uniPay,
-	Setting
+	Setting,
+	AppCrashLogs
 } = require('./mod')
 class UniStatDataStat {
 	/**
@@ -68,7 +70,7 @@ class UniStatDataStat {
 		// 数据跑批
 		let res = null
 		if (cronConfig && cronConfig.length > 0) {
-			for (var mi in cronConfig) {
+			for (let mi in cronConfig) {
 				const currCronConfig = cronConfig[mi]
 				const cronType = currCronConfig.type
 				const cronTime = currCronConfig.time.split(' ')
@@ -247,6 +249,12 @@ class UniStatDataStat {
 					res = await pageStat.stat(dimension, date, reset)
 					break
 				}
+				// 页面内容统计
+				case 'page-detail': {
+					const pageDetailStat = new PageDetailResult()
+					res = await pageDetailStat.stat(dimension, date, reset)
+					break
+				}
 				// 事件统计
 				case 'event': {
 					const eventStat = new EventResult()
@@ -286,8 +294,8 @@ class UniStatDataStat {
 
 			//报错则重新尝试2次, 解决部分云服务器偶现连接超时问题
 			if (this.tryTimes <= maxTryTimes) {
-				//休眠1秒后重新调用
-				await sleep(1000)
+				//休眠3秒后重新调用
+				await sleep(3000)
 				params.reset = true
 				res = await this.stat(params)
 			} else {
@@ -375,11 +383,21 @@ class UniStatDataStat {
 
 		// 实时统计日志
 		const resultHourLog = new StatResult()
-		res.data.resultHourLog = await resultHourLog.cleanHourLog()
+		if(Object.keys(cleanLog.reserveDays).indexOf('resultHourLog') > -1) {
+			res.data.resultHourLog = await resultHourLog.cleanHourLog(cleanLog.reserveDays.resultHourLog)
+		} else {
+			//兼容老版本
+			res.data.resultHourLog = await resultHourLog.cleanHourLog()
+		}
 
 		//原生应用崩溃日志
 		const appCrashLogs = new AppCrashLogs()
-		res.data.appCrashLogs = await appCrashLogs.clean()
+		if(Object.keys(cleanLog.reserveDays).indexOf('appCrashLog') > -1) {
+			res.data.appCrashLogs = await appCrashLogs.clean(cleanLog.reserveDays.appCrashLog)
+		} else {
+			//兼容老版本
+			res.data.appCrashLogs = await appCrashLogs.clean()
+		}
 
 		return res
 	}
