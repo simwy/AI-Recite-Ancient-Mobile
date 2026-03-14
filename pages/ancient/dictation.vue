@@ -9,17 +9,6 @@
     <view class="section-top">
       <view class="section-header">
         <view class="section-title">默写练习</view>
-        <view class="font-tabs">
-          <view
-            v-for="item in fontSizeOptions"
-            :key="item.value"
-            class="font-tab"
-            :class="{ active: selectedFontSize === item.value }"
-            @tap="selectedFontSize = item.value"
-          >
-            {{ item.label }}
-          </view>
-        </view>
       </view>
       <view class="difficulty-tabs">
         <view
@@ -33,7 +22,7 @@
         </view>
       </view>
 
-      <view class="paper-card" :class="paperFontClass">
+      <view class="paper-card">
         <view class="paper-line">
           <text class="paper-label">标题：</text>
           <text class="paper-value">{{ detail.title || '（未命名）' }}</text>
@@ -79,9 +68,7 @@
             <view class="print-record-item-title">{{ item.text_title || '（未命名）' }}</view>
             <view class="print-record-item-meta">
               <text v-if="item.difficulty_label">{{ item.difficulty_label }}</text>
-              <text v-if="item.font_size" class="meta-dot">·</text>
-              <text v-if="item.font_size">字号{{ item.font_size === 'large' ? '大' : item.font_size === 'small' ? '小' : '中' }}</text>
-              <text class="meta-dot">·</text>
+              <text v-if="item.difficulty_label" class="meta-dot">·</text>
               <text>{{ formatPrintTime(item.created_at) }}</text>
             </view>
           </view>
@@ -124,16 +111,10 @@ export default {
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 6 2 18 2 18 9'/><path d='M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2'/><rect x='6' y='14' width='12' height='8'/></svg>"
       ),
       selectedDifficulty: 'advanced',
-      selectedFontSize: 'medium',
       difficultyOptions: [
         { label: '初级默写', value: 'junior' },
         { label: '中级默写', value: 'middle' },
         { label: '高级默写', value: 'advanced' }
-      ],
-      fontSizeOptions: [
-        { label: '大', value: 'large' },
-        { label: '中', value: 'medium' },
-        { label: '小', value: 'small' }
       ],
       printRecordList: [],
       printRecordTotal: 0,
@@ -155,9 +136,6 @@ export default {
         return Array.from({ length: 30 }, () => ({ type: 'blank', value: '' }))
       }
       return this.getPaperSegments(content, this.selectedDifficulty)
-    },
-    paperFontClass() {
-      return `paper-font-${this.selectedFontSize}`
     }
   },
   onLoad(options) {
@@ -207,7 +185,7 @@ export default {
             author: this.detail.author || '',
             content,
             difficulty: this.selectedDifficulty,
-            fontSize: this.selectedFontSize,
+            fontSize: 'medium',
             difficultyLabel: diffLabel
           }
         })
@@ -231,7 +209,7 @@ export default {
           author: this.detail.author || '',
           difficulty: this.selectedDifficulty,
           difficultyLabel: diffLabel,
-          fontSize: this.selectedFontSize,
+          fontSize: 'medium',
           fileName
         })
         // H5/Chrome：直接用临时链接在新标签页打开 PDF，避免 uni.downloadFile 跨域报错
@@ -448,47 +426,18 @@ export default {
   background: #2f6fff;
   color: #fff;
 }
-.font-tabs {
-  display: flex;
-  gap: 12rpx;
-}
-.font-tab {
-  padding: 8rpx 16rpx;
-  font-size: 22rpx;
-  color: #667085;
-  background: #f5f7fb;
-  border-radius: 999rpx;
-}
-.font-tab.active {
-  color: #2f6fff;
-  background: #e7f0ff;
-}
 .paper-card {
   background: #fafbff;
   border: 1rpx dashed #d6def2;
   border-radius: 14rpx;
   padding: 20rpx;
 }
-.paper-font-large .paper-label {
-  font-size: 30rpx;
-}
-.paper-font-large .paper-value {
-  font-size: 32rpx;
-  line-height: 2;
-}
-.paper-font-medium .paper-label {
+.paper-card .paper-label {
   font-size: 26rpx;
 }
-.paper-font-medium .paper-value {
+.paper-card .paper-value {
   font-size: 28rpx;
   line-height: 1.85;
-}
-.paper-font-small .paper-label {
-  font-size: 22rpx;
-}
-.paper-font-small .paper-value {
-  font-size: 24rpx;
-  line-height: 1.75;
 }
 .paper-line {
   margin-bottom: 12rpx;
