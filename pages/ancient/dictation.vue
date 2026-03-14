@@ -22,6 +22,19 @@
         </view>
       </view>
 
+      <view class="style-label">纸张样式</view>
+      <view class="difficulty-tabs style-tabs">
+        <view
+          v-for="item in paperStyleOptions"
+          :key="item.value"
+          class="difficulty-tab"
+          :class="{ active: paperStyle === item.value }"
+          @tap="paperStyle = item.value"
+        >
+          {{ item.label }}
+        </view>
+      </view>
+
       <view class="paper-card">
         <view class="paper-line">
           <text class="paper-label">标题：</text>
@@ -37,10 +50,20 @@
         </view>
         <view class="paper-content">
           <text class="paper-label">正文：</text>
-          <view class="paper-value paper-main">
+          <!-- 下划线/虚线：流式布局 -->
+          <view v-if="paperStyle === 'underline' || paperStyle === 'dotted'" class="paper-value paper-main">
             <template v-for="(seg, i) in paperSegments" :key="i">
               <text v-if="seg.type !== 'blank'">{{ seg.value }}</text>
-              <view v-else class="underline-cell"></view>
+              <view v-else :class="paperStyle === 'dotted' ? 'dotted-cell' : 'underline-cell'"></view>
+            </template>
+          </view>
+          <!-- 格子类：flex wrap 布局 -->
+          <view v-else class="paper-value paper-grid" :class="'grid-' + paperStyle">
+            <template v-for="(seg, i) in gridSegments" :key="i">
+              <view v-if="seg.type === 'pad'" class="grid-cell grid-pad" :class="gridCellClass"></view>
+              <view v-else class="grid-cell" :class="[gridCellClass, seg.type === 'blank' ? 'grid-blank' : 'grid-char']">
+                <text v-if="seg.type !== 'blank'" class="grid-text">{{ seg.value }}</text>
+              </view>
             </template>
           </view>
         </view>
@@ -116,6 +139,15 @@ export default {
         { label: '中级默写', value: 'middle' },
         { label: '高级默写', value: 'advanced' }
       ],
+      paperStyle: 'underline',
+      paperStyleOptions: [
+        { label: '下划线', value: 'underline' },
+        { label: '虚线', value: 'dotted' },
+        { label: '田字格', value: 'tian_grid' },
+        { label: '米字格', value: 'mi_grid' },
+        { label: '作文格', value: 'essay_grid' },
+        { label: '中高考贴', value: 'exam_grid' }
+      ],
       printRecordList: [],
       printRecordTotal: 0,
       printRecordLoading: false,
@@ -136,6 +168,43 @@ export default {
         return Array.from({ length: 30 }, () => ({ type: 'blank', value: '' }))
       }
       return this.getPaperSegments(content, this.selectedDifficulty)
+    },
+    isGridStyle() {
+      return ['tian_grid', 'mi_grid', 'essay_grid', 'exam_grid'].includes(this.paperStyle)
+    },
+    gridCellClass() {
+      const map = {
+        tian_grid: 'tian-grid-cell',
+        mi_grid: 'mi-grid-cell',
+        essay_grid: 'essay-grid-cell',
+        exam_grid: 'exam-grid-cell'
+      }
+      return map[this.paperStyle] || ''
+    },
+    gridSegments() {
+      if (!this.isGridStyle) return this.paperSegments
+      // 格子类：换行符后插入 pad 填充到行尾，实现强制换行
+      // 预览时每行格数自适应，这里用 20 作为估算值
+      const colsMap = { essay_grid: 20, exam_grid: 25 }
+      const cols = colsMap[this.paperStyle] || 20
+      const result = []
+      let col = 0
+      for (const seg of this.paperSegments) {
+        if (seg.value === '\n') {
+          // 填充当前行剩余格子
+          const remaining = cols - (col % cols)
+          if (remaining > 0 && remaining < cols) {
+            for (let j = 0; j < remaining; j++) {
+              result.push({ type: 'pad', value: '' })
+            }
+          }
+          col = 0
+          continue
+        }
+        result.push(seg)
+        col++
+      }
+      return result
     }
   },
   onLoad(options) {
@@ -186,7 +255,8 @@ export default {
             content,
             difficulty: this.selectedDifficulty,
             fontSize: 'medium',
-            difficultyLabel: diffLabel
+            difficultyLabel: diffLabel,
+            paperStyle: this.paperStyle
           }
         })
         const result = res.result || {}
@@ -210,7 +280,8 @@ export default {
           difficulty: this.selectedDifficulty,
           difficultyLabel: diffLabel,
           fontSize: 'medium',
-          fileName
+          fileName,
+          paperStyle: this.paperStyle
         })
         // H5/Chrome：直接用临时链接在新标签页打开 PDF，避免 uni.downloadFile 跨域报错
         // #ifdef H5
@@ -473,6 +544,131 @@ export default {
   border-bottom: 2rpx solid #1f2937;
   vertical-align: bottom;
   margin: 0 2rpx;
+}
+.dotted-cell {
+  display: inline-block;
+  min-width: 40rpx;
+  height: 1.2em;
+  border-bottom: 2rpx dashed #1f2937;
+  vertical-align: bottom;
+  margin: 0 2rpx;
+}
+.style-label {
+  font-size: 26rpx;
+  color: #475467;
+  margin-bottom: 10rpx;
+}
+.style-tabs {
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 18rpx;
+}
+/* 格子布局容器 */
+.paper-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8rpx;
+}
+/* 行间距：田字格/米字格 5mm≈30rpx，作文格 3mm≈18rpx，中高考贴 2mm≈12rpx */
+.grid-tian_grid {
+  row-gap: 30rpx;
+}
+.grid-mi_grid {
+  row-gap: 30rpx;
+}
+.grid-essay_grid {
+  row-gap: 18rpx;
+}
+.grid-exam_grid {
+  row-gap: 12rpx;
+}
+.grid-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  position: relative;
+}
+.grid-text {
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1;
+}
+.grid-blank {
+  background: #fafbff;
+}
+.grid-pad {
+  visibility: hidden;
+}
+/* 田字格 */
+.tian-grid-cell {
+  width: 60rpx;
+  height: 60rpx;
+  border: 1rpx solid #999;
+}
+.tian-grid-cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1rpx dashed #ccc;
+}
+.tian-grid-cell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1rpx dashed #ccc;
+}
+/* 米字格：田字格 + 对角线 */
+.mi-grid-cell {
+  width: 60rpx;
+  height: 60rpx;
+  border: 1rpx solid #999;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    #ccc calc(50% - 0.5px),
+    #ccc calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  ),
+  linear-gradient(
+    to bottom right,
+    transparent calc(50% - 0.5px),
+    #ccc calc(50% - 0.5px),
+    #ccc calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+.mi-grid-cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1rpx dashed #ccc;
+}
+.mi-grid-cell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1rpx dashed #ccc;
+}
+/* 作文格 */
+.essay-grid-cell {
+  width: 60rpx;
+  height: 60rpx;
+  border: 1rpx solid #999;
+}
+/* 中高考贴 */
+.exam-grid-cell {
+  width: 54rpx;
+  height: 54rpx;
+  border: 1rpx solid #999;
 }
 .print-record-section {
   margin-top: 24rpx;
