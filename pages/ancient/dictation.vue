@@ -36,20 +36,14 @@
       </view>
 
       <view class="paper-card">
-        <view class="paper-line">
-          <text class="paper-label">标题：</text>
-          <text class="paper-value">{{ detail.title || '（未命名）' }}</text>
+        <view class="paper-title">{{ detail.title || '（未命名）' }}</view>
+        <view class="paper-subtitle">{{ authorDisplayText }}</view>
+        <view class="paper-meta-row">
+          <text class="paper-meta-left">{{ currentDifficultyLabel }}</text>
+          <text class="paper-meta-right">{{ id || '—' }}</text>
         </view>
-        <view class="paper-line">
-          <text class="paper-label">作者：</text>
-          <text class="paper-value author-placeholder">{{ authorDisplayText }}</text>
-        </view>
-        <view class="paper-line paper-id-line">
-          <text class="paper-label">文章ID：</text>
-          <text class="paper-value paper-id-value">{{ id || '—' }}</text>
-        </view>
+        <view class="paper-divider"></view>
         <view class="paper-content">
-          <text class="paper-label">正文：</text>
           <!-- 下划线/虚线：流式布局 -->
           <view v-if="paperStyle === 'underline' || paperStyle === 'dotted'" class="paper-value paper-main">
             <template v-for="(seg, i) in paperSegments" :key="i">
@@ -155,6 +149,10 @@ export default {
     }
   },
   computed: {
+    currentDifficultyLabel() {
+      const opt = this.difficultyOptions.find(d => d.value === this.selectedDifficulty)
+      return opt ? opt.label : ''
+    },
     authorDisplayText() {
       const dynasty = this.safeText(this.detail.dynasty)
       const author = this.safeText(this.detail.author)
@@ -185,7 +183,7 @@ export default {
       if (!this.isGridStyle) return this.paperSegments
       // 格子类：换行符后插入 pad 填充到行尾，实现强制换行
       // 预览时每行格数自适应，这里用 20 作为估算值
-      const colsMap = { essay_grid: 20, exam_grid: 25 }
+      const colsMap = { essay_grid: 17, exam_grid: 19 }
       const cols = colsMap[this.paperStyle] || 20
       const result = []
       let col = 0
@@ -503,32 +501,46 @@ export default {
   border-radius: 14rpx;
   padding: 20rpx;
 }
-.paper-card .paper-label {
+.paper-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 8rpx;
+}
+.paper-subtitle {
   font-size: 26rpx;
+  color: #475467;
+  text-align: center;
+  letter-spacing: 2rpx;
+  margin-bottom: 16rpx;
 }
-.paper-card .paper-value {
-  font-size: 28rpx;
-  line-height: 1.85;
-}
-.paper-line {
+.paper-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 12rpx;
 }
-.paper-id-line .paper-id-value {
+.paper-meta-left {
+  font-size: 24rpx;
+  color: #475467;
+}
+.paper-meta-right {
   font-family: monospace;
-  font-size: 0.9em;
+  font-size: 24rpx;
   color: #6b7280;
 }
-.paper-content {
-  margin-top: 10rpx;
+.paper-divider {
+  border-top: 1rpx solid #d6def2;
+  margin-bottom: 12rpx;
 }
-.paper-label {
-  color: #475467;
+.paper-content {
+  margin-top: 0;
 }
 .paper-value {
   color: #1f2937;
-}
-.author-placeholder {
-  letter-spacing: 2rpx;
+  font-size: 28rpx;
+  line-height: 1.85;
 }
 .paper-main {
   display: block;

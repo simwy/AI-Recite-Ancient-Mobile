@@ -100,8 +100,8 @@ function drawGridStyle(doc, segments, fontConfig, gridType) {
   const rowGapMap = { tian: 14.17, mi: 14.17, essay: 8.50, exam: 5.67 }
   const rowGap = rowGapMap[gridType] || 0
   const rowHeight = cellSize + rowGap
-  // 每行格数：作文固定20，中高考固定25，其余按宽度计算
-  const cols = isEssay ? 20 : isExam ? 25 : Math.floor(CONTENT_WIDTH / cellSize)
+  // 每行格数：作文固定17，中高考固定19，其余按宽度计算
+  const cols = isEssay ? 17 : isExam ? 19 : Math.floor(CONTENT_WIDTH / cellSize)
   const pageBottom = 841.89 - PAGE_MARGIN // A4 height - margin
   let x = PAGE_MARGIN
   let y = doc.y
@@ -171,13 +171,14 @@ function drawSingleCell(doc, x, y, size, gridType, isBlank, value, fontConfig) {
     doc.restore()
   }
 
-  // 写入文字
+  // 写入文字（垂直居中）
   if (!isBlank && value) {
     const fSize = size * 0.6
     doc.fontSize(fSize).fillColor('#111827')
     const tw = doc.widthOfString(value)
+    const th = doc.heightOfString(value, { lineBreak: false })
     const tx = x + (size - tw) / 2
-    const ty = y + (size - fSize) / 2
+    const ty = y + (size - th) / 2
     doc.text(value, tx, ty, { lineBreak: false })
     doc.fontSize(fontConfig.body)
   }
@@ -288,28 +289,33 @@ async function generateDictationPdf(data) {
       doc
         .fontSize(fontConfig.title)
         .fillColor('#1f2937')
-        .text('古文默写纸', {
+        .text(title, {
           width: CONTENT_WIDTH,
           align: 'center'
         })
 
-      doc.moveDown(0.8)
+      doc.moveDown(0.4)
       doc
         .fontSize(fontConfig.meta)
         .fillColor('#374151')
-        .text(`标题：${title}`)
-      doc.moveDown(0.4)
-      doc.text(`作者：${authorDisplay || '________'}`)
+        .text(authorDisplay || '——', {
+          width: CONTENT_WIDTH,
+          align: 'center'
+        })
+
+      doc.moveDown(0.6)
+      // 默写级别（左）+ 文章ID（右）同一行
+      const metaY = doc.y
       if (difficultyLabel) {
-        doc.moveDown(0.4)
-        doc.text(`默写级别：${difficultyLabel}`)
+        doc.fontSize(fontConfig.meta).fillColor('#374151')
+        doc.text(difficultyLabel, PAGE_MARGIN, metaY, { lineBreak: false })
       }
       if (articleId) {
-        doc.moveDown(0.4)
         doc.fontSize(fontConfig.meta - 1).fillColor('#6b7280')
-        doc.text(`文章ID：${articleId}`)
-        doc.fontSize(fontConfig.meta).fillColor('#374151')
+        const idWidth = doc.widthOfString(articleId)
+        doc.text(articleId, A4_WIDTH - PAGE_MARGIN - idWidth, metaY, { lineBreak: false })
       }
+      doc.y = metaY + fontConfig.meta + 4
       doc.moveDown(0.6)
 
       const lineTop = doc.y
