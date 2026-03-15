@@ -502,7 +502,7 @@ export default {
   color: #333;
   box-sizing: border-box;
   white-space: nowrap;
-  display: none;
+  visibility: hidden;
 }
 .nav-right {
   text-align: right;
